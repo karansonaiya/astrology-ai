@@ -1,26 +1,137 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   Jyoti AI design tokens
+   Default mode: warm "flame" dark theme — a softer, warm charcoal (not
+   near-black) with a vivid saffron/flame-orange primary accent, echoing
+   "Jyoti" (light/flame). Light mode is a first-class alternative, toggled
+   via the `.light` class on <html> (see ThemeProvider).
+   ========================================================================== */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --font-body: var(--font-inter), var(--font-noto-gu), var(--font-noto-dev), system-ui, sans-serif;
+  --font-heading: var(--font-inter), var(--font-noto-gu), var(--font-noto-dev), system-ui, sans-serif;
+
+  /* Dark "flame" (default) */
+  --color-background: #1b140f;
+  --color-surface: #221a13;
+  --color-surface-raised: #2b2117;
+  --color-border: #3c2f20;
+  --color-foreground: #fbf3ea;
+  --color-muted: #c6b5a2;
+  --color-primary: #e8600f;
+  --color-primary-foreground: #fbf3ea;
+  --color-gold: #f0b429;
+  --color-gold-soft: #f6ce73;
+  --color-success: #3cbf8a;
+  --color-danger: #ef5350;
+  --color-ring: #e8600f;
+}
+
+.light {
+  --color-background: #fbf6ef;
+  --color-surface: #ffffff;
+  --color-surface-raised: #fffdf9;
+  --color-border: #ebe0d0;
+  --color-foreground: #241a10;
+  --color-muted: #7c6a57;
+  --color-primary: #c2540c;
+  --color-primary-foreground: #ffffff;
+  --color-gold: #a9760e;
+  --color-gold-soft: #8a5f0e;
+  --color-success: #1f8f63;
+  --color-danger: #c8443f;
+  --color-ring: #c2540c;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--color-background);
+  --color-surface: var(--color-surface);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-border: var(--color-border);
+  --color-foreground: var(--color-foreground);
+  --color-muted: var(--color-muted);
+  --color-primary: var(--color-primary);
+  --color-primary-foreground: var(--color-primary-foreground);
+  --color-gold: var(--color-gold);
+  --color-gold-soft: var(--color-gold-soft);
+  --color-success: var(--color-success);
+  --color-danger: var(--color-danger);
+  --color-ring: var(--color-ring);
+  --font-sans: var(--font-body);
+  --font-heading: var(--font-heading);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--color-border);
+}
+
+html {
+  color-scheme: dark;
+}
+html.light {
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+
+/* Subtle celestial backdrop: faint stars + a soft radial glow. Pure CSS,
+   no image assets, disabled under prefers-reduced-motion. */
+.cosmic-bg {
+  position: relative;
+  isolation: isolate;
+}
+.cosmic-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--color-primary) 22%, transparent), transparent 40%),
+    radial-gradient(circle at 85% 10%, color-mix(in srgb, var(--color-gold) 14%, transparent), transparent 35%),
+    radial-gradient(1px 1px at 20% 30%, var(--color-muted) 50%, transparent),
+    radial-gradient(1px 1px at 75% 45%, var(--color-muted) 50%, transparent),
+    radial-gradient(1px 1px at 40% 70%, var(--color-muted) 50%, transparent),
+    radial-gradient(1px 1px at 90% 80%, var(--color-muted) 50%, transparent),
+    radial-gradient(1px 1px at 60% 15%, var(--color-muted) 50%, transparent);
+  opacity: 0.5;
+}
+
+.glass {
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* Scrollable overflow containers used for wide tables/code on small screens */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }

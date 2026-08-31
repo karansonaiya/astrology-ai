@@ -1,0 +1,822 @@
+// ==========================================================================
+// Jyoti AI — Prisma schema
+// PostgreSQL. Every sensitive field (birth data, chat content, payment
+// data) is treated as sensitive: see docs/SECURITY.md for handling rules.
+// ==========================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooled (pgbouncer, port 6543) — used at runtime
+  directUrl = env("DIRECT_URL")   // unpooled (port 5432) — used by `prisma migrate`
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  user
+  admin
+  support_agent
+  content_editor
+}
+
+enum Locale {
+  en
+  hi
+  gu
+}
+
+enum UserStatus {
+  active
+  suspended
+  deleted
+}
+
+enum OtpPurpose {
+  login
+  signup
+  phone_verify
+}
+
+enum OtpChannel {
+  phone
+  email
+}
+
+enum Gender {
+  male
+  female
+  other
+  prefer_not_to_say
+}
+
+enum InterestArea {
+  career
+  marriage
+  relationship
+  business
+  daily_guidance
+  compatibility
+  self_reflection
+}
+
+enum ChatRole {
+  user
+  assistant
+  system
+}
+
+enum FeedbackRating {
+  helpful
+  not_helpful
+}
+
+enum SafetyCategory {
+  none
+  medical
+  legal
+  financial
+  self_harm
+  abuse_threat
+  severe_distress
+  hate_or_discrimination
+  sexual_content_minors
+  other_policy_violation
+}
+
+enum SafetySeverity {
+  low
+  medium
+  high
+  critical
+}
+
+enum HoroscopePeriod {
+  daily
+  weekly
+  monthly
+}
+
+enum ContentStatus {
+  draft
+  in_review
+  published
+  archived
+}
+
+enum ZodiacSign {
+  aries
+  taurus
+  gemini
+  cancer
+  leo
+  virgo
+  libra
+  scorpio
+  sagittarius
+  capricorn
+  aquarius
+  pisces
+}
+
+enum CreditTxnType {
+  purchase
+  consume
+  refund
+  referral_bonus
+  admin_adjust
+  free_grant
+}
+
+enum PurchaseStatus {
+  pending
+  completed
+  failed
+  refunded
+}
+
+enum OrderType {
+  credit_pack
+  report
+  subscription
+}
+
+enum OrderStatus {
+  created
+  paid
+  failed
+  refunded
+  cancelled
+}
+
+enum SubscriptionStatus {
+  active
+  past_due
+  cancelled
+  expired
+}
+
+enum RefundStatus {
+  pending
+  approved
+  rejected
+  processed
+}
+
+enum ReferralStatus {
+  pending
+  completed
+  rewarded
+  rejected
+}
+
+enum SupportTicketStatus {
+  open
+  in_progress
+  resolved
+  closed
+}
+
+enum ConsentType {
+  terms_of_service
+  privacy_policy
+  birth_data_storage
+  marketing_notifications
+}
+
+enum ExportRequestStatus {
+  requested
+  processing
+  ready
+  failed
+}
+
+// ---------------------------------------------------------------------------
+// Identity & auth
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String     @id @default(cuid())
+  name          String?
+  email         String?    @unique
+  emailVerified DateTime?
+  phone         String?    @unique
+  phoneVerified DateTime?
+  passwordHash  String?
+  image         String?
+
+  role   Role       @default(user)
+  status UserStatus @default(active)
+  locale Locale     @default(en)
+
+  ageConfirmed Boolean @default(false)
+
+  referralCode     String  @unique @default(cuid())
+  referredById     String?
+  referredBy       Referral? @relation("ReferredUser")
+
+  onboardingCompletedAt DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  accounts Account[]
+  sessions Session[]
+
+  birthProfiles       BirthProfile[]
+  chats               Chat[]
+  messageFeedback     MessageFeedback[]
+  compatibilityReqs   CompatibilityRequest[]
+  creditWallet        CreditWallet?
+  creditTransactions  CreditTransaction[]
+  reportPurchases     ReportPurchase[]
+  subscriptions       Subscription[]
+  orders              Order[]
+  refundRequests      RefundRequest[]
+  referralsMade       Referral[]              @relation("Referrer")
+  supportTickets      SupportTicket[]
+  ticketReplies       SupportTicketReply[]
+  auditLogsAsActor    AuditLog[]
+  aiUsageLogs         AiUsageLog[]
+  consents            Consent[]
+  dataExportRequests  DataExportRequest[]
+  otpCodes            OtpCode[]
+
+  @@index([role])
+  @@index([status])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model OtpCode {
+  id          String     @id @default(cuid())
+  userId      String?
+  channel     OtpChannel
+  destination String // phone number or email, may be pre-account-creation
+  purpose     OtpPurpose
+  codeHash    String
+  attempts    Int        @default(0)
+  maxAttempts Int        @default(5)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  requestIp   String?
+  createdAt   DateTime   @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([destination, purpose])
+  @@index([expiresAt])
+}
+
+model Consent {
+  id         String      @id @default(cuid())
+  userId     String
+  type       ConsentType
+  grantedAt  DateTime    @default(now())
+  revokedAt  DateTime?
+  ipAddress  String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+// ---------------------------------------------------------------------------
+// Birth profile / astrology
+// ---------------------------------------------------------------------------
+
+model BirthProfile {
+  id     String @id @default(cuid())
+  userId String
+
+  label       String  @default("primary") // "primary", "compatibility-a", etc.
+  forSelf     Boolean @default(true)
+  name        String?
+  gender      Gender?
+
+  birthDate      DateTime // date-only, stored as UTC midnight
+  birthTimeKnown Boolean  @default(true)
+  birthTime      String? // "HH:mm" local to birth place, null if unknown
+
+  birthCity    String?
+  birthCountry String?
+  latitude     Float?
+  longitude    Float?
+  timezone     String? // IANA tz, e.g. "Asia/Kolkata"
+
+  primaryInterest InterestArea?
+
+  consentSavedAt DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kundliCalcs      KundliCalculation[]
+  reportPurchases  ReportPurchase[]
+
+  @@index([userId])
+}
+
+model KundliCalculation {
+  id             String   @id @default(cuid())
+  birthProfileId String
+
+  provider    String // "mock" | "prokerala" | "astrologyapi" | ...
+  isDemoData  Boolean @default(true)
+
+  sunSign     ZodiacSign?
+  moonSign    ZodiacSign?
+  ascendant   ZodiacSign?
+  nakshatra   String?
+
+  planetaryPositions Json? // structured, provider-agnostic shape
+  houses             Json?
+  dasha              Json?
+
+  calculatedAt DateTime @default(now())
+
+  birthProfile BirthProfile @relation(fields: [birthProfileId], references: [id], onDelete: Cascade)
+
+  @@index([birthProfileId])
+}
+
+model CompatibilityRequest {
+  id     String @id @default(cuid())
+  userId String
+
+  personALabel String @default("You")
+  personAData  Json // snapshot of birth details used (not necessarily saved profile)
+  personBLabel String @default("Partner")
+  personBData  Json
+  personBSavedConsent Boolean @default(false)
+
+  result Json? // AI-generated compatibility narrative + structured scores
+
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Chat / AI
+// ---------------------------------------------------------------------------
+
+model Chat {
+  id     String @id @default(cuid())
+  userId String
+  title  String @default("New chat")
+  locale Locale @default(en)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([userId])
+}
+
+model Message {
+  id     String   @id @default(cuid())
+  chatId String
+  role   ChatRole
+
+  content  String @db.Text
+  locale   Locale @default(en)
+
+  // Optional image attached to a user message (e.g. a horoscope printout or
+  // palm photo) — stored inline as base64 rather than in a separate object
+  // store, since none is configured yet. Fine at this app's volume; move to
+  // Supabase Storage/S3 (store a URL instead) if message volume grows.
+  imageData     String? @db.Text
+  imageMimeType String?
+
+  disclosureShown Boolean @default(false)
+
+  promptTokens     Int?
+  completionTokens Int?
+
+  createdAt DateTime @default(now())
+
+  chat        Chat               @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  feedback    MessageFeedback[]
+  safetyFlags SafetyFlag[]
+
+  @@index([chatId])
+}
+
+model MessageFeedback {
+  id        String         @id @default(cuid())
+  messageId String
+  userId    String
+  rating    FeedbackRating
+  reportReason String?
+  reportedAt   DateTime?
+  createdAt DateTime       @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+}
+
+model SafetyFlag {
+  id        String         @id @default(cuid())
+  messageId String
+  category  SafetyCategory
+  severity  SafetySeverity @default(low)
+  reviewed  Boolean        @default(false)
+  reviewerId String?
+  notes      String?
+  createdAt DateTime       @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([category])
+  @@index([reviewed])
+}
+
+model AiUsageLog {
+  id       String  @id @default(cuid())
+  userId   String?
+  feature  String // "chat" | "horoscope" | "kundli" | "compatibility" | "report"
+  provider String // "anthropic" | "openai" | "mock"
+  model    String
+
+  promptTokens     Int @default(0)
+  completionTokens Int @default(0)
+  costEstimateUsd  Float @default(0)
+
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([feature])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Horoscope content
+// ---------------------------------------------------------------------------
+
+/**
+ * Persisted panchang calculation cache — DB-backed (not just in-memory)
+ * because Prokerala's account-wide rate limit (5 requests/60s) makes a
+ * month view (31 days × 1 call) far too slow to compute live on a single
+ * request; a daily cron pre-fills this ahead of time (see
+ * /api/cron/prefill-panchang), and requests fall back to computing+caching
+ * whatever's still missing, rate-limit-aware.
+ */
+model PanchangCache {
+  id String @id @default(cuid())
+
+  /** Lat/long rounded to 2dp (~1km) — same rounding the old in-memory cache used, city-level precision is enough for panchang. */
+  latitude  Float
+  longitude Float
+  date      DateTime // UTC midnight of the calendar date this panchang covers
+
+  data Json // full PanchangResult, see src/lib/astrology/panchang.ts
+
+  createdAt DateTime @default(now())
+
+  @@unique([latitude, longitude, date])
+  @@index([date])
+}
+
+model HoroscopeContent {
+  id         String          @id @default(cuid())
+  zodiacSign ZodiacSign
+  period     HoroscopePeriod
+  locale     Locale
+  periodDate DateTime // start date of the period this content covers
+
+  career     String @db.Text
+  love       String @db.Text
+  money      String @db.Text
+  wellness   String @db.Text
+  luckyColor String
+  luckyNumber String
+  reflection String @db.Text
+
+  status      ContentStatus @default(draft)
+  createdBy   String?
+  reviewedBy  String?
+  publishedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([zodiacSign, period, locale, periodDate])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Commerce: credits, reports, plans, orders, subscriptions, refunds
+// ---------------------------------------------------------------------------
+
+model CreditWallet {
+  userId           String @id
+  balance          Int    @default(0)
+  freeQuestionsUsed Int   @default(0)
+  freeQuestionsCap  Int   @default(3)
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CreditTransaction {
+  id      String        @id @default(cuid())
+  userId  String
+  type    CreditTxnType
+  amount  Int // positive = credit, negative = debit
+  balanceAfter Int
+  relatedEntity String? // e.g. "order:xyz", "chat:abc"
+  description   String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model ReportTemplate {
+  id            String  @id @default(cuid())
+  code          String  @unique // "basic_birth_insight" etc.
+  name          String
+  description   String  @db.Text
+  priceInPaise  Int
+  active        Boolean @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  purchases ReportPurchase[]
+}
+
+model ReportPurchase {
+  id             String         @id @default(cuid())
+  userId         String
+  templateId     String
+  birthProfileId String?
+  orderId        String?        @unique
+
+  status            PurchaseStatus @default(pending)
+  generatedContent  Json?
+  pdfUrl            String?
+
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template     ReportTemplate  @relation(fields: [templateId], references: [id])
+  birthProfile BirthProfile?   @relation(fields: [birthProfileId], references: [id])
+  order        Order?          @relation(fields: [orderId], references: [id])
+
+  @@index([userId])
+}
+
+model Plan {
+  id             String  @id @default(cuid())
+  code           String  @unique // "monthly_premium"
+  name           String
+  description    String  @db.Text
+  priceInPaise   Int
+  billingPeriod  String  @default("monthly")
+  creditsGranted Int     @default(0)
+  active         Boolean @default(true)
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id     String @id @default(cuid())
+  userId String
+  planId String
+
+  status               SubscriptionStatus @default(active)
+  currentPeriodStart   DateTime           @default(now())
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd     Boolean           @default(false)
+  razorpaySubscriptionId String?          @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan Plan @relation(fields: [planId], references: [id])
+
+  @@index([userId])
+}
+
+model Order {
+  id     String    @id @default(cuid())
+  userId String
+  type   OrderType
+
+  amountInPaise Int
+  currency      String @default("INR")
+  status        OrderStatus @default(created)
+
+  idempotencyKey String @unique
+
+  razorpayOrderId   String? @unique
+  razorpayPaymentId String?
+  razorpaySignature String?
+
+  relatedId String? // creditPackCode / reportTemplateId / planId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentEvents  PaymentEvent[]
+  refundRequests RefundRequest[]
+  reportPurchase ReportPurchase?
+
+  @@index([userId])
+  @@index([status])
+}
+
+model PaymentEvent {
+  id       String  @id @default(cuid())
+  orderId  String?
+  provider String // "razorpay" | "mock"
+  eventId  String // provider's event id, for idempotency
+  eventType String
+  rawPayload Json
+  signatureVerified Boolean @default(false)
+  processedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  order Order? @relation(fields: [orderId], references: [id])
+
+  @@unique([provider, eventId])
+  @@index([orderId])
+}
+
+model RefundRequest {
+  id      String       @id @default(cuid())
+  orderId String
+  userId  String
+
+  reason      String   @db.Text
+  status      RefundStatus @default(pending)
+  adminNotes  String?
+  processedBy String?
+  createdAt   DateTime @default(now())
+  processedAt DateTime?
+
+  order Order @relation(fields: [orderId], references: [id])
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Referral
+// ---------------------------------------------------------------------------
+
+model Referral {
+  id             String         @id @default(cuid())
+  referrerId     String
+  referredUserId String         @unique
+  code           String
+
+  status                ReferralStatus @default(pending)
+  rewardCreditsGranted  Int            @default(0)
+  createdAt             DateTime       @default(now())
+  completedAt            DateTime?
+
+  referrer     User @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUser User @relation("ReferredUser", fields: [referredUserId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId])
+}
+
+model ReferralRule {
+  id           String  @id @default(cuid())
+  key          String  @unique @default("default")
+  triggerEvent String  @default("first_purchase") // "signup" | "first_purchase"
+  referrerReward Int   @default(20)
+  referredReward Int   @default(10)
+  active        Boolean @default(true)
+  updatedAt     DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Support
+// ---------------------------------------------------------------------------
+
+model SupportTicket {
+  id      String @id @default(cuid())
+  userId  String
+  subject String
+  message String @db.Text
+
+  status     SupportTicketStatus @default(open)
+  assignedTo String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replies SupportTicketReply[]
+
+  @@index([status])
+}
+
+model SupportTicketReply {
+  id       String @id @default(cuid())
+  ticketId String
+  authorId String
+  message  String @db.Text
+  createdAt DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Platform config, audit, exports
+// ---------------------------------------------------------------------------
+
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  enabled     Boolean  @default(false)
+  description String?
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  targetType String?
+  targetId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([action])
+  @@index([targetType, targetId])
+}
+
+model DataExportRequest {
+  id     String @id @default(cuid())
+  userId String
+
+  status      ExportRequestStatus @default(requested)
+  fileUrl     String?
+  requestedAt DateTime            @default(now())
+  completedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

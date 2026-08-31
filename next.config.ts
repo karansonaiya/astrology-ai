@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Don't leak the framework in responses.
+  poweredByHeader: false,
 };
 
 export default nextConfig;

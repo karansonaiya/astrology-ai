@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/cron/generate-horoscopes", "schedule": "30 0 * * *" },
+    { "path": "/api/cron/prefill-panchang", "schedule": "0 0 * * *" }
+  ]
+}
