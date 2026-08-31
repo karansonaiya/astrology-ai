@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser, errorResponse } from "@/lib/auth/guard";
 import { kundliLookupSchema } from "@/lib/validations/kundli";
 import { getAstrologyProvider } from "@/lib/astrology/adapter";
-import { geocodeBirthPlace } from "@/lib/geo";
+import { geocodeBirthPlace, resolveTimezone } from "@/lib/geo";
 import { rateLimit } from "@/lib/rate-limit";
 
 // For looking up someone else's kundli (a friend, family member) ad hoc —
@@ -24,10 +24,15 @@ export async function POST(req: NextRequest) {
     const parsed = kundliLookupSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "invalid_request", issues: parsed.error.issues }, { status: 400 });
 
-    const { name, birthDate, birthTimeKnown, birthTime, birthCity, birthCountry } = parsed.data;
+    const { name, birthDate, birthTimeKnown, birthTime, birthCity, birthCountry, latitude, longitude } = parsed.data;
 
-    const geo = await geocodeBirthPlace(birthCity, birthCountry).catch(() => null);
-    if (!geo) return NextResponse.json({ error: "place_not_found" }, { status: 422 });
+    // Prefer exact coordinates from a CityAutocomplete selection over
+    // re-geocoding the typed text (see birth-profile/route.ts for why).
+    const geo =
+      latitude != null && longitude != null
+        ? { latitude, longitude, timezone: resolveTimezone(latitude, longitude) }
+        : await geocodeBirthPlace(birthCity, birthCountry).catch(() => null);
+    if (!geo || !geo.timezone) return NextResponse.json({ error: "place_not_found" }, { status: 422 });
 
     const calculation = await getAstrologyProvider().calculateKundli({
       birthDate: new Date(`${birthDate}T00:00:00.000Z`),

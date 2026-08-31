@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CityAutocomplete, type PlaceSuggestion } from "@/components/ui/city-autocomplete";
 import { useI18n, useT } from "@/lib/i18n/provider";
 import { locales, localeLabels, type AppLocale } from "@/lib/i18n/config";
 import { apiFetch } from "@/lib/api-client";
@@ -30,6 +31,7 @@ export default function OnboardingPage() {
   const [birthTime, setBirthTime] = useState("");
   const [birthCity, setBirthCity] = useState("");
   const [birthCountry, setBirthCountry] = useState("India");
+  const [birthCoords, setBirthCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [interest, setInterest] = useState<Interest>("self_reflection");
   const [consent, setConsent] = useState(false);
   const [saveBirthDetails, setSaveBirthDetails] = useState(true);
@@ -52,6 +54,8 @@ export default function OnboardingPage() {
           birthTime: birthTimeKnown ? birthTime || undefined : undefined,
           birthCity: birthCity || undefined,
           birthCountry: birthCountry || undefined,
+          latitude: birthCoords?.latitude,
+          longitude: birthCoords?.longitude,
           primaryInterest: interest,
           ageConfirmed: true,
           saveBirthDetails: saveBirthDetails && !!birthDate,
@@ -145,8 +149,19 @@ export default function OnboardingPage() {
 
       {step === 7 && (
         <Step title={t("onboarding.step7Title")}>
-          <Input placeholder={t("onboarding.step7Placeholder")} value={birthCity} onChange={(e) => setBirthCity(e.target.value)} className="mb-2" />
-          <Input placeholder="Country" value={birthCountry} onChange={(e) => setBirthCountry(e.target.value)} />
+          <CityAutocomplete
+            value={birthCity}
+            onChange={(text) => {
+              setBirthCity(text);
+              setBirthCoords(null); // typed away from the picked suggestion — re-geocode server-side on submit
+            }}
+            onSelect={(place: PlaceSuggestion) => {
+              setBirthCountry(place.country);
+              setBirthCoords({ latitude: place.latitude, longitude: place.longitude });
+            }}
+            placeholder={t("onboarding.step7Placeholder")}
+          />
+          <p className="mt-1.5 text-xs text-muted">{t("onboarding.step7Hint")}</p>
         </Step>
       )}
 

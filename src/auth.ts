@@ -1,16 +1,32 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { verifyOtp } from "@/lib/auth/otp";
-import { verifyPassword } from "@/lib/auth/password";
 import type { AppLocale } from "@/lib/i18n/config";
 
+// Carries a specific reason (result.reason from verifyOtp, or
+// "invalid_request" / "account_suspended" / "account_deleted") through to
+// the client via NextAuth's CredentialsSignin.code — Auth.js appends this as
+// a `code` query/body param separate from the generic `error` type, so the
+// login UI can show "wrong code" vs "code expired" vs "too many attempts"
+// instead of one generic failure message. See @auth/core/index.js: only
+// `error instanceof CredentialsSignin` gets its `.code` forwarded.
+class OtpSignInError extends CredentialsSignin {
+  constructor(code: string) {
+    super();
+    this.code = code;
+  }
+}
+
 const providers = [
-  // Phone or email OTP login/signup. The client first calls
-  // POST /api/auth/otp/request to issue+deliver a code, then signs in here
-  // with { destination, channel, purpose, code } once the user enters it.
+  // Phone or email OTP login/signup — this is also the ONLY signup path in
+  // the app (there is no separate signup page/form): the first successful
+  // OTP verification for an unrecognized phone/email creates the account
+  // via the upsert below. The client first calls POST /api/auth/otp/request
+  // to issue+deliver a code, then signs in here with
+  // { destination, channel, code } once the user enters it.
   Credentials({
     id: "otp",
     name: "OTP",
@@ -20,13 +36,15 @@ const providers = [
       code: { label: "Code", type: "text" },
     },
     async authorize(raw) {
-      const destination = String(raw?.destination ?? "");
+      const destination = String(raw?.destination ?? "").trim();
       const channel = String(raw?.channel ?? "");
-      const code = String(raw?.code ?? "");
-      if (!destination || !code || (channel !== "phone" && channel !== "email")) return null;
+      const code = String(raw?.code ?? "").trim();
+      if (!destination || !code || (channel !== "phone" && channel !== "email")) {
+        throw new OtpSignInError("invalid_request");
+      }
 
       const result = await verifyOtp({ destination, purpose: "login", code });
-      if (!result.ok) return null;
+      if (!result.ok) throw new OtpSignInError(result.reason);
 
       const user = await prisma.user.upsert({
         where: channel === "phone" ? { phone: destination } : { email: destination },
@@ -39,33 +57,11 @@ const providers = [
         },
       });
 
-      if (user.status === "suspended" || user.status === "deleted") return null;
+      if (user.status === "suspended" || user.status === "deleted") {
+        throw new OtpSignInError(`account_${user.status}`);
+      }
 
       await maybePromoteAdmin(user.id, user.email);
-      return { id: user.id, name: user.name, email: user.email, image: user.image };
-    },
-  }),
-
-  // Email + password fallback.
-  Credentials({
-    id: "password",
-    name: "Password",
-    credentials: {
-      email: { label: "Email", type: "email" },
-      password: { label: "Password", type: "password" },
-    },
-    async authorize(raw) {
-      const email = String(raw?.email ?? "").toLowerCase().trim();
-      const password = String(raw?.password ?? "");
-      if (!email || !password) return null;
-
-      const user = await prisma.user.findUnique({ where: { email } });
-      if (!user?.passwordHash) return null;
-      if (user.status === "suspended" || user.status === "deleted") return null;
-
-      const valid = await verifyPassword(password, user.passwordHash);
-      if (!valid) return null;
-
       return { id: user.id, name: user.name, email: user.email, image: user.image };
     },
   }),

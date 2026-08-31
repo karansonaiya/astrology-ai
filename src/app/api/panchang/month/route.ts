@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { errorResponse } from "@/lib/auth/guard";
 import { panchangMonthQuerySchema } from "@/lib/validations/panchang";
-import { geocodeBirthPlace } from "@/lib/geo";
+import { geocodeBirthPlace, resolveTimezone } from "@/lib/geo";
 import { getPanchangForDates } from "@/lib/astrology/panchang";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
@@ -23,12 +23,17 @@ export async function GET(req: NextRequest) {
       country: searchParams.get("country") ?? undefined,
       year: searchParams.get("year") ?? undefined,
       month: searchParams.get("month") ?? undefined,
+      latitude: searchParams.get("latitude") ?? undefined,
+      longitude: searchParams.get("longitude") ?? undefined,
     });
     if (!parsed.success) return NextResponse.json({ error: "invalid_request", issues: parsed.error.issues }, { status: 400 });
 
     const { city, country, year, month } = parsed.data;
-    const geo = await geocodeBirthPlace(city, country).catch(() => null);
-    if (!geo) return NextResponse.json({ error: "place_not_found" }, { status: 422 });
+    const geo =
+      parsed.data.latitude != null && parsed.data.longitude != null
+        ? { latitude: parsed.data.latitude, longitude: parsed.data.longitude, timezone: resolveTimezone(parsed.data.latitude, parsed.data.longitude) }
+        : await geocodeBirthPlace(city, country).catch(() => null);
+    if (!geo || !geo.timezone) return NextResponse.json({ error: "place_not_found" }, { status: 422 });
 
     const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
     const dates = Array.from({ length: daysInMonth }, (_, i) => {

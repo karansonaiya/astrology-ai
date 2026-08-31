@@ -11,8 +11,17 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
+import { CityAutocomplete } from "@/components/ui/city-autocomplete";
 
-type PersonForm = { birthDate: string; birthTimeKnown: boolean; birthTime: string; birthCity: string };
+type PersonForm = {
+  birthDate: string;
+  birthTimeKnown: boolean;
+  birthTime: string;
+  birthCity: string;
+  birthCountry?: string;
+  latitude?: number;
+  longitude?: number;
+};
 type CompatRequest = { id: string; personALabel: string; personBLabel: string; result: { text: string } | null; createdAt: string };
 
 export default function CompatibilityPage() {
@@ -122,7 +131,11 @@ function PersonCard({ title, value, onChange }: { title: string; value: PersonFo
         </div>
         <div>
           <Label className="mb-1.5 block text-xs">{t("onboarding.step7Title")}</Label>
-          <Input value={value.birthCity} onChange={(e) => onChange({ ...value, birthCity: e.target.value })} />
+          <CityAutocomplete
+            value={value.birthCity}
+            onChange={(text) => onChange({ ...value, birthCity: text, latitude: undefined, longitude: undefined })}
+            onSelect={(place) => onChange({ ...value, birthCountry: place.country, latitude: place.latitude, longitude: place.longitude })}
+          />
         </div>
       </CardContent>
     </Card>

@@ -46,12 +46,93 @@ export async function geocodeBirthPlace(city: string, country?: string | null): 
   const longitude = Number(first.lon);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
 
-  let timezone: string;
-  try {
-    timezone = tzLookup(latitude, longitude);
-  } catch {
-    return null; // e.g. coordinates over open ocean
-  }
+  const timezone = resolveTimezone(latitude, longitude);
+  if (!timezone) return null;
 
   return { latitude, longitude, timezone };
+}
+
+/** Offline timezone lookup from coordinates — no network call. Returns null for coordinates with no timezone (open ocean). */
+export function resolveTimezone(latitude: number, longitude: number): string | null {
+  try {
+    return tzLookup(latitude, longitude);
+  } catch {
+    return null;
+  }
+}
+
+export type PlaceSuggestion = {
+  label: string; // e.g. "Surat, Gujarat, India" — what to show/store as the free-text city
+  city: string;
+  state: string | null;
+  country: string;
+  countryCode: string | null; // ISO 3166-1 alpha-2, for a flag icon client-side
+  latitude: number;
+  longitude: number;
+};
+
+type NominatimSearchResult = {
+  lat: string;
+  lon: string;
+  display_name: string;
+  address?: {
+    city?: string;
+    town?: string;
+    village?: string;
+    hamlet?: string;
+    county?: string;
+    state?: string;
+    country?: string;
+    country_code?: string;
+  };
+};
+
+const searchCache = new Map<string, { value: PlaceSuggestion[]; expiresAt: number }>();
+const SEARCH_CACHE_TTL_MS = 60 * 60 * 1000;
+
+/**
+ * Live city-search-as-you-type for the birth-city autocomplete (see
+ * CityAutocomplete component) — lets someone pick an exact place from a
+ * real list instead of free-typing something that might geocode to the
+ * wrong "Surat" (there's one in Thailand too). Returns up to 8 matches,
+ * worldwide (not restricted to India — diaspora users may have been born
+ * elsewhere), cached per query string since autocomplete tends to repeat
+ * common queries across many users.
+ */
+export async function searchPlaces(query: string): Promise<PlaceSuggestion[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  const cacheKey = q.toLowerCase();
+  const hit = searchCache.get(cacheKey);
+  if (hit && hit.expiresAt > Date.now()) return hit.value;
+
+  const url = `https://nominatim.openstreetmap.org/search?${new URLSearchParams({
+    q,
+    format: "jsonv2",
+    addressdetails: "1",
+    limit: "8",
+  })}`;
+
+  const res = await fetch(url, {
+    headers: { "User-Agent": "JyotiAI/1.0 (astrology birth-chart lookup)", Accept: "application/json" },
+  });
+  if (!res.ok) return [];
+
+  const results = (await res.json()) as NominatimSearchResult[];
+  const suggestions: PlaceSuggestion[] = results
+    .map((r): PlaceSuggestion | null => {
+      const latitude = Number(r.lat);
+      const longitude = Number(r.lon);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+      const city = r.address?.city ?? r.address?.town ?? r.address?.village ?? r.address?.hamlet ?? r.address?.county ?? r.display_name.split(",")[0];
+      const state = r.address?.state ?? null;
+      const country = r.address?.country ?? "";
+      const label = [city, state, country].filter(Boolean).join(", ");
+      return { label, city, state, country, countryCode: r.address?.country_code?.toUpperCase() ?? null, latitude, longitude };
+    })
+    .filter((s): s is PlaceSuggestion => s !== null);
+
+  searchCache.set(cacheKey, { value: suggestions, expiresAt: Date.now() + SEARCH_CACHE_TTL_MS });
+  return suggestions;
 }

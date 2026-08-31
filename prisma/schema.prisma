@@ -375,6 +375,12 @@ model KundliCalculation {
   houses             Json?
   dasha              Json?
 
+  // Cached full AI-generated "explain my kundli" reading (see
+  // /api/kundli/explain) — generated once per locale, reused on repeat
+  // views rather than re-calling the AI provider every time.
+  explanation       Json?
+  explanationLocale Locale?
+
   calculatedAt DateTime @default(now())
 
   birthProfile BirthProfile @relation(fields: [birthProfileId], references: [id], onDelete: Cascade)

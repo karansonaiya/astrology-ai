@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser, errorResponse } from "@/lib/auth/guard";
 import { birthProfileUpdateSchema } from "@/lib/validations/profile";
 import { birthDataCompleteness } from "@/lib/astrology/adapter";
-import { geocodeBirthPlace } from "@/lib/geo";
+import { geocodeBirthPlace, resolveTimezone } from "@/lib/geo";
 
 export async function GET() {
   try {
@@ -38,14 +38,17 @@ export async function POST(req: NextRequest) {
 
     const existing = await prisma.birthProfile.findFirst({ where: { userId: user.id, forSelf: true, deletedAt: null } });
 
-    // Re-geocode whenever the city changed (or there's no coordinates yet) —
-    // best-effort, a failed/unmatched lookup just leaves coordinates unset
-    // rather than failing the save.
+    // Prefer exact coordinates from a CityAutocomplete selection over
+    // re-geocoding the typed text (see onboarding/route.ts for why). Only
+    // falls back to a fresh geocode when the client didn't supply them and
+    // the city actually changed (or there's no coordinates yet).
     const cityChanged = parsed.data.birthCity && parsed.data.birthCity !== existing?.birthCity;
     const geo =
-      parsed.data.birthCity && (cityChanged || existing?.latitude == null)
-        ? await geocodeBirthPlace(parsed.data.birthCity, parsed.data.birthCountry).catch(() => null)
-        : null;
+      parsed.data.latitude != null && parsed.data.longitude != null
+        ? { latitude: parsed.data.latitude, longitude: parsed.data.longitude, timezone: resolveTimezone(parsed.data.latitude, parsed.data.longitude) }
+        : parsed.data.birthCity && (cityChanged || existing?.latitude == null)
+          ? await geocodeBirthPlace(parsed.data.birthCity, parsed.data.birthCountry).catch(() => null)
+          : null;
 
     const data = {
       name: parsed.data.name,

@@ -5,7 +5,7 @@ import { compatibilitySchema } from "@/lib/validations/insights";
 import { consumeQuestionCredit, OutOfCreditsError } from "@/lib/credits";
 import { generateAstrologyReply } from "@/lib/ai";
 import { getAstrologyProvider, summarizeKundliForAi } from "@/lib/astrology/adapter";
-import { geocodeBirthPlace } from "@/lib/geo";
+import { geocodeBirthPlace, resolveTimezone } from "@/lib/geo";
 import type { AppLocale } from "@/lib/i18n/config";
 
 type CompatibilityPerson = {
@@ -14,21 +14,28 @@ type CompatibilityPerson = {
   birthTimeKnown: boolean;
   birthTime?: string;
   birthCity?: string;
+  birthCountry?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 /**
  * Best-effort real chart for one side of a compatibility request — not
  * persisted as a BirthProfile (this is ad hoc, like the "view someone
  * else's kundli" lookup), just computed once for this prompt. Only
- * possible when a birth city was given (need it to geocode); silently
- * returns undefined otherwise or on any failure — compatibility already
- * degrades to date-only guidance in that case, same as before this change.
+ * possible when a birth city (or exact coordinates from a CityAutocomplete
+ * pick) was given; silently returns undefined otherwise or on any failure —
+ * compatibility already degrades to date-only guidance in that case, same
+ * as before this change.
  */
 async function computePersonChartSummary(person: CompatibilityPerson, label: string): Promise<string | undefined> {
-  if (!person.birthCity) return undefined;
+  if (!person.birthCity && (person.latitude == null || person.longitude == null)) return undefined;
   try {
-    const geo = await geocodeBirthPlace(person.birthCity);
-    if (!geo) return undefined;
+    const geo =
+      person.latitude != null && person.longitude != null
+        ? { latitude: person.latitude, longitude: person.longitude, timezone: resolveTimezone(person.latitude, person.longitude) }
+        : await geocodeBirthPlace(person.birthCity!, person.birthCountry);
+    if (!geo || !geo.timezone) return undefined;
     const calc = await getAstrologyProvider().calculateKundli({
       birthDate: new Date(`${person.birthDate}T00:00:00.000Z`),
       birthTimeKnown: person.birthTimeKnown,

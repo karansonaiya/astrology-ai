@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/api-client";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CityAutocomplete } from "@/components/ui/city-autocomplete";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/toast";
@@ -71,12 +72,18 @@ function ProfileForm({ initial, hasProfile }: { initial: Profile; hasProfile: bo
     birthCountry: initial?.birthCountry ?? "India",
     primaryInterest: initial?.primaryInterest ?? "self_reflection",
   });
+  const [birthCoords, setBirthCoords] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const save = useMutation({
     mutationFn: () =>
       apiFetch("/api/birth-profile", {
         method: "POST",
-        body: JSON.stringify({ ...form, birthTime: form.birthTimeKnown ? form.birthTime : undefined }),
+        body: JSON.stringify({
+          ...form,
+          birthTime: form.birthTimeKnown ? form.birthTime : undefined,
+          latitude: birthCoords?.latitude,
+          longitude: birthCoords?.longitude,
+        }),
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["birth-profile-summary"] });
@@ -123,7 +130,17 @@ function ProfileForm({ initial, hasProfile }: { initial: Profile; hasProfile: bo
           </label>
         </Field>
         <Field label={t("onboarding.step7Title")}>
-          <Input value={form.birthCity} onChange={(e) => setForm((f) => ({ ...f, birthCity: e.target.value }))} />
+          <CityAutocomplete
+            value={form.birthCity}
+            onChange={(text) => {
+              setForm((f) => ({ ...f, birthCity: text }));
+              setBirthCoords(null);
+            }}
+            onSelect={(place) => {
+              setForm((f) => ({ ...f, birthCountry: place.country }));
+              setBirthCoords({ latitude: place.latitude, longitude: place.longitude });
+            }}
+          />
         </Field>
         <Field label="Country">
           <Input value={form.birthCountry} onChange={(e) => setForm((f) => ({ ...f, birthCountry: e.target.value }))} />

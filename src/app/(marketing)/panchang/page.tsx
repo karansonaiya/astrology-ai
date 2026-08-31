@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { CityAutocomplete } from "@/components/ui/city-autocomplete";
 import { cn } from "@/lib/utils";
 
 type TimeWindow = { start: string; end: string };
@@ -45,8 +46,9 @@ export default function PanchangPage() {
   const [view, setView] = useState<"day" | "month">("day");
   const [city, setCity] = useState("Ahmedabad");
   const [country, setCountry] = useState("India");
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [date, setDate] = useState(todayISO());
-  const [query, setQuery] = useState({ city: "Ahmedabad", country: "India", date: todayISO() });
+  const [query, setQuery] = useState({ city: "Ahmedabad", country: "India", date: todayISO(), coords: null as { latitude: number; longitude: number } | null });
 
   const showDay = (isoDate: string) => {
     setDate(isoDate);
@@ -55,10 +57,15 @@ export default function PanchangPage() {
   };
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["panchang", query.city, query.country, query.date],
+    queryKey: ["panchang", query.city, query.country, query.date, query.coords?.latitude, query.coords?.longitude],
     queryFn: () =>
       apiFetch<PanchangResponse>(
-        `/api/panchang?${new URLSearchParams({ city: query.city, country: query.country, date: query.date })}`
+        `/api/panchang?${new URLSearchParams({
+          city: query.city,
+          country: query.country,
+          date: query.date,
+          ...(query.coords ? { latitude: String(query.coords.latitude), longitude: String(query.coords.longitude) } : {}),
+        })}`
       ),
     enabled: view === "day",
   });
@@ -78,13 +85,23 @@ export default function PanchangPage() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          setQuery({ city, country, date });
+          setQuery({ city, country, date, coords });
         }}
         className="mt-6 flex flex-wrap items-end gap-3"
       >
-        <div>
+        <div className="w-48">
           <Label className="mb-1.5 block">{t("panchang.cityLabel")}</Label>
-          <Input value={city} onChange={(e) => setCity(e.target.value)} className="w-40" />
+          <CityAutocomplete
+            value={city}
+            onChange={(text) => {
+              setCity(text);
+              setCoords(null);
+            }}
+            onSelect={(place) => {
+              setCountry(place.country);
+              setCoords({ latitude: place.latitude, longitude: place.longitude });
+            }}
+          />
         </div>
         <div>
           <Label className="mb-1.5 block">Country</Label>
@@ -147,14 +164,24 @@ export default function PanchangPage() {
         </TabsContent>
 
         <TabsContent value="month">
-          <MonthView city={query.city} country={query.country} onSelectDay={showDay} />
+          <MonthView city={query.city} country={query.country} coords={query.coords} onSelectDay={showDay} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function MonthView({ city, country, onSelectDay }: { city: string; country: string; onSelectDay: (isoDate: string) => void }) {
+function MonthView({
+  city,
+  country,
+  coords,
+  onSelectDay,
+}: {
+  city: string;
+  country: string;
+  coords: { latitude: number; longitude: number } | null;
+  onSelectDay: (isoDate: string) => void;
+}) {
   const t = useT();
   const { locale } = useI18n();
   const now = new Date();
@@ -162,9 +189,17 @@ function MonthView({ city, country, onSelectDay }: { city: string; country: stri
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-12
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["panchang-month", city, country, year, month],
+    queryKey: ["panchang-month", city, country, year, month, coords?.latitude, coords?.longitude],
     queryFn: () =>
-      apiFetch<MonthResponse>(`/api/panchang/month?${new URLSearchParams({ city, country, year: String(year), month: String(month) })}`),
+      apiFetch<MonthResponse>(
+        `/api/panchang/month?${new URLSearchParams({
+          city,
+          country,
+          year: String(year),
+          month: String(month),
+          ...(coords ? { latitude: String(coords.latitude), longitude: String(coords.longitude) } : {}),
+        })}`
+      ),
   });
 
   const changeMonth = (delta: number) => {

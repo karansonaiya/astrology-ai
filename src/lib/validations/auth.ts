@@ -1,20 +1,29 @@
 import { z } from "zod";
 
-export const otpRequestSchema = z.object({
-  destination: z.string().min(4).max(120),
-  channel: z.enum(["phone", "email"]),
-});
+// E.164-ish: leading +, country code, 8-15 digits total — matches what the
+// login form normalizes phone input to before sending (spaces/dashes
+// stripped client-side, see login/page.tsx's normalizeDestination).
+const PHONE_RE = /^\+[1-9]\d{7,14}$/;
 
-export const otpVerifySchema = z.object({
-  destination: z.string().min(4).max(120),
-  channel: z.enum(["phone", "email"]),
-  code: z.string().length(6),
-});
+const destinationField = z.string().min(4).max(120);
 
-export const signupPasswordSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8).max(72),
-  name: z.string().max(120).optional(),
-  ageConfirmed: z.literal(true, "You must confirm you are 18+ or have guardian consent."),
-  termsAccepted: z.literal(true, "You must accept the Terms and Privacy Policy."),
-});
+export const otpRequestSchema = z
+  .object({
+    destination: destinationField,
+    channel: z.enum(["phone", "email"]),
+  })
+  .refine(
+    (v) => (v.channel === "phone" ? PHONE_RE.test(v.destination) : z.string().email().safeParse(v.destination).success),
+    { message: "Invalid destination for the given channel", path: ["destination"] }
+  );
+
+export const otpVerifySchema = z
+  .object({
+    destination: destinationField,
+    channel: z.enum(["phone", "email"]),
+    code: z.string().length(6),
+  })
+  .refine(
+    (v) => (v.channel === "phone" ? PHONE_RE.test(v.destination) : z.string().email().safeParse(v.destination).success),
+    { message: "Invalid destination for the given channel", path: ["destination"] }
+  );

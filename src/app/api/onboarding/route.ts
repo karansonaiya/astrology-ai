@@ -4,7 +4,7 @@ import { requireUser, errorResponse } from "@/lib/auth/guard";
 import { onboardingSchema } from "@/lib/validations/profile";
 import { getOrCreateWallet } from "@/lib/credits";
 import { linkReferral } from "@/lib/referral";
-import { geocodeBirthPlace } from "@/lib/geo";
+import { geocodeBirthPlace, resolveTimezone } from "@/lib/geo";
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,13 +20,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "consent_required" }, { status: 400 });
     }
 
-    // Geocode outside the transaction — it's a network call, and a real
-    // astrology calculation needs coordinates (the form only collects a
-    // free-text city). Best-effort: a failed/unmatched lookup just leaves
-    // the profile without coordinates rather than failing onboarding.
+    // Prefer the exact coordinates from a CityAutocomplete selection (no
+    // network call, no risk of re-geocoding to a different same-named
+    // place) — only fall back to free-text geocoding when the client
+    // didn't supply them (e.g. JS-disabled, or the user typed past their
+    // selection without picking a new one). Best-effort either way: a
+    // failed/unmatched lookup just leaves the profile without coordinates
+    // rather than failing onboarding.
     const geo =
       data.saveBirthDetails && data.birthDate && data.birthCity
-        ? await geocodeBirthPlace(data.birthCity, data.birthCountry).catch(() => null)
+        ? data.latitude != null && data.longitude != null
+          ? { latitude: data.latitude, longitude: data.longitude, timezone: resolveTimezone(data.latitude, data.longitude) }
+          : await geocodeBirthPlace(data.birthCity, data.birthCountry).catch(() => null)
         : null;
 
     await prisma.$transaction(async (tx) => {

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { TriangleAlert, Users, ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
+import { TriangleAlert, Users, ArrowLeft, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { useI18n, useT } from "@/lib/i18n/provider";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
 import { ZodiacWheel } from "@/components/astrology/zodiac-wheel";
+import { CityAutocomplete } from "@/components/ui/city-autocomplete";
+import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { ZODIAC_LABELS, type ZodiacSign } from "@/lib/zodiac";
 import { CORE_EXPLANATIONS, PLANET_LABELS, HOUSE_THEMES, buildPlanetInterpretation } from "@/lib/astrology/interpretations";
 import type { AppLocale } from "@/lib/i18n/config";
@@ -31,6 +33,15 @@ type Calculation = {
 };
 type KundliResponse = { hasProfile: false } | { hasProfile: true; calculation: Calculation; completeness: number; configRequired: boolean };
 type LookupResponse = { name: string | null; calculation: Calculation };
+
+type ExplanationSection = { icon: string; title: string; paragraphs: string[]; bullets?: string[]; highlight?: string };
+type KundliExplanation = {
+  intro: string;
+  sections: ExplanationSection[];
+  strongestCombination: { points: { title: string; desc: string }[]; summary: string };
+  challenges: { items: string[]; note: string };
+  shortSummary: string;
+};
 
 export default function KundliPage() {
   const t = useT();
@@ -64,7 +75,7 @@ export default function KundliPage() {
             <ArrowLeft size={14} /> {t("kundli.backToMine")}
           </Button>
         </div>
-        <KundliDisplay calc={othersResult.calculation} />
+        <KundliDisplay calc={othersResult.calculation} own={false} name={othersResult.name ?? undefined} />
       </div>
     );
   }
@@ -118,13 +129,13 @@ export default function KundliPage() {
         </Card>
       )}
 
-      {calc && <KundliDisplay calc={calc} />}
+      {calc && <KundliDisplay calc={calc} own={true} />}
     </div>
   );
 }
 
 /** Shared render for a calculated chart — used for both "my kundli" and a looked-up other person's. */
-function KundliDisplay({ calc }: { calc: Calculation }) {
+function KundliDisplay({ calc, own, name }: { calc: Calculation; own: boolean; name?: string }) {
   const t = useT();
   const { locale } = useI18n();
 
@@ -209,7 +220,146 @@ function KundliDisplay({ calc }: { calc: Calculation }) {
           </CardContent>
         </Card>
       )}
+
+      {calc.sunSign && <KundliExplanationSection own={own} name={name} calc={calc} />}
     </>
+  );
+}
+
+/**
+ * "Explain my full kundli" — button-triggered (not auto-loaded, so it never
+ * silently spends a credit) deep AI reading grounded in the real chart
+ * above. Own-kundli explanations are cached server-side per locale
+ * (/api/kundli/explain) — a repeat click after the first successful
+ * generation just re-shows it locally within this session; a fresh page
+ * load re-fetches instantly from cache without another credit charge.
+ */
+function KundliExplanationSection({ own, name, calc }: { own: boolean; name?: string; calc: Calculation }) {
+  const t = useT();
+  const { toast } = useToast();
+  const [explanation, setExplanation] = useState<KundliExplanation | null>(null);
+
+  const explain = useMutation({
+    mutationFn: () =>
+      apiFetch<{ explanation: KundliExplanation }>("/api/kundli/explain", {
+        method: "POST",
+        body: JSON.stringify({
+          own,
+          name,
+          calculation: {
+            sunSign: calc.sunSign,
+            moonSign: calc.moonSign,
+            ascendant: calc.ascendant,
+            nakshatra: calc.nakshatra,
+            planetaryPositions: calc.planetaryPositions,
+          },
+        }),
+      }),
+    onSuccess: (res) => setExplanation(res.explanation),
+    onError: (err) => {
+      if (err instanceof ApiError && err.status === 402) toast({ title: t("chat.outOfCredits"), variant: "danger" });
+      else if (err instanceof ApiError && err.status === 429) toast({ title: t("kundli.explainRateLimited"), variant: "danger" });
+      else toast({ title: t("kundli.explainErrorGeneric"), variant: "danger" });
+    },
+  });
+
+  if (!explanation) {
+    return (
+      <div className="mt-8 flex justify-center border-t border-border pt-8">
+        <Button size="lg" onClick={() => explain.mutate()} disabled={explain.isPending}>
+          <Sparkles size={16} />
+          {explain.isPending ? t("kundli.explainLoading") : t("kundli.explainButton")}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-8 flex flex-col gap-4 border-t border-border pt-8">
+      <Card className="border-primary/30 bg-primary/5">
+        <CardContent className="py-4">
+          <div className="mb-2">
+            <AiDisclosureBadge label={t("common.aiGuidanceBadge")} />
+          </div>
+          <p className="text-sm leading-relaxed">{explanation.intro}</p>
+        </CardContent>
+      </Card>
+
+      {explanation.sections.map((s, i) => (
+        <Card key={i}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <span aria-hidden="true">{s.icon}</span> {s.title}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            {s.paragraphs.map((p, pi) => (
+              <p key={pi} className="text-sm leading-relaxed">
+                {p}
+              </p>
+            ))}
+            {s.bullets && s.bullets.length > 0 && (
+              <ul className="ml-4 list-disc text-sm text-muted">
+                {s.bullets.map((b, bi) => (
+                  <li key={bi}>{b}</li>
+                ))}
+              </ul>
+            )}
+            {s.highlight && (
+              <blockquote className="mt-1 rounded-lg border-l-4 border-primary bg-primary/5 px-3 py-2 text-sm font-medium">
+                {s.highlight}
+              </blockquote>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+
+      <Card className="border-gold/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <span aria-hidden="true">🔥</span> {t("kundli.strongestCombinationTitle")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {explanation.strongestCombination.points.map((p, i) => (
+            <div key={i}>
+              <p className="text-sm font-semibold">
+                {i + 1}. {p.title}
+              </p>
+              <p className="text-xs text-muted">{p.desc}</p>
+            </div>
+          ))}
+          <blockquote className="mt-1 rounded-lg border-l-4 border-gold bg-gold/5 px-3 py-2 text-sm italic">
+            &ldquo;{explanation.strongestCombination.summary}&rdquo;
+          </blockquote>
+        </CardContent>
+      </Card>
+
+      <Card className="border-danger/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <span aria-hidden="true">⚠️</span> {t("kundli.challengesTitle")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          <ul className="ml-4 list-disc text-sm">
+            {explanation.challenges.items.map((c, i) => (
+              <li key={i}>{c}</li>
+            ))}
+          </ul>
+          <p className="text-xs text-muted">{explanation.challenges.note}</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t("kundli.shortSummaryTitle")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm leading-relaxed">{explanation.shortSummary}</p>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -224,12 +374,18 @@ function OthersLookupForm({ onCancel, onResult }: { onCancel: () => void; onResu
     birthCity: "",
     birthCountry: "India",
   });
+  const [birthCoords, setBirthCoords] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const lookup = useMutation({
     mutationFn: () =>
       apiFetch<LookupResponse>("/api/kundli/lookup", {
         method: "POST",
-        body: JSON.stringify({ ...form, birthTime: form.birthTimeKnown ? form.birthTime || undefined : undefined }),
+        body: JSON.stringify({
+          ...form,
+          birthTime: form.birthTimeKnown ? form.birthTime || undefined : undefined,
+          latitude: birthCoords?.latitude,
+          longitude: birthCoords?.longitude,
+        }),
       }),
     onSuccess: (res) => onResult(res),
     onError: (err) => {
@@ -270,7 +426,17 @@ function OthersLookupForm({ onCancel, onResult }: { onCancel: () => void; onResu
           </label>
         </Field>
         <Field label={t("kundli.cityPlaceholder")}>
-          <Input value={form.birthCity} onChange={(e) => setForm((f) => ({ ...f, birthCity: e.target.value }))} />
+          <CityAutocomplete
+            value={form.birthCity}
+            onChange={(text) => {
+              setForm((f) => ({ ...f, birthCity: text }));
+              setBirthCoords(null);
+            }}
+            onSelect={(place) => {
+              setForm((f) => ({ ...f, birthCountry: place.country }));
+              setBirthCoords({ latitude: place.latitude, longitude: place.longitude });
+            }}
+          />
         </Field>
         <Field label={t("kundli.countryPlaceholder")}>
           <Input value={form.birthCountry} onChange={(e) => setForm((f) => ({ ...f, birthCountry: e.target.value }))} />
