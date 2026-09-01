@@ -33,6 +33,34 @@ const REQUIRED_FIELDS: (keyof HoroscopeDraftFields)[] = [
 const PERIOD_LABEL = { daily: "today", weekly: "this week", monthly: "this month" } as const;
 
 /**
+ * The day's real transiting Moon nakshatra/tithi/yoga (from the panchang
+ * provider, via horoscope-automation.ts's getDayAstroContext) — the actual
+ * per-day signal that's missing if you just ask "write a daily horoscope for
+ * Aries (today)" with nothing else: the model has no real difference to
+ * react to, so every day's output converges on the same generic "take
+ * initiative / be honest" tropes reworded slightly. Passing the real transit
+ * gives it something concrete and genuinely different each day to ground the
+ * reading in. null when the panchang lookup failed — generation still
+ * proceeds, just without this grounding (see getDayAstroContext's comment).
+ */
+export type DayAstroContext = {
+  dateStr: string; // "YYYY-MM-DD"
+  vaara: string | null; // weekday name
+  nakshatra: string | null;
+  tithi: string | null;
+  yoga: string | null;
+  /**
+   * Real transiting planets' whole-sign house AS SEEN FROM THIS SIGN (i.e.
+   * treating the sign itself as the reference/Moon-sign, the standard basis
+   * for a generic — not birth-chart-personalized — Vedic daily reading).
+   * This is what actually makes sign X's reading differ from sign Y's on the
+   * same day: same real planetary positions, different houses per sign.
+   * null when the transit lookup failed — see getDayAstroContext.
+   */
+  transitHouses: { planet: string; house: number; retrograde: boolean }[] | null;
+};
+
+/**
  * Generates one horoscope's worth of section text via the configured AI
  * provider — content that always lands as a "draft" row, never published
  * automatically (see the admin content route: publishing is a deliberate,
@@ -46,7 +74,8 @@ const PERIOD_LABEL = { daily: "today", weekly: "this week", monthly: "this month
 export async function generateHoroscopeDraft(
   sign: ZodiacSign,
   period: "daily" | "weekly" | "monthly",
-  locale: AppLocale
+  locale: AppLocale,
+  dayContext?: DayAstroContext | null
 ): Promise<HoroscopeDraftFields> {
   const langName = { en: "English", hi: "Hindi", gu: "Gujarati" }[locale];
   const signLabel = ZODIAC_LABELS[sign][locale];
@@ -58,11 +87,33 @@ export async function generateHoroscopeDraft(
 - Never tell the reader to spend money on rituals/remedies, or to make a major life decision solely on this.
 - Keep tone warm, calm, encouraging, and never overly mystical or jargon-heavy.
 - Write only in ${langName}.
+- Ground today's specific focus/tone in the real transit info given below (if any) instead of generic, could-apply-any-day advice — vary which life area gets the most attention based on it, so this reading is genuinely tied to today, not interchangeable with any other day's.
 - Return ONLY strict JSON, no markdown fences, no commentary — exactly this shape:
 {"career": "...", "love": "...", "money": "...", "wellness": "...", "luckyColor": "...", "luckyNumber": "...", "reflection": "..."}
 Each of career/love/money/wellness/reflection: 2-3 sentences. luckyColor: one color word. luckyNumber: one number as a string.`;
 
-  const userPrompt = `Write a ${period} horoscope for ${signLabel} (${PERIOD_LABEL[period]}).`;
+  const dateLabel = dayContext?.dateStr ?? new Date().toISOString().slice(0, 10);
+  const panchangLine = dayContext
+    ? [
+        dayContext.vaara ? `Day: ${dayContext.vaara}` : null,
+        dayContext.nakshatra ? `Moon nakshatra: ${dayContext.nakshatra}` : null,
+        dayContext.tithi ? `Tithi: ${dayContext.tithi}` : null,
+        dayContext.yoga ? `Yoga: ${dayContext.yoga}` : null,
+      ]
+        .filter(Boolean)
+        .join(", ")
+    : null;
+  const houseLine = dayContext?.transitHouses?.length
+    ? dayContext.transitHouses.map((t) => `${t.planet} in house ${t.house}${t.retrograde ? " (retrograde)" : ""}`).join(", ")
+    : null;
+
+  const userPrompt = `Write a ${period} horoscope for ${signLabel} (${PERIOD_LABEL[period]}, ${dateLabel}).${
+    panchangLine ? `\nToday's real panchang: ${panchangLine}.` : ""
+  }${
+    houseLine
+      ? `\nReal transit houses for ${signLabel} today (whole-sign, ${signLabel} as the 1st house): ${houseLine}. Base career/love/money/wellness on what these specific houses govern (e.g. a planet in the 10th house relates to career/status, 7th to relationships/partnerships, 2nd/11th to money, 6th to health/routine) — this is the actual astrological reasoning, not just a tone note.`
+      : ""
+  }${panchangLine || houseLine ? " Let this real data genuinely shape today's reading instead of generic advice that could apply to any day." : ""}`;
 
   const provider = getAiProvider();
   const result = await provider.complete({

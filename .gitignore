@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local DB backups (scripts/backup-db.mjs) — contains real user PII, never commit
+/backups
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

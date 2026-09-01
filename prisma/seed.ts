@@ -3,8 +3,8 @@
  * Safe to re-run — uses upserts where practical.
  */
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
 import { REPORT_TEMPLATES, PLANS, DEFAULT_REFERRAL_RULE } from "../src/lib/pricing/catalog";
+import { geocodeBirthPlace } from "../src/lib/geo";
 
 const prisma = new PrismaClient();
 
@@ -51,14 +51,17 @@ async function main() {
   });
 
   console.log("Seeding demo admin + demo user…");
-  const adminPasswordHash = await bcrypt.hash("Admin@12345", 12);
+  // No password: the app only has phone/email OTP + Google sign-in (see
+  // auth.ts — the Credentials "password" provider was removed as dead code,
+  // nothing ever set a passwordHash). To sign in as either seed account in
+  // dev, use the email tab on /login with the address below — the code is
+  // shown on-screen (devOtpNotice) since no real OTP provider is configured.
   const admin = await prisma.user.upsert({
     where: { email: "admin@jyoti.ai" },
     update: {},
     create: {
       email: "admin@jyoti.ai",
       name: "Jyoti AI Admin",
-      passwordHash: adminPasswordHash,
       role: "admin",
       emailVerified: new Date(),
       ageConfirmed: true,
@@ -67,14 +70,12 @@ async function main() {
   });
   await prisma.creditWallet.upsert({ where: { userId: admin.id }, update: {}, create: { userId: admin.id, balance: 100 } });
 
-  const demoPasswordHash = await bcrypt.hash("Demo@12345", 12);
   const demoUser = await prisma.user.upsert({
     where: { email: "demo@jyoti.ai" },
     update: {},
     create: {
       email: "demo@jyoti.ai",
       name: "Demo User",
-      passwordHash: demoPasswordHash,
       role: "user",
       locale: "en",
       emailVerified: new Date(),
@@ -84,6 +85,13 @@ async function main() {
   });
   await prisma.creditWallet.upsert({ where: { userId: demoUser.id }, update: {}, create: { userId: demoUser.id, balance: 10 } });
 
+  // Geocoded live, same as the real onboarding flow (see /api/onboarding) —
+  // a birth profile with no lat/lng can never get a real calculated chart
+  // (see getOrComputeKundliCalculation's configRequired handling), so a demo
+  // profile missing coordinates would demo a permanently-broken chat/kundli
+  // experience instead of the real thing. Falls back to null gracefully if
+  // geocoding is unavailable (offline seed run), same as onboarding does.
+  const demoGeo = await geocodeBirthPlace("Surat", "India").catch(() => null);
   await prisma.birthProfile.upsert({
     where: { id: `${demoUser.id}-primary` },
     update: {},
@@ -98,7 +106,9 @@ async function main() {
       birthTime: "14:32",
       birthCity: "Surat",
       birthCountry: "India",
-      timezone: "Asia/Kolkata",
+      latitude: demoGeo?.latitude,
+      longitude: demoGeo?.longitude,
+      timezone: demoGeo?.timezone ?? "Asia/Kolkata",
       primaryInterest: "career",
       consentSavedAt: new Date(),
     },
@@ -160,8 +170,8 @@ async function main() {
   }
 
   console.log("Seed complete.");
-  console.log("Demo admin login: admin@jyoti.ai / Admin@12345");
-  console.log("Demo user login:  demo@jyoti.ai / Demo@12345");
+  console.log("Demo admin login: /login → email tab → admin@jyoti.ai → code shown on screen (dev mode)");
+  console.log("Demo user login:  /login → email tab → demo@jyoti.ai → code shown on screen (dev mode)");
 }
 
 main()

@@ -12,7 +12,11 @@ const MAX_OUTPUT_TOKENS = Number(process.env.AI_MAX_OUTPUT_TOKENS ?? 700);
 const COST_PER_1K: Record<string, { in: number; out: number }> = {
   "claude-sonnet-5": { in: 0.003, out: 0.015 },
   "gpt-4.1-mini": { in: 0.0004, out: 0.0016 },
-  "gemini-2.5-flash": { in: 0.0003, out: 0.0025 },
+  "gemini-2.5-flash": { in: 0.0003, out: 0.0025 }, // retired for new/billed keys, kept for old log rows
+  // Verified from https://ai.google.dev/gemini-api/docs/pricing on 2026-08-31
+  // (standard paid tier, promo rate through Dec 31 2026 — rises to $1.50/$7.50
+  // per 1M on Jan 1 2027, update this then).
+  "gemini-3.6-flash": { in: 0.00075, out: 0.00375 },
   "mock-astrology-v1": { in: 0, out: 0 },
 };
 

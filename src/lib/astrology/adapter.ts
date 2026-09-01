@@ -306,6 +306,78 @@ export function getAstrologyProvider(): AstrologyProvider {
   return new RealAstrologyProvider();
 }
 
+// ---------------------------------------------------------------------------
+// Transit positions — where the planets ACTUALLY are right now (or on a given
+// date), independent of anyone's birth chart. Used by horoscope-automation.ts
+// to ground daily/weekly/monthly horoscope generation in a real, per-day-
+// changing signal instead of asking the AI "write today's horoscope for
+// Aries" with nothing that actually differs from yesterday's prompt (found
+// live: the wording changed, the substance didn't). Deliberately a separate
+// function from calculateKundli — that one is birth-chart-shaped (needs an
+// ascendant to compute houses); this is "which rashi is each planet
+// transiting today", the same real data a physical panchang/calendar prints.
+// ---------------------------------------------------------------------------
+
+export type TransitPosition = { planet: string; sign: ZodiacSign; retrograde: boolean };
+export type TransitResult = { provider: string; isDemoData: boolean; positions: TransitPosition[] | null };
+
+const TRANSIT_PLANETS = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Rahu", "Ketu"];
+
+/** Deterministic, clearly-labeled demo data — same spirit as MockAstrologyProvider. */
+function getMockTransitPositions(datetime: string): TransitResult {
+  const seed = new Date(datetime).getUTCDate();
+  return {
+    provider: "mock",
+    isDemoData: true,
+    positions: TRANSIT_PLANETS.map((planet, i) => ({
+      planet,
+      sign: ZODIAC_ORDER[(seed + i * 2) % 12],
+      retrograde: i % 5 === 0,
+    })),
+  };
+}
+
+async function getProkeralaTransitPositions(datetime: string, latitude: number, longitude: number): Promise<TransitResult> {
+  const token = await getProkeralaToken();
+  const coordinates = `${latitude},${longitude}`;
+  const qs = new URLSearchParams({ ayanamsa: "1", coordinates, datetime, la: "en" }).toString();
+  const res = await fetch(`https://api.prokerala.com/v2/astrology/planet-position?${qs}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Prokerala planet-position API error ${res.status}: ${body.slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  type ApiPlanet = { name: string; rasi?: { id?: number }; is_retrograde?: boolean };
+  const planets: ApiPlanet[] = data?.data?.planet_position ?? [];
+
+  const positions: TransitPosition[] = planets
+    .filter((p) => p.name && p.name.toLowerCase() !== "ascendant")
+    .map((p) => ({
+      planet: p.name,
+      sign: rasiIdToZodiacSign(p.rasi?.id) ?? ZODIAC_ORDER[0],
+      retrograde: Boolean(p.is_retrograde),
+    }));
+
+  return { provider: "prokerala", isDemoData: false, positions: positions.length ? positions : null };
+}
+
+/** Real planetary transit positions for a given instant+place — NOT birth-chart specific. */
+export async function getTransitPlanetPositions(datetime: string, latitude: number, longitude: number): Promise<TransitResult> {
+  const provider = process.env.ASTROLOGY_PROVIDER ?? "mock";
+  if (provider === "prokerala") return getProkeralaTransitPositions(datetime, latitude, longitude);
+  return getMockTransitPositions(datetime);
+}
+
+/** Whole-sign house of `transitingSign` as seen from `referenceSign` (e.g. a reader's Moon sign) — house 1 = same sign, house 2 = next sign, etc. Same math as the birth-chart ascendant-relative houses above, just with a zodiac sign as the reference point instead of a calculated ascendant. */
+export function houseFromSign(referenceSign: ZodiacSign, transitingSign: ZodiacSign): number {
+  const refIndex = ZODIAC_ORDER.indexOf(referenceSign);
+  const transitIndex = ZODIAC_ORDER.indexOf(transitingSign);
+  return ((transitIndex - refIndex + 12) % 12) + 1;
+}
+
 /** 0-100 completeness score used to drive the "data completeness" UI. */
 export function birthDataCompleteness(input: Partial<BirthInput> & { birthCity?: string | null }) {
   let score = 0;
@@ -352,6 +424,33 @@ export async function getOrComputeKundliCalculation(profile: {
     longitude: profile.longitude,
     timezone: profile.timezone,
   });
+
+  // Don't permanently cache a calculation that couldn't actually be done
+  // (configRequired, or no sunSign) — e.g. a birth profile whose city
+  // geocoding silently failed during onboarding and has no lat/lng yet.
+  // Persisting it as a normal cache row would mean this profile can NEVER
+  // get a real chart even after the missing data is fixed later, because
+  // the `existing` lookup above would keep finding this empty row forever.
+  // Found live: a seeded profile with no coordinates had exactly this — a
+  // cached row full of nulls, silently blocking chat grounding for good.
+  if (result.configRequired || !result.sunSign) {
+    return {
+      id: `uncached-${profile.id}`,
+      birthProfileId: profile.id,
+      provider: result.provider,
+      isDemoData: result.isDemoData,
+      sunSign: result.sunSign,
+      moonSign: result.moonSign,
+      ascendant: result.ascendant,
+      nakshatra: result.nakshatra,
+      planetaryPositions: result.planetaryPositions,
+      houses: result.houses,
+      dasha: result.dasha,
+      explanation: null,
+      explanationLocale: null,
+      calculatedAt: new Date(),
+    };
+  }
 
   return prisma.kundliCalculation.create({
     data: {

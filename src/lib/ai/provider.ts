@@ -151,7 +151,19 @@ class GeminiProvider implements AiProvider {
                 ]
               : [{ text: m.content }],
           })),
-          generationConfig: { maxOutputTokens: req.maxTokens },
+          // thinkingBudget: 0 disables Gemini's internal "thinking" tokens —
+          // found live (see horoscope-content.ts/kundli-explanation.ts/
+          // reports' comments): those tokens silently count against
+          // maxOutputTokens, so replies were getting cut off mid-sentence
+          // even at a seemingly generous budget (reproduced live in chat: a
+          // reply truncated mid-word with the full budget consumed by
+          // invisible thinking, none left for the visible answer). Every
+          // previous fix for this just raised the budget number, which
+          // costs more per request and doesn't actually guarantee no
+          // truncation. Disabling thinking outright is the real fix — flash-
+          // tier Gemini models support 0 (Pro-tier models require thinking
+          // and reject 0, but this app only ever configures flash models).
+          generationConfig: { maxOutputTokens: req.maxTokens, thinkingConfig: { thinkingBudget: 0 } },
         }),
       }
     );
