@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { useT } from "@/lib/i18n/provider";
@@ -32,6 +33,10 @@ export default function ChatPersonasPage() {
   const router = useRouter();
   const [filter, setFilter] = useState<"all" | PersonaSpecialty>("all");
   const [startingCode, setStartingCode] = useState<string | null>(null);
+  // Falls back to the colored-initials circle if a persona's AI-generated
+  // portrait (public/personas/*.webp) ever fails to load, rather than
+  // showing a broken-image icon.
+  const [imageFailed, setImageFailed] = useState<Record<string, boolean>>({});
 
   const startChat = useMutation({
     mutationFn: (personaCode: string) => apiFetch<{ chat: { id: string } }>("/api/chat", { method: "POST", body: JSON.stringify({ personaCode }) }),
@@ -59,9 +64,20 @@ export default function ChatPersonasPage() {
             {visible.map((persona) => (
               <Card key={persona.code}>
                 <CardContent className="flex items-start gap-3 pt-5">
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${persona.avatarColor}`}>
-                    {initialsFromName(persona.name)}
-                  </div>
+                  {imageFailed[persona.code] ? (
+                    <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${persona.avatarColor}`}>
+                      {initialsFromName(persona.name)}
+                    </div>
+                  ) : (
+                    <Image
+                      src={persona.avatarImage}
+                      alt={persona.name}
+                      width={64}
+                      height={64}
+                      className="h-16 w-16 shrink-0 rounded-full object-cover"
+                      onError={() => setImageFailed((prev) => ({ ...prev, [persona.code]: true }))}
+                    />
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="font-heading text-base font-semibold">{persona.name}</p>

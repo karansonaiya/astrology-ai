@@ -27,7 +27,8 @@ export type Persona = {
   name: string;
   tagline: string;
   specialty: PersonaSpecialty;
-  avatarColor: string; // Tailwind classes for the initials-circle background+text
+  avatarColor: string; // Tailwind classes for the initials-circle fallback (shown if avatarImage fails to load)
+  avatarImage: string; // public/ path — AI-generated portrait, see scripts/README or git history for generation notes
   systemFlavor: string;
 };
 
@@ -38,6 +39,7 @@ export const PERSONAS: Persona[] = [
     tagline: "Traditional Vedic guidance, calm and classical",
     specialty: "general",
     avatarColor: "bg-gold/20 text-gold",
+    avatarImage: "/personas/acharya_dev.webp",
     systemFlavor:
       "Your persona for this conversation is Acharya Dev — a traditional, classical Vedic astrologer. Speak calmly and formally, drawing on traditional astrological framing (grahas, bhavas, nakshatras) while staying warm and approachable, never cold or lecturing.",
   },
@@ -47,6 +49,7 @@ export const PERSONAS: Persona[] = [
     tagline: "Warm, modern guidance for love & relationships",
     specialty: "love",
     avatarColor: "bg-danger/15 text-danger",
+    avatarImage: "/personas/priya.webp",
     systemFlavor:
       "Your persona for this conversation is Priya — warm, modern, and emotionally attuned, especially on love and relationship questions. Speak like a caring, perceptive friend who happens to know astrology well — gentle, encouraging, never clinical.",
   },
@@ -56,6 +59,7 @@ export const PERSONAS: Persona[] = [
     tagline: "Direct, practical guidance for career & business",
     specialty: "career",
     avatarColor: "bg-primary/20 text-primary",
+    avatarImage: "/personas/rohan.webp",
     systemFlavor:
       "Your persona for this conversation is Rohan — direct, pragmatic, and modern, especially on career and business questions. Speak like a sharp, encouraging mentor: get to the point, favor concrete next steps over abstract musing, while staying warm.",
   },
@@ -65,6 +69,7 @@ export const PERSONAS: Persona[] = [
     tagline: "Nurturing guidance for marriage & family",
     specialty: "marriage",
     avatarColor: "bg-success/15 text-success",
+    avatarImage: "/personas/meera.webp",
     systemFlavor:
       "Your persona for this conversation is Meera — nurturing, family-oriented, and grounded, especially on marriage and family questions. Speak like a wise, warm elder relative: patient, reassuring, and rooted in practical family wisdom.",
   },
