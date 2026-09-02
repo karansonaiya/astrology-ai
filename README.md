@@ -24,7 +24,7 @@ full-stack MVP: real auth, database, payments, admin panel, safety policy layer,
 | Database | PostgreSQL + Prisma ORM (`prisma/schema.prisma`) |
 | AI | Provider abstraction for Anthropic Claude / OpenAI / local mock (`src/lib/ai`) |
 | Astrology engine | Adapter interface with mock implementation + documented integration point (`src/lib/astrology`) |
-| Payments | Razorpay abstraction + built-in mock/test provider (`src/lib/payments`) |
+| Payments | Cashfree abstraction + built-in mock/test provider (`src/lib/payments`) |
 | PWA | Hand-written service worker, manifest, generated icons (`public/`, `scripts/generate-icons.mjs`) |
 
 This app is **usable today** with zero external services configured (everything defaults to `mock` providers) and
@@ -85,8 +85,8 @@ runs without any of these being set except `DATABASE_URL` and `AUTH_SECRET`:
 | `AI_PROVIDER` | `mock` \| `anthropic` \| `openai` — selects the AI adapter |
 | `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | API key for the selected AI provider |
 | `ASTROLOGY_PROVIDER` | `mock` \| a real ephemeris/astrology API you've integrated |
-| `PAYMENT_PROVIDER` | `mock` \| `razorpay` |
-| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET` | Razorpay credentials |
+| `PAYMENT_PROVIDER` | `mock` \| `cashfree` |
+| `CASHFREE_APP_ID` / `CASHFREE_SECRET_KEY` / `CASHFREE_WEBHOOK_SECRET` | Cashfree credentials |
 | `OTP_PROVIDER` | `mock` \| `twilio` \| `msg91` |
 | `EMAIL_PROVIDER` | `mock` \| `resend` \| `smtp` |
 | `UPSTASH_REDIS_REST_URL` / `_TOKEN` | Optional distributed rate limiting (falls back to in-memory) |
@@ -134,14 +134,16 @@ configured" state rather than fabricating planetary positions.
 
 ## 7. Payments
 
-`src/lib/payments/provider.ts` abstracts Razorpay behind a `PaymentProvider` interface with a `mock` provider for
+`src/lib/payments/provider.ts` abstracts Cashfree behind a `PaymentProvider` interface with a `mock` provider for
 local development (`PAYMENT_PROVIDER=mock`, the default) — full checkout flow works with zero credentials, no
 network calls, and no real charges. Order creation always re-prices server-side from the DB (`ReportTemplate` /
 `Plan`) or the credit-pack catalog (`src/lib/pricing/catalog.ts`) — client-sent amounts are never trusted.
 
-Webhook endpoint: `POST /api/payments/webhook` — verifies the Razorpay signature independently of the client and
-is idempotent via a unique `(provider, eventId)` constraint on `PaymentEvent`, so Razorpay's at-least-once webhook
-delivery can safely retry.
+Unlike a signature-per-payment scheme, Cashfree hands the client no signed proof of payment — `POST
+/api/payments/verify` (optimistic, client-triggered) and `POST /api/payments/webhook` (source of truth) both
+independently ask Cashfree's own order-status API whether an order is actually paid. The webhook additionally
+verifies Cashfree's own signature header and is idempotent via a unique `(provider, eventId)` constraint on
+`PaymentEvent`, so Cashfree's at-least-once webhook delivery can safely retry.
 
 ## 8. PWA
 
@@ -162,7 +164,7 @@ delivery can safely retry.
   routes) — no client-supplied IDs are trusted without an ownership check.
 - Rate limiting (`src/lib/rate-limit.ts`) on OTP requests and chat messages — Upstash Redis if configured, in-memory
   fallback otherwise.
-- Security headers + CSP applied in `src/middleware.ts`.
+- Security headers + CSP applied in `src/proxy.ts`.
 - Passwords hashed with bcrypt; OTP codes hashed, single-use, expiring, attempt-limited.
 - Admin actions write to `AuditLog`. Sensitive prompt content is never written to logs (`redactForLogs`).
 - Role-based access control: `user`, `admin`, `support_agent`, `content_editor`.
@@ -176,7 +178,7 @@ delivery can safely retry.
    `AUTH_SECRET`, `NEXT_PUBLIC_APP_URL`).
 4. Run `npm run db:deploy` against the production `DATABASE_URL` (e.g. via a one-off Vercel/GitHub Action step),
    then `npm run db:seed` if you want the demo pricing/horoscope content.
-5. Deploy. Set `PAYMENT_PROVIDER=razorpay` and `AI_PROVIDER=anthropic|openai` with real keys when you're ready to
+5. Deploy. Set `PAYMENT_PROVIDER=cashfree` and `AI_PROVIDER=anthropic|openai` with real keys when you're ready to
    go live — the app runs safely on mocks until then.
 
 Any other Node.js host works the same way — Next.js standalone output is compatible with most platforms.

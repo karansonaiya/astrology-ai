@@ -40,7 +40,7 @@ export default function PrivacyPage() {
       <p>
         We share data only with service providers necessary to run Prerna AI: our database/hosting provider, our
         configured AI provider (Anthropic or OpenAI, depending on deployment), and our payment processor
-        (Razorpay). We do not sell personal data to advertisers or data brokers.
+        (Cashfree). We do not sell personal data to advertisers or data brokers.
       </p>
 
       <h2>Security</h2>

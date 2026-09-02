@@ -653,7 +653,7 @@ model Subscription {
   currentPeriodStart   DateTime           @default(now())
   currentPeriodEnd     DateTime
   cancelAtPeriodEnd     Boolean           @default(false)
-  razorpaySubscriptionId String?          @unique
+  providerSubscriptionId String?          @unique // not yet wired to any provider — recurring billing is still unbuilt
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -675,9 +675,12 @@ model Order {
 
   idempotencyKey String @unique
 
-  razorpayOrderId   String? @unique
-  razorpayPaymentId String?
-  razorpaySignature String?
+  // Provider-neutral (was razorpay-specific) — see src/lib/payments/provider.ts.
+  // providerSignature is unused by Cashfree (no client-supplied HMAC in that
+  // flow) but kept for any future provider that has one.
+  providerOrderId   String? @unique
+  providerPaymentId String?
+  providerSignature String?
 
   relatedId String? // creditPackCode / reportTemplateId / planId
 
@@ -696,7 +699,7 @@ model Order {
 model PaymentEvent {
   id       String  @id @default(cuid())
   orderId  String?
-  provider String // "razorpay" | "mock"
+  provider String // "cashfree" | "mock" | "client-verify"
   eventId  String // provider's event id, for idempotency
   eventType String
   rawPayload Json

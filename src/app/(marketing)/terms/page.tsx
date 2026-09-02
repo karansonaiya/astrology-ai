@@ -25,7 +25,7 @@ export default function TermsPage() {
       <h2>Payments</h2>
       <p>
         Prices are shown before purchase and include applicable taxes unless stated otherwise. Payments are
-        processed by Razorpay. See our Refund & Cancellation Policy for refund eligibility.
+        processed by Cashfree. See our Refund & Cancellation Policy for refund eligibility.
       </p>
 
       <h2>Account suspension</h2>

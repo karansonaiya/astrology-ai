@@ -19,9 +19,10 @@ This document summarizes how Prerna AI treats sensitive data in code, matching w
    expiring, attempt-limited (`src/lib/auth/otp.ts`).
 3. **No sensitive data in logs.** `src/lib/utils.ts#redactForLogs` redacts emails/long numbers before any
    debug-level logging; chat message bodies are never `console.log`'d in API routes.
-4. **Payment webhook integrity.** `POST /api/payments/webhook` independently verifies the Razorpay signature
-   (`src/lib/payments/provider.ts#verifyWebhookSignature`) — client-reported payment success is never trusted
-   alone (`src/app/api/payments/verify/route.ts` also re-verifies server-side).
+4. **Payment webhook integrity.** `POST /api/payments/webhook` independently verifies the Cashfree signature
+   (`src/lib/payments/provider.ts#verifyWebhookSignature`) — client-reported payment success is never trusted;
+   `src/app/api/payments/verify/route.ts` re-confirms status directly against Cashfree's order-status API rather
+   than trusting any client-supplied value at all.
 5. **Idempotency.** `Order.idempotencyKey` is unique; `PaymentEvent` has a unique `(provider, eventId)` constraint
    so webhook retries can't double-fulfil an order.
 6. **Deletable-by-default sensitive data.** `DELETE /api/birth-profile`, `POST /api/account/delete`,

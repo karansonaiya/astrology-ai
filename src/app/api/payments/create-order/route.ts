@@ -78,15 +78,23 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Cashfree's Orders API requires customer_id/phone on every order —
+    // session.user doesn't carry phone (NextAuth's default user shape), so
+    // it's fetched fresh here rather than threaded through the JWT.
+    const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { email: true, phone: true } });
+
     const provider = getPaymentProvider();
-    const { providerOrderId } = await provider.createOrder({
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin;
+    const { providerOrderId, paymentSessionId } = await provider.createOrder({
       amountInPaise: priced.amountInPaise,
       currency: "INR",
       receipt: order.id,
       notes: { userId: user.id, type: parsed.data.type, code: parsed.data.code },
+      customer: { id: user.id, email: dbUser?.email, phone: dbUser?.phone },
+      returnUrl: `${appUrl}/payments/return?order_id=${order.id}`,
     });
 
-    await prisma.order.update({ where: { id: order.id }, data: { razorpayOrderId: providerOrderId } });
+    await prisma.order.update({ where: { id: order.id }, data: { providerOrderId } });
 
     return NextResponse.json({
       orderId: order.id,
@@ -94,8 +102,9 @@ export async function POST(req: NextRequest) {
       amountInPaise: priced.amountInPaise,
       currency: "INR",
       label: priced.label,
-      mock: process.env.PAYMENT_PROVIDER !== "razorpay",
-      razorpayKeyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? null,
+      provider: process.env.PAYMENT_PROVIDER === "cashfree" ? "cashfree" : "mock",
+      paymentSessionId: paymentSessionId ?? null,
+      cashfreeMode: process.env.CASHFREE_ENV === "production" ? "production" : "sandbox",
     });
   } catch (err) {
     return errorResponse(err);

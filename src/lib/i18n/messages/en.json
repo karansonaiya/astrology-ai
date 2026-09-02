@@ -403,7 +403,13 @@
     "paymentSuccessTitle": "Payment successful",
     "paymentFailedTitle": "Payment failed",
     "tryAgain": "Try again",
-    "mockModeNotice": "Test payment mode is active — no real money is charged."
+    "mockModeNotice": "Test payment mode is active — no real money is charged.",
+    "returnVerifying": "Confirming your payment…",
+    "returnSuccessDesc": "Your payment was confirmed and your account has been updated.",
+    "returnPendingTitle": "Payment pending",
+    "returnPendingDesc": "We haven't received confirmation yet. This can take a minute — check My Payments shortly.",
+    "backToPayments": "Go to My Payments",
+    "backToDashboard": "Go to dashboard"
   },
   "referral": {
     "title": "Referral & Rewards",
