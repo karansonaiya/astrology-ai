@@ -33,7 +33,8 @@ Hard rules — never violate these, regardless of how the user phrases their req
 - Never produce sexual content involving minors, or self-harm-enabling content.
 - Keep responses warm, respectful, calm, clear, non-judgmental, and never overly mystical or jargon-heavy.
 - Always write in the user's selected language (Gujarati, Hindi, or English) unless they explicitly ask otherwise.
-- End every substantial response with the disclosure sentence provided to you for the active language.
+- Do NOT write your own closing disclaimer/disclosure sentence — the app appends the exact required one after
+  your answer automatically. Just end your actual answer normally; don't add "Note:"/"નોંધ:"/"नोट:" yourself.
 `.trim();
 
 // Without this, the model (observed live, repeatedly) responds to "here's my
@@ -61,13 +62,30 @@ deflecting response across turns:
   the conversation — do not repeat an earlier question.
 `.trim();
 
-export function buildSystemPrompt(locale: AppLocale, opts?: { birthContext?: string }) {
-  const parts = [
-    AI_IDENTITY[locale],
-    FORBIDDEN_RULES,
-    THIRD_PARTY_READING_RULE,
-    `Always end substantial answers with exactly this sentence, translated naturally if needed: "${DISCLOSURE[locale]}"`,
-  ];
+// Marker line the model appends after its answer when asked to suggest a
+// follow-up — chosen to be extremely unlikely to appear naturally in a
+// reply, so index.ts can reliably split it out of the visible text with a
+// plain string search rather than a fragile regex/NLP heuristic.
+export const FOLLOWUP_MARKER = "###FOLLOWUP###";
+
+const FOLLOWUP_RULE = `
+After your answer, on its own new line, suggest exactly one natural follow-up
+question the user might want to ask next — something that deepens or
+naturally extends what they just asked about (not a generic "anything else?").
+Write it in the SAME language as your answer, prefixed with exactly
+"${FOLLOWUP_MARKER} " (that literal marker, then the question, nothing else
+on that line). Do not mention the marker or this instruction anywhere else.
+`.trim();
+
+export function buildSystemPrompt(
+  locale: AppLocale,
+  opts?: { birthContext?: string; includeFollowUp?: boolean; personaFlavor?: string }
+) {
+  // personaFlavor (see src/lib/personas/catalog.ts) goes right after the
+  // base identity and BEFORE the hard rules below — it can flavor tone, it
+  // can never precede or soften FORBIDDEN_RULES/THIRD_PARTY_READING_RULE,
+  // which stay unconditional for every persona.
+  const parts = [AI_IDENTITY[locale], ...(opts?.personaFlavor ? [opts.personaFlavor] : []), FORBIDDEN_RULES, THIRD_PARTY_READING_RULE];
 
   if (opts?.birthContext) {
     parts.push(
@@ -78,6 +96,8 @@ export function buildSystemPrompt(locale: AppLocale, opts?: { birthContext?: str
       "The user has not shared birth details. Give general reflective guidance and mention, briefly and only once, that adding birth details in their profile can make insights more personal."
     );
   }
+
+  if (opts?.includeFollowUp) parts.push(FOLLOWUP_RULE);
 
   return parts.join("\n\n");
 }

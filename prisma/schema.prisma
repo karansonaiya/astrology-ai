@@ -417,6 +417,11 @@ model Chat {
   userId String
   title  String @default("New chat")
   locale Locale @default(en)
+  // References a Persona.code from src/lib/personas/catalog.ts — no FK/DB
+  // table (see that file's header comment for why), so this is a plain
+  // string, always re-validated against the known codes server-side before
+  // being trusted. Null = no persona (the original, un-personalized chat).
+  personaCode String?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

@@ -151,25 +151,25 @@ class GeminiProvider implements AiProvider {
                 ]
               : [{ text: m.content }],
           })),
-          // thinkingBudget disables Gemini's internal "thinking" tokens —
-          // found live (see horoscope-content.ts/kundli-explanation.ts/
-          // reports' comments): those tokens silently count against
-          // maxOutputTokens, so replies were getting cut off mid-sentence
-          // even at a seemingly generous budget (reproduced live in chat: a
-          // reply truncated mid-word with the full budget consumed by
-          // invisible thinking, none left for the visible answer). Every
-          // previous fix for this just raised the budget number, which
-          // costs more per request and doesn't actually guarantee no
-          // truncation. Disabling thinking outright is the real fix — BUT
-          // as of the currently configured GEMINI_MODEL=gemini-3.6-flash,
-          // thinkingBudget: 0 is rejected outright with a 400 INVALID_ARGUMENT
-          // ("Request contains an invalid argument") — reproduced live
-          // 2026-09-02, every single chat/career/relationship/report call was
-          // failing with a 500 because of this. This model requires a
-          // non-zero thinking budget (unlike the flash models this comment
-          // originally verified against); 1 is the smallest value confirmed
-          // live to be accepted and to reliably return a normal, non-
-          // truncated completion. Re-verify this if GEMINI_MODEL changes.
+          // thinkingConfig.thinkingBudget: Gemini's internal "thinking"
+          // tokens silently count against maxOutputTokens, so replies can
+          // get cut off mid-sentence even at a seemingly generous budget.
+          // thinkingBudget: 0 would fully disable thinking, but as of the
+          // currently configured GEMINI_MODEL=gemini-3.6-flash, 0 is
+          // rejected outright with a 400 INVALID_ARGUMENT (reproduced live
+          // 2026-09-02 — every chat/career/relationship/report call failed
+          // with a 500 because of this). 1 is the smallest value this model
+          // accepts. IMPORTANT, found live the same day: 1 is NOT a
+          // reliable cap on actual thinking usage for this model — a
+          // Gujarati chat reply still spent 600-900+ tokens on invisible
+          // thinking regardless (it scaled with whatever maxOutputTokens
+          // room was available, not with the requested budget), truncating
+          // the visible reply after 1-2 sentences. So thinkingBudget here
+          // is really just "the minimum this model will accept", not a
+          // truncation fix — the actual fix for truncation is giving
+          // maxOutputTokens enough headroom in the first place (see
+          // index.ts's MAX_OUTPUT_TOKENS comment). Re-verify all of this if
+          // GEMINI_MODEL changes.
           generationConfig: { maxOutputTokens: req.maxTokens, thinkingConfig: { thinkingBudget: 1 } },
         }),
       }

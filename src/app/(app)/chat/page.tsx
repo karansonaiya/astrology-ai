@@ -15,6 +15,8 @@ import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_BASE64_LENGTH } from "@/lib/validations/chat";
+import { AiMarkdown } from "@/components/ui/ai-markdown";
+import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
 
 type ChatListItem = { id: string; title: string; updatedAt: string };
 type Message = {
@@ -70,8 +72,19 @@ export default function ChatPage() {
   // send/Enter a second time.
   const [optimisticMsg, setOptimisticMsg] = useState<{ content: string; imagePreviewUrl?: string } | null>(null);
   const [isSendingFirstMessage, setIsSendingFirstMessage] = useState(false);
+  const [outOfCreditsOpen, setOutOfCreditsOpen] = useState(false);
+  const [followUpQuestion, setFollowUpQuestion] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Plain ref, not state — state setters are batched/async, so the
+  // `isSendingFirstMessage` state guard below could still read its stale
+  // `false` value if submit() gets re-entered within the same tick (found
+  // live: pressing Enter fires the Textarea's onKeyDown submit() AND the
+  // form's onSubmit can also fire for the same keystroke in some browsers/
+  // timing, both reading isSendingFirstMessage as still-false before
+  // React's re-render lands — sent the first message in a new chat twice).
+  // A ref mutates synchronously, so this actually blocks a re-entrant call.
+  const submitLockRef = useRef(false);
 
   const handleFileSelect = async (file: File | undefined) => {
     if (!file) return;
@@ -113,10 +126,11 @@ export default function ChatPage() {
   type SendMessageVars = { content: string; image?: { data: string; mimeType: string }; imagePreviewUrl?: string };
   const sendMessage = useMutation({
     mutationFn: ({ content, image }: SendMessageVars) =>
-      apiFetch(`/api/chat/${chatId}/messages`, { method: "POST", body: JSON.stringify({ content, image }) }),
-    onSuccess: (_data, variables) => {
+      apiFetch<{ followUpQuestion?: string }>(`/api/chat/${chatId}/messages`, { method: "POST", body: JSON.stringify({ content, image }) }),
+    onSuccess: (data, variables) => {
       if (variables.imagePreviewUrl) URL.revokeObjectURL(variables.imagePreviewUrl);
       setOptimisticMsg(null);
+      setFollowUpQuestion(data.followUpQuestion ?? null);
       qc.invalidateQueries({ queryKey: ["chat", chatId] });
       qc.invalidateQueries({ queryKey: ["credits-summary"] });
       qc.invalidateQueries({ queryKey: ["chats"] });
@@ -130,7 +144,7 @@ export default function ChatPage() {
         setPendingImage({ data: variables.image.data, mimeType: variables.image.mimeType, previewUrl: variables.imagePreviewUrl });
       }
       if (err instanceof ApiError && err.status === 402) {
-        toast({ title: t("chat.outOfCredits"), variant: "danger" });
+        setOutOfCreditsOpen(true);
       } else {
         toast({ title: t("errors.generic"), variant: "danger" });
       }
@@ -163,11 +177,15 @@ export default function ChatPage() {
     // Guards against a genuinely real double-send: with no immediate visual
     // feedback (fixed below via optimisticMsg), a slow reply used to look
     // like nothing had happened, so a second Enter/click before this first
-    // request settled fired a second message. This blocks that regardless
-    // of UI timing.
+    // request settled fired a second message. The state checks alone don't
+    // reliably catch a re-entrant call within the same tick (state updates
+    // are batched/async) — the ref does, since it mutates immediately.
+    if (submitLockRef.current) return;
     if (sendMessage.isPending || createChat.isPending || isSendingFirstMessage) return;
     if (!content.trim() && !pendingImage) return;
+    submitLockRef.current = true;
 
+    setFollowUpQuestion(null);
     const image = pendingImage ? { data: pendingImage.data, mimeType: pendingImage.mimeType } : undefined;
     const imagePreviewUrl = pendingImage?.previewUrl;
 
@@ -181,17 +199,23 @@ export default function ChatPage() {
         const res = await createChat.mutateAsync();
         targetId = res.chat.id;
         router.push(`/chat?id=${targetId}`);
-        await apiFetch(`/api/chat/${targetId}/messages`, { method: "POST", body: JSON.stringify({ content, image }) });
+        const msgRes = await apiFetch<{ followUpQuestion?: string }>(`/api/chat/${targetId}/messages`, { method: "POST", body: JSON.stringify({ content, image }) });
+        setFollowUpQuestion(msgRes.followUpQuestion ?? null);
         qc.invalidateQueries({ queryKey: ["chat", targetId] });
         qc.invalidateQueries({ queryKey: ["chats"] });
         if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-      } catch {
+      } catch (err) {
         setInput(content);
         if (image && imagePreviewUrl) setPendingImage({ data: image.data, mimeType: image.mimeType, previewUrl: imagePreviewUrl });
-        toast({ title: t("errors.generic"), variant: "danger" });
+        if (err instanceof ApiError && err.status === 402) {
+          setOutOfCreditsOpen(true);
+        } else {
+          toast({ title: t("errors.generic"), variant: "danger" });
+        }
       } finally {
         setOptimisticMsg(null);
         setIsSendingFirstMessage(false);
+        submitLockRef.current = false;
       }
       return;
     }
@@ -199,13 +223,23 @@ export default function ChatPage() {
     setOptimisticMsg({ content, imagePreviewUrl });
     setInput("");
     setPendingImage(null);
-    sendMessage.mutate({ content, image, imagePreviewUrl });
+    sendMessage.mutate(
+      { content, image, imagePreviewUrl },
+      { onSettled: () => { submitLockRef.current = false; } }
+    );
   };
 
   return (
     <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-6xl">
       <aside className="hidden w-64 shrink-0 flex-col border-r border-border p-3 md:flex">
-        <Button onClick={() => createChat.mutate()} className="mb-3">
+        {/* Routes to the persona picker (src/app/(app)/chat/personas/page.tsx)
+            instead of immediately creating a blank chat — that page's own
+            "Start chat" is what actually calls createChat now (with a
+            personaCode). Sending a message from the empty-state suggestion
+            chips below still creates an un-personalized chat directly via
+            submit()'s "first message" path — this button specifically is
+            about deliberately starting a new conversation. */}
+        <Button onClick={() => router.push("/chat/personas")} className="mb-3">
           <Plus size={16} /> {t("chat.newChat")}
         </Button>
         <div className="flex flex-1 flex-col gap-1 overflow-y-auto">
@@ -273,7 +307,11 @@ export default function ChatPage() {
                         className="mb-2 max-h-64 rounded-lg border border-border object-contain"
                       />
                     )}
-                    {m.content && <p className="whitespace-pre-wrap text-sm leading-relaxed">{m.content}</p>}
+                    {m.content && (m.role === "assistant" ? (
+                      <AiMarkdown content={m.content} />
+                    ) : (
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed">{m.content}</p>
+                    ))}
                     {m.role === "assistant" && (
                       <div className="mt-3 flex items-center gap-3 border-t border-border pt-2">
                         <button
@@ -328,6 +366,19 @@ export default function ChatPage() {
             </div>
           )}
         </div>
+
+        {followUpQuestion && !sendMessage.isPending && !isSendingFirstMessage && (
+          <div className="border-t border-border px-4 pt-3 md:px-8">
+            <p className="mb-1.5 text-xs text-muted">{t("chat.suggestedFollowUp")}</p>
+            <button
+              type="button"
+              onClick={() => submit(followUpQuestion)}
+              className="focus-ring rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-left text-xs text-foreground hover:border-primary/50 hover:bg-primary/10"
+            >
+              {followUpQuestion}
+            </button>
+          </div>
+        )}
 
         <div className="border-t border-border p-4 md:px-8">
           <p className="mb-2 text-center text-[11px] text-muted">{t("common.notForCritical")}</p>
@@ -423,6 +474,8 @@ export default function ChatPage() {
           </Button>
         </DialogContent>
       </Dialog>
+
+      <OutOfCreditsDialog open={outOfCreditsOpen} onOpenChange={setOutOfCreditsOpen} />
     </div>
   );
 }

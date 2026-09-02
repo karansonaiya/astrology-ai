@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { allMessagesClient, type Messages } from "./messages-client";
 import { type AppLocale, localeCookieName } from "./config";
 
@@ -29,17 +30,28 @@ export function I18nProvider({
   children: React.ReactNode;
 }) {
   const [locale, setLocaleState] = useState<AppLocale>(initialLocale);
+  const { update: updateSession } = useSession();
 
-  const setLocale = useCallback((next: AppLocale) => {
-    setLocaleState(next);
-    document.cookie = `${localeCookieName}=${next}; path=/; max-age=31536000; SameSite=Lax`;
-    // Persist to the user's profile if logged in — best-effort, non-blocking.
-    fetch("/api/profile/locale", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ locale: next }),
-    }).catch(() => {});
-  }, []);
+  const setLocale = useCallback(
+    (next: AppLocale) => {
+      setLocaleState(next);
+      document.cookie = `${localeCookieName}=${next}; path=/; max-age=31536000; SameSite=Lax`;
+      // Persist to the user's profile if logged in — best-effort, non-blocking.
+      fetch("/api/profile/locale", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locale: next }),
+      }).catch(() => {});
+      // Also refresh THIS session's JWT locale claim immediately (see
+      // auth.ts's jwt() callback comment) — without this, every
+      // requireUser()-based server route (new chats, AI replies, the
+      // disclosure language) keeps using whatever locale was set at last
+      // sign-in until the session naturally expires. No-ops harmlessly for
+      // a logged-out visitor (no session to update).
+      updateSession({ locale: next }).catch(() => {});
+    },
+    [updateSession]
+  );
 
   const messages = allMessagesClient[locale];
 

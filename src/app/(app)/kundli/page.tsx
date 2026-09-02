@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/toast";
 import { ZodiacWheel } from "@/components/astrology/zodiac-wheel";
 import { CityAutocomplete } from "@/components/ui/city-autocomplete";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
+import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
 import { ZODIAC_LABELS, type ZodiacSign } from "@/lib/zodiac";
 import { CORE_EXPLANATIONS, PLANET_LABELS, HOUSE_THEMES, buildPlanetInterpretation } from "@/lib/astrology/interpretations";
 import type { AppLocale } from "@/lib/i18n/config";
@@ -238,6 +239,7 @@ function KundliExplanationSection({ own, name, calc }: { own: boolean; name?: st
   const t = useT();
   const { toast } = useToast();
   const [explanation, setExplanation] = useState<KundliExplanation | null>(null);
+  const [outOfCreditsOpen, setOutOfCreditsOpen] = useState(false);
 
   const explain = useMutation({
     mutationFn: () =>
@@ -257,7 +259,7 @@ function KundliExplanationSection({ own, name, calc }: { own: boolean; name?: st
       }),
     onSuccess: (res) => setExplanation(res.explanation),
     onError: (err) => {
-      if (err instanceof ApiError && err.status === 402) toast({ title: t("chat.outOfCredits"), variant: "danger" });
+      if (err instanceof ApiError && err.status === 402) setOutOfCreditsOpen(true);
       else if (err instanceof ApiError && err.status === 429) toast({ title: t("kundli.explainRateLimited"), variant: "danger" });
       else toast({ title: t("kundli.explainErrorGeneric"), variant: "danger" });
     },
@@ -270,6 +272,7 @@ function KundliExplanationSection({ own, name, calc }: { own: boolean; name?: st
           <Sparkles size={16} />
           {explain.isPending ? t("kundli.explainLoading") : t("kundli.explainButton")}
         </Button>
+        <OutOfCreditsDialog open={outOfCreditsOpen} onOpenChange={setOutOfCreditsOpen} />
       </div>
     );
   }

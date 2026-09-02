@@ -1,17 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useI18n, useT } from "@/lib/i18n/provider";
 import { apiFetch } from "@/lib/api-client";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, formatDate } from "@/lib/utils";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, ArrowLeft } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { AiMarkdown } from "@/components/ui/ai-markdown";
 
 type Purchase = {
   id: string;
@@ -39,6 +41,9 @@ export default function ReportDetailPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
+      <Link href="/reports?tab=mine" className="focus-ring mb-3 inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground">
+        <ArrowLeft size={15} /> {t("common.back")}
+      </Link>
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-2xl font-semibold">{purchase.template.name}</h1>
         <AiDisclosureBadge label={t("common.aiGuidanceBadge")} />
@@ -54,18 +59,18 @@ export default function ReportDetailPage() {
         <CardContent className="text-sm">
           {purchase.birthProfile ? (
             <>
-              <Badge variant="success">Included</Badge>{" "}
-              {purchase.birthProfile.birthDate.slice(0, 10)} · {purchase.birthProfile.birthCity ?? "—"}
+              <Badge variant="success">{t("reports.dataIncluded")}</Badge>{" "}
+              {formatDate(purchase.birthProfile.birthDate, `${locale}-IN`)} · {purchase.birthProfile.birthCity ?? "—"}
             </>
           ) : (
-            <Badge>Not included</Badge>
+            <Badge>{t("reports.dataNotIncluded")}</Badge>
           )}
         </CardContent>
       </Card>
 
       <Card className="mt-4">
-        <CardContent className="whitespace-pre-wrap pt-5 text-sm leading-relaxed text-foreground/90">
-          {purchase.generatedContent?.body}
+        <CardContent className="pt-5">
+          {purchase.generatedContent?.body && <AiMarkdown content={purchase.generatedContent.body} className="text-foreground/90" />}
         </CardContent>
       </Card>
 

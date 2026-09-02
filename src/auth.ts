@@ -99,7 +99,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   callbacks: {
     ...authConfig.callbacks, // keep the Prisma-free session() callback as-is
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user?.id) {
         const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
         if (dbUser) {
@@ -108,6 +108,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.locale = dbUser.locale as AppLocale;
           token.status = dbUser.status;
         }
+      }
+      // Lets the client force this session's JWT to pick up a fresh locale
+      // immediately via next-auth/react's `useSession().update({ locale })`
+      // — without this, a locale change made through /api/profile/locale
+      // (which only updates the DB row) stays invisible to every
+      // requireUser()-based route until the user's JWT happens to expire
+      // and they sign in again. Found live: a user who switched their UI to
+      // Gujarati kept getting new chats created with locale "en" (and an
+      // English disclosure appended to an otherwise-Gujarati AI reply)
+      // because their session's `locale` claim was still whatever it was
+      // at last sign-in. See src/lib/i18n/provider.tsx's setLocale.
+      if (trigger === "update" && session?.locale) {
+        token.locale = session.locale as AppLocale;
       }
       return token;
     },

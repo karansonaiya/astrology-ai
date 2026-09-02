@@ -13,10 +13,15 @@ import { authConfig } from "@/auth.config";
 // (never signs in), so it never needs Prisma at all.
 const { auth } = NextAuth(authConfig);
 
-// Runs on the Node.js runtime (not Edge) — kept even though this lite auth()
-// no longer touches Prisma, since bcrypt-based flows elsewhere in the app
-// still assume Node.js APIs are available wherever they might get bundled.
-export const runtime = "nodejs";
+// This file was `src/middleware.ts` — Next.js 16 renamed the convention to
+// `proxy.ts` (same feature, "middleware" is deprecated but still works with
+// a warning). Migrated live 2026-09-02 after every API route started
+// 404ing: Proxy files can't export a `runtime` config at all (the old
+// `export const runtime = "nodejs"` here — Proxy defaults to Node.js now
+// and setting `runtime` explicitly is rejected), which broke routing
+// entirely under the deprecated `middleware.ts` name in this Next.js
+// version. Dropping that export (no longer needed — Node.js is the
+// default) and renaming the file fixed it.
 
 const PROTECTED_PREFIXES = [
   "/dashboard",

@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { CityAutocomplete } from "@/components/ui/city-autocomplete";
+import { AiMarkdown } from "@/components/ui/ai-markdown";
+import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
 
 type PersonForm = {
   birthDate: string;
@@ -32,6 +34,7 @@ export default function CompatibilityPage() {
   const [personA, setPersonA] = useState<PersonForm>({ birthDate: "", birthTimeKnown: true, birthTime: "", birthCity: "" });
   const [personB, setPersonB] = useState<PersonForm>({ birthDate: "", birthTimeKnown: true, birthTime: "", birthCity: "" });
   const [saveConsent, setSaveConsent] = useState(false);
+  const [outOfCreditsOpen, setOutOfCreditsOpen] = useState(false);
 
   const { data } = useQuery({ queryKey: ["compatibility"], queryFn: () => apiFetch<{ requests: CompatRequest[] }>("/api/compatibility") });
 
@@ -46,10 +49,8 @@ export default function CompatibilityPage() {
       qc.invalidateQueries({ queryKey: ["credits-summary"] });
     },
     onError: (err) => {
-      toast({
-        title: err instanceof ApiError && err.status === 402 ? t("chat.outOfCredits") : t("errors.generic"),
-        variant: "danger",
-      });
+      if (err instanceof ApiError && err.status === 402) setOutOfCreditsOpen(true);
+      else toast({ title: t("errors.generic"), variant: "danger" });
     },
   });
 
@@ -94,11 +95,13 @@ export default function CompatibilityPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="whitespace-pre-wrap text-sm text-foreground/90">{r.result?.text}</p>
+              {r.result?.text && <AiMarkdown content={r.result.text} className="text-foreground/90" />}
             </CardContent>
           </Card>
         ))}
       </div>
+
+      <OutOfCreditsDialog open={outOfCreditsOpen} onOpenChange={setOutOfCreditsOpen} />
     </div>
   );
 }

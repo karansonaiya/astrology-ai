@@ -11,18 +11,22 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
+import { AiMarkdown } from "@/components/ui/ai-markdown";
+import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
 
 export default function CareerPage() {
   const t = useT();
   const { toast } = useToast();
   const [form, setForm] = useState({ currentWork: "", skills: "", goals: "", timeHorizon: "6_months", mainConcern: "" });
   const [result, setResult] = useState<string | null>(null);
+  const [outOfCreditsOpen, setOutOfCreditsOpen] = useState(false);
 
   const generate = useMutation({
     mutationFn: () => apiFetch<{ text: string }>("/api/career", { method: "POST", body: JSON.stringify(form) }),
     onSuccess: (res) => setResult(res.text),
     onError: (err) => {
-      toast({ title: err instanceof ApiError && err.status === 402 ? t("chat.outOfCredits") : t("errors.generic"), variant: "danger" });
+      if (err instanceof ApiError && err.status === 402) setOutOfCreditsOpen(true);
+      else toast({ title: t("errors.generic"), variant: "danger" });
     },
   });
 
@@ -70,10 +74,12 @@ export default function CareerPage() {
             <AiDisclosureBadge label={t("common.aiGuidanceBadge")} />
           </CardHeader>
           <CardContent>
-            <p className="whitespace-pre-wrap text-sm text-foreground/90">{result}</p>
+            <AiMarkdown content={result} className="text-foreground/90" />
           </CardContent>
         </Card>
       )}
+
+      <OutOfCreditsDialog open={outOfCreditsOpen} onOpenChange={setOutOfCreditsOpen} />
     </div>
   );
 }

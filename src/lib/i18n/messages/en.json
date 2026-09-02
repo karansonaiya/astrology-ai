@@ -74,7 +74,8 @@
     "referral": "Referral & Rewards",
     "settings": "Settings",
     "help": "Help & Safety",
-    "admin": "Admin"
+    "admin": "Admin",
+    "more": "More"
   },
   "landing": {
     "heroHeading": "Private AI-powered astrology insights, in your language.",
@@ -221,7 +222,11 @@
     "reportSent": "Thanks — this has been sent for review.",
     "aiTypingNotice": "Prerna AI is reflecting…",
     "outOfCredits": "You're out of questions. Add credits to keep chatting.",
+    "outOfCreditsTitle": "You're out of credits",
+    "outOfCreditsDesc": "Add credits or upgrade to a plan to keep getting AI-powered insights.",
+    "viewPlans": "View plans & credits",
     "buyCredits": "Buy credits",
+    "suggestedFollowUp": "You might also ask",
     "emptyStateTitle": "Ask about career, relationships, business, or daily life",
     "emptyStateDesc": "Answers are AI-generated, reflective guidance in your language — not certain predictions.",
     "suggestion1": "Which direction should I focus on for my career?",
@@ -358,7 +363,21 @@
     "generatedOn": "Generated on {date}",
     "dataUsed": "Birth data used",
     "disclosure": "This report is AI-generated guidance based on the information you provided.",
+    "noBirthProfileWarning": "You haven't added your birth details yet — reports will be general, not based on your real chart.",
+    "addBirthProfileLink": "Add your birth profile",
+    "dataIncluded": "Included",
+    "dataNotIncluded": "Not included",
     "downloadPdf": "Download PDF"
+  },
+  "personas": {
+    "pageTitle": "Choose who to chat with",
+    "pageSubtitle": "Different guides, same real chart — pick whichever feels right.",
+    "startChat": "Start chat",
+    "filterAll": "All",
+    "filterGeneral": "General",
+    "filterLove": "Love",
+    "filterCareer": "Career",
+    "filterMarriage": "Marriage"
   },
   "pricing": {
     "title": "Pricing",

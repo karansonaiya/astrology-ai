@@ -48,9 +48,20 @@ export function CityAutocomplete({
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const requestSeq = useRef(0);
+  // Set right before the onChange() call in select() below. `value` is a
+  // prop the parent owns, so picking a suggestion changes it the same way
+  // typing does — without this flag, that change re-triggers this exact
+  // effect, which re-searches for the now-selected label text and reopens
+  // the dropdown ~350ms after select() had just closed it (found live: the
+  // dropdown stayed open/reappeared right after clicking a result).
+  const justSelectedRef = useRef(false);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false;
+      return;
+    }
     // The too-short-to-search case is also handled inside the (deferred)
     // timeout callback below, not synchronously here, so this effect never
     // calls setState directly in its body — only from callbacks.
@@ -87,9 +98,11 @@ export function CityAutocomplete({
   }, []);
 
   const select = (place: PlaceSuggestion) => {
+    justSelectedRef.current = true;
     onChange(place.label);
     onSelect(place);
     setOpen(false);
+    setResults([]); // so a later refocus (results.length > 0 check) can't reopen stale results either
   };
 
   return (

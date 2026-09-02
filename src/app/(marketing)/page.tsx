@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { CaptchaWidget } from "@/components/ui/captcha-widget";
+import { AiMarkdown } from "@/components/ui/ai-markdown";
 
 const TRUST_ICONS = [ShieldCheck, Languages, ReceiptText, Sparkles];
 
@@ -40,7 +41,7 @@ function PublicAskWidget() {
   if (answer) {
     return (
       <>
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{answer}</p>
+        <AiMarkdown content={answer} className="text-foreground/90" />
         <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3">
           <p className="text-xs text-muted">{t("landing.publicAskCta")}</p>
           <Button asChild size="sm" className="mt-2">

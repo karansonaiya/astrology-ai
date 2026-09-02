@@ -8,6 +8,7 @@ import { generateAstrologyReply } from "@/lib/ai";
 import { getOrComputeKundliCalculation, summarizeKundliForAi } from "@/lib/astrology/adapter";
 import { redactForLogs } from "@/lib/utils";
 import type { AppLocale } from "@/lib/i18n/config";
+import { getPersona } from "@/lib/personas/catalog";
 
 const RATE_MAX = Number(process.env.AI_RATE_LIMIT_MAX_REQUESTS ?? 8);
 const RATE_WINDOW = Number(process.env.AI_RATE_LIMIT_WINDOW_SECONDS ?? 60);
@@ -95,6 +96,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
       userImage: parsed.data.image,
       birthContext,
       feature: "chat",
+      includeFollowUp: true,
+      // Tone/identity flavor only (see src/lib/personas/catalog.ts's header
+      // comment) — real-chart grounding above is completely unaffected by
+      // which persona (if any) this chat uses.
+      personaFlavor: getPersona(chat.personaCode)?.systemFlavor,
     });
 
     const assistantMsg = await prisma.message.create({
@@ -131,7 +137,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
     // redacted preview would ever be, and only at debug level if needed.
     void redactForLogs(parsed.data.content);
 
-    return NextResponse.json({ userMessage: userMsg, assistantMessage: assistantMsg });
+    return NextResponse.json({ userMessage: userMsg, assistantMessage: assistantMsg, followUpQuestion: result.followUpQuestion });
   } catch (err) {
     return errorResponse(err);
   }

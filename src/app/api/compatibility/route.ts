@@ -90,7 +90,12 @@ export async function POST(req: NextRequest) {
     const chartA = await computePersonChartSummary(personA, "Person A's chart");
     const chartB = await computePersonChartSummary(personB, "Person B's chart");
 
-    const prompt = `Generate a general relationship compatibility reflection for two people.
+    // Same fix as entitlement.ts's report generation / career/route.ts: this
+    // whole prompt is written by us in English — spelling the target
+    // language out explicitly, not just relying on the system prompt,
+    // reliably keeps the reply in the account's actual locale.
+    const langName: Record<AppLocale, string> = { en: "English", hi: "Hindi", gu: "Gujarati" };
+    const prompt = `Generate a general relationship compatibility reflection for two people, written entirely in ${langName[locale]}.
 Person A — birth date: ${personA.birthDate}, time: ${personA.birthTimeKnown ? personA.birthTime ?? "unknown" : "unknown"}, place: ${personA.birthCity ?? "unknown"}.${chartA ? `\n${chartA}` : ""}
 Person B — birth date: ${personB.birthDate}, time: ${personB.birthTimeKnown ? personB.birthTime ?? "unknown" : "unknown"}, place: ${personB.birthCity ?? "unknown"}.${chartB ? `\n${chartB}` : ""}
 Structure the answer with three short sections: Communication strengths, Potential friction points, and Reflection questions (2-3 open questions). Keep it supportive and non-deterministic. Do not advise ending the relationship.`;

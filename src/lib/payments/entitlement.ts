@@ -86,16 +86,43 @@ async function generateReportContent(userId: string, templateId: string, birthPr
   }
   const birthContext = [dateContext, kundliSummary].filter(Boolean).join(" ") || undefined;
 
+  // Found live: this whole prompt (system + user message) is written by us
+  // in English, unlike chat where the user's own message naturally signals
+  // the target language — the model picked up on that and replied in
+  // English even for a Gujarati-locale account, despite policy.ts's system
+  // prompt already saying "write in Gujarati". Spelling the language out
+  // explicitly in the user-facing instruction itself (not just the system
+  // prompt) reliably fixes this — same fix needed anywhere else a feature
+  // constructs its own English prompt instead of relaying real user text.
+  const langName: Record<AppLocale, string> = { en: "English", hi: "Hindi", gu: "Gujarati" };
+
+  // Found live: this is a PAID product (₹79-249) but the old prompt
+  // literally said "keep it structured with short sections" and asked for
+  // only 3-5 bullet points — so it read as thin/not worth paying for, even
+  // though nothing was being truncated (3000 tokens was plenty of room for
+  // what was actually being asked for). The fix is asking for real depth,
+  // not just raising the token ceiling — done below, with maxTokens raised
+  // too so the now-longer request has enough room to actually finish.
   const reply = await generateAstrologyReply({
     userId,
     locale,
     history: [],
-    userMessage: `Generate a ${template?.name ?? "birth insight"} report. Cover: overview, key themes, and 3-5 reflective, actionable suggestions. Keep it structured with short sections.`,
+    userMessage: `Generate a comprehensive, in-depth ${template?.name ?? "birth insight"} report, written entirely in ${langName[locale]}. This is a paid report — it must read as substantial and genuinely valuable, not a short summary.
+
+Structure it as:
+1. An opening overview (4-6 sentences) grounded in the specific real chart placements given below.
+2. 4-6 distinct themed sections relevant to "${template?.name ?? "this report"}" — each 3-5 sentences of real, chart-specific reasoning (name the actual planet/house/sign it's based on, the way a real astrologer would say "because Mars sits in your 10th house..." — not generic advice that could apply to anyone).
+3. 5-7 concrete, actionable suggestions — specific practical steps, not vague platitudes.
+4. A closing reflection (3-4 sentences) tying the reading together.
+
+Ground every section in the real chart data provided below whenever it's available.`,
     birthContext,
     feature: "report",
-    // A paid, multi-section report needs real room — the default chat
-    // budget (700) was silently truncating this to a single sentence.
-    maxTokens: 3000,
+    // Raised alongside the deeper prompt above — this now asks for
+    // genuinely more content, so it needs more room to finish without
+    // truncating (see index.ts's MAX_OUTPUT_TOKENS comment on why Gemini's
+    // thinking tokens make a generous budget necessary regardless).
+    maxTokens: 6000,
   });
 
   return {
