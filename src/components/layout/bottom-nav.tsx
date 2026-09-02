@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import * as RadixDialog from "@radix-ui/react-dialog";
 import {
   Home, MessageCircle, Sparkles, FileText, Menu, X,
-  User, Sun, GitCompareArrows, Briefcase, Heart, Wallet, CreditCard, Gift, Settings, LifeBuoy,
+  Users, User, Sun, GitCompareArrows, Briefcase, Heart, Wallet, CreditCard, Gift, Settings, LifeBuoy,
 } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 // tab is now "More", opening a bottom sheet with the full remaining list —
 // same items AppSidebar shows on desktop — instead of being a dead end.
 const MORE_ITEMS = [
+  { href: "/chat/personas", icon: Users, labelKey: "nav.personas" },
   { href: "/profile", icon: User, labelKey: "nav.profile" },
   { href: "/horoscope", icon: Sun, labelKey: "nav.dailyHoroscope" },
   { href: "/compatibility", icon: GitCompareArrows, labelKey: "nav.compatibility" },
@@ -44,13 +45,19 @@ export function BottomNav() {
     { href: "/reports", icon: FileText, label: t("nav.reports") },
   ];
 
-  const moreActive = MORE_ITEMS.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+  // Longest-matching-prefix wins so "/chat/personas" (now in MORE_ITEMS)
+  // doesn't also light up the primary "Ask Prerna AI" tab it's nested under.
+  const allHrefs = [...items.map((i) => i.href), ...MORE_ITEMS.map((i) => i.href)];
+  const activeHref = allHrefs
+    .filter((href) => pathname === href || pathname.startsWith(`${href}/`))
+    .sort((a, b) => b.length - a.length)[0];
+  const moreActive = MORE_ITEMS.some((item) => item.href === activeHref);
 
   return (
     <>
       <nav className="glass fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-border px-2 py-2 md:hidden">
         {items.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const active = item.href === activeHref;
           return (
             <Link
               key={item.href}

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Home, MessageCircle, User, Sun, Sparkles, GitCompareArrows, Briefcase, Heart,
+  Home, MessageCircle, Users, User, Sun, Sparkles, GitCompareArrows, Briefcase, Heart,
   FileText, Wallet, CreditCard, Gift, Settings, LifeBuoy,
 } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
@@ -19,6 +19,11 @@ export function AppSidebar() {
       items: [
         { href: "/dashboard", icon: Home, label: t("nav.dashboard") },
         { href: "/chat", icon: MessageCircle, label: t("nav.chat") },
+        // Direct link to the persona-picker (src/app/(app)/chat/personas) —
+        // previously only reachable via a "+ New chat" button buried inside
+        // the chat page itself, which a founder testing the app couldn't
+        // find.
+        { href: "/chat/personas", icon: Users, label: t("nav.personas") },
       ],
     },
     {
@@ -49,6 +54,14 @@ export function AppSidebar() {
     },
   ];
 
+  // Longest-matching-prefix wins, so "/chat/personas" is active on its own
+  // route rather than also lighting up its parent "/chat" link (both would
+  // otherwise match via the startsWith check below).
+  const allHrefs = groups.flatMap((g) => g.items.map((i) => i.href));
+  const activeHref = allHrefs
+    .filter((href) => pathname === href || pathname.startsWith(`${href}/`))
+    .sort((a, b) => b.length - a.length)[0];
+
   return (
     <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border p-5 md:flex">
       <Logo className="mb-6" />
@@ -58,7 +71,7 @@ export function AppSidebar() {
             {group.title && <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wide text-muted">{group.title}</p>}
             <div className="flex flex-col gap-0.5">
               {group.items.map((item) => {
-                const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const active = item.href === activeHref;
                 return (
                   <Link
                     key={item.href}
