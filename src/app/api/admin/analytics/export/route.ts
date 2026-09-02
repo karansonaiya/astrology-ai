@@ -26,7 +26,7 @@ export async function GET() {
     return new NextResponse(csv, {
       headers: {
         "Content-Type": "text/csv",
-        "Content-Disposition": "attachment; filename=jyoti-ai-orders-export.csv",
+        "Content-Disposition": "attachment; filename=prerna-ai-orders-export.csv",
       },
     });
   } catch (err) {

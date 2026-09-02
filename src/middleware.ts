@@ -1,9 +1,21 @@
+import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { authConfig } from "@/auth.config";
 
-// Runs on the Node.js runtime (not Edge) so the auth() JWT callback can
-// safely touch Prisma when needed, and so bcrypt-based flows never hit an
-// Edge-incompatible API.
+// Deliberately built from auth.config.ts, NOT `import { auth } from "@/auth"`
+// — the full auth.ts pulls in PrismaAdapter/prisma, and Next.js bundles that
+// entire chain (including Prisma's native query-engine binary) into
+// whatever imports it. Harmless on Vercel, but broke the Netlify build
+// outright ("Usage of unsupported C++ Addon(s) found in Node.js Middleware
+// ... .prisma/client/libquery_engine-*.so.node" — Netlify's middleware
+// bundler can't ship native binaries). See auth.config.ts's comment for the
+// full story. This lite `auth()` only ever reads an existing JWT session
+// (never signs in), so it never needs Prisma at all.
+const { auth } = NextAuth(authConfig);
+
+// Runs on the Node.js runtime (not Edge) — kept even though this lite auth()
+// no longer touches Prisma, since bcrypt-based flows elsewhere in the app
+// still assume Node.js APIs are available wherever they might get bundled.
 export const runtime = "nodejs";
 
 const PROTECTED_PREFIXES = [

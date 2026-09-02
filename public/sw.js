@@ -1,5 +1,5 @@
 /**
- * Jyoti AI service worker.
+ * Prerna AI service worker.
  *
  * Caching policy (deliberately conservative):
  *  - Static, non-sensitive assets (icons, manifest, the offline page, Next's
@@ -13,7 +13,7 @@
  *    shared browser cache.
  */
 
-const CACHE_NAME = "jyoti-static-v1";
+const CACHE_NAME = "prerna-static-v1";
 const OFFLINE_URL = "/offline.html";
 
 const PRECACHE_URLS = [

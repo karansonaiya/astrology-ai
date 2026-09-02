@@ -4,6 +4,7 @@ import { requireUser, errorResponse } from "@/lib/auth/guard";
 import { careerInsightSchema } from "@/lib/validations/insights";
 import { consumeQuestionCredit, OutOfCreditsError } from "@/lib/credits";
 import { generateAstrologyReply } from "@/lib/ai";
+import { getOrComputeKundliCalculation, summarizeKundliForAi } from "@/lib/astrology/adapter";
 import type { AppLocale } from "@/lib/i18n/config";
 
 export async function POST(req: NextRequest) {
@@ -27,11 +28,31 @@ export async function POST(req: NextRequest) {
     const prompt = `The user wants career/business reflection. Current work/study: ${d.currentWork}. Key skills: ${d.skills}. Goals: ${d.goals}. Time horizon: ${d.timeHorizon}. Main concern: ${d.mainConcern}.
 Combine general reflective, astrology-style interpretation with concrete, non-financial planning suggestions (e.g. skills to build, conversations to have, small experiments to try). Do not suggest quitting a job, taking a loan, investing, or gambling.`;
 
+    // Ground the insight in the user's REAL calculated chart when one's
+    // available — same fix/reasoning as the chat route: this feature is
+    // billed as astrology-based, so it should actually use the astrology
+    // data this app calculates, not just generic AI advice on the form
+    // answers. Best-effort: falls back to no chart context on any failure.
+    const birthProfile = await prisma.birthProfile.findFirst({
+      where: { userId: user.id, forSelf: true, deletedAt: null },
+      orderBy: { createdAt: "asc" },
+    });
+    let birthContext: string | undefined;
+    if (birthProfile) {
+      try {
+        const calc = await getOrComputeKundliCalculation(birthProfile);
+        birthContext = summarizeKundliForAi(calc);
+      } catch {
+        // fall through — insight still works without chart grounding
+      }
+    }
+
     const reply = await generateAstrologyReply({
       userId: user.id,
       locale,
       history: [],
       userMessage: prompt,
+      birthContext,
       feature: "career",
     });
 

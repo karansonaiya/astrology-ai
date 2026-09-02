@@ -1,4 +1,4 @@
-# Jyoti AI
+# Prerna AI
 
 **Private AI-powered astrology insights in your language.**
 
@@ -6,7 +6,7 @@ A mobile-first, installable PWA delivering AI-generated, astrology-style guidanc
 English** — for career, relationships, marriage, business, and daily reflection. Built as a complete, runnable
 full-stack MVP: real auth, database, payments, admin panel, safety policy layer, and PWA files.
 
-> Jyoti AI never claims certain predictions. Every substantial AI answer is labelled as AI-generated guidance and
+> Prerna AI never claims certain predictions. Every substantial AI answer is labelled as AI-generated guidance and
 > ends with a disclosure sentence in the user's language. See `src/lib/ai/policy.ts` for the full safety policy.
 
 ---
@@ -55,12 +55,11 @@ npm run dev
 
 Open http://localhost:3000.
 
-**Demo accounts created by the seed script** (email + password login):
-- Admin: `admin@jyoti.ai` / `Admin@12345`
-- User: `demo@jyoti.ai` / `Demo@12345`
-
-For phone/email OTP login in dev (`OTP_PROVIDER=mock`, the default), the 6-digit code is shown directly in the UI
-instead of being sent — no SMS/email provider needed to test the full signup flow.
+**Demo accounts created by the seed script** — sign in via the email tab on `/login` with the address below; in
+dev (`OTP_PROVIDER=mock`, the default) the 6-digit code is shown directly in the UI instead of being sent, so no
+SMS/email provider is needed to test the full flow (the app is OTP/Google-only — there's no password login):
+- Admin: `admin@prernaai.com`
+- User: `demo@prernaai.com`
 
 ### Getting a local Postgres instance
 
@@ -70,7 +69,7 @@ Any of these work — just put the connection string in `DATABASE_URL`:
   serverless deployments, direct URI for local migrations).
 - **Neon / Railway / Render Postgres**: any managed Postgres works — Prisma only needs a standard `postgresql://` URL.
 - **Local Postgres via a native installer** (no Docker required): install PostgreSQL, then
-  `DATABASE_URL="postgresql://postgres:postgres@localhost:5432/jyoti_ai?schema=public"`.
+  `DATABASE_URL="postgresql://postgres:postgres@localhost:5432/prerna_ai?schema=public"`.
 
 ---
 

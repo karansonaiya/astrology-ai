@@ -60,7 +60,7 @@ export function MarketingFooter() {
           ))}
         </div>
         <div className="mt-10 border-t border-border pt-6 text-xs text-muted">
-          © {new Date().getFullYear()} Jyoti AI. {t("landing.footerRights")}
+          © {new Date().getFullYear()} Prerna AI. {t("landing.footerRights")}
         </div>
       </div>
     </footer>

@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     if (channel === "phone") {
       await getSmsProvider().sendOtp(destination, code);
     } else {
-      await getEmailProvider().send(destination, "Your Jyoti AI verification code", `Your code is ${code}.`);
+      await getEmailProvider().send(destination, "Your Prerna AI verification code", `Your code is ${code}.`);
     }
 
     const isDev = process.env.NODE_ENV !== "production";

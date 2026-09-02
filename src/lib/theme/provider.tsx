@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 type Theme = "dark" | "light";
-const THEME_COOKIE = "jyoti_theme";
+const THEME_COOKIE = "prerna_theme";
 
 const ThemeContext = createContext<{ theme: Theme; toggleTheme: () => void; setTheme: (t: Theme) => void } | null>(
   null

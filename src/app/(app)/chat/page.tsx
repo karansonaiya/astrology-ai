@@ -33,7 +33,7 @@ const MAX_IMAGE_BYTES = Math.floor((MAX_IMAGE_BASE64_LENGTH * 3) / 4);
 
 function TypingDots() {
   return (
-    <span className="inline-flex items-center gap-1 py-1" aria-label="Jyoti AI is typing">
+    <span className="inline-flex items-center gap-1 py-1" aria-label="Prerna AI is typing">
       <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted [animation-delay:-0.3s]" />
       <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted [animation-delay:-0.15s]" />
       <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted" />

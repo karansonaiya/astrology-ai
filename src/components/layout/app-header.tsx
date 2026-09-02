@@ -30,7 +30,7 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/80 px-4 py-3 backdrop-blur-md md:px-6">
       <div className="flex items-center gap-2 text-sm text-muted md:hidden">
-        <span className="font-heading font-semibold text-foreground">Jyoti AI</span>
+        <span className="font-heading font-semibold text-foreground">Prerna AI</span>
       </div>
 
       <div className="ml-auto flex items-center gap-2">

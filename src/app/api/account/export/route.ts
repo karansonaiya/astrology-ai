@@ -35,7 +35,7 @@ export async function POST() {
     };
 
     return NextResponse.json(exportData, {
-      headers: { "Content-Disposition": "attachment; filename=jyoti-ai-data-export.json" },
+      headers: { "Content-Disposition": "attachment; filename=prerna-ai-data-export.json" },
     });
   } catch (err) {
     return errorResponse(err);

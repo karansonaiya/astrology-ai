@@ -151,7 +151,7 @@ class GeminiProvider implements AiProvider {
                 ]
               : [{ text: m.content }],
           })),
-          // thinkingBudget: 0 disables Gemini's internal "thinking" tokens —
+          // thinkingBudget disables Gemini's internal "thinking" tokens —
           // found live (see horoscope-content.ts/kundli-explanation.ts/
           // reports' comments): those tokens silently count against
           // maxOutputTokens, so replies were getting cut off mid-sentence
@@ -160,10 +160,17 @@ class GeminiProvider implements AiProvider {
           // invisible thinking, none left for the visible answer). Every
           // previous fix for this just raised the budget number, which
           // costs more per request and doesn't actually guarantee no
-          // truncation. Disabling thinking outright is the real fix — flash-
-          // tier Gemini models support 0 (Pro-tier models require thinking
-          // and reject 0, but this app only ever configures flash models).
-          generationConfig: { maxOutputTokens: req.maxTokens, thinkingConfig: { thinkingBudget: 0 } },
+          // truncation. Disabling thinking outright is the real fix — BUT
+          // as of the currently configured GEMINI_MODEL=gemini-3.6-flash,
+          // thinkingBudget: 0 is rejected outright with a 400 INVALID_ARGUMENT
+          // ("Request contains an invalid argument") — reproduced live
+          // 2026-09-02, every single chat/career/relationship/report call was
+          // failing with a 500 because of this. This model requires a
+          // non-zero thinking budget (unlike the flash models this comment
+          // originally verified against); 1 is the smallest value confirmed
+          // live to be accepted and to reliably return a normal, non-
+          // truncated completion. Re-verify this if GEMINI_MODEL changes.
+          generationConfig: { maxOutputTokens: req.maxTokens, thinkingConfig: { thinkingBudget: 1 } },
         }),
       }
     );

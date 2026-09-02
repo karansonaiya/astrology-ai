@@ -17,8 +17,8 @@ import { CaptchaWidget } from "@/components/ui/captcha-widget";
 const TRUST_ICONS = [ShieldCheck, Languages, ReceiptText, Sparkles];
 
 /**
- * The one no-login-required way for a site visitor to actually try Jyoti AI
- * before signing up — everything else ("Ask Jyoti AI" chat, kundli, etc.) is
+ * The one no-login-required way for a site visitor to actually try Prerna AI
+ * before signing up — everything else ("Ask Prerna AI" chat, kundli, etc.) is
  * behind auth (see middleware.ts PROTECTED_PREFIXES). Rate-limited by IP at
  * /api/public/ask (3/day, no credit-system ties — there's no account yet).
  */
@@ -114,9 +114,9 @@ export default function LandingPage() {
     {
       q: { en: "Is this real astrology or AI-generated?", hi: "क्या यह असली ज्योतिष है या AI-जनित?", gu: "શું આ ખરું જ્યોતિષ છે કે AI-જનિત?" },
       a: {
-        en: "Jyoti AI provides AI-generated, astrology-style guidance for reflection. It is not a certain prediction, and it clearly labels every answer as AI-generated.",
-        hi: "Jyoti AI चिंतन के लिए AI-जनित, ज्योतिष-शैली मार्गदर्शन देता है। यह निश्चित भविष्यवाणी नहीं है, और हर जवाब को स्पष्ट रूप से AI-जनित के रूप में चिह्नित करता है।",
-        gu: "Jyoti AI ચિંતન માટે AI-જનિત, જ્યોતિષ-શૈલી માર્ગદર્શન આપે છે. આ ખાતરીપૂર્વકની આગાહી નથી, અને દરેક જવાબને સ્પષ્ટપણે AI-જનિત તરીકે દર્શાવે છે.",
+        en: "Prerna AI provides AI-generated, astrology-style guidance for reflection. It is not a certain prediction, and it clearly labels every answer as AI-generated.",
+        hi: "Prerna AI चिंतन के लिए AI-जनित, ज्योतिष-शैली मार्गदर्शन देता है। यह निश्चित भविष्यवाणी नहीं है, और हर जवाब को स्पष्ट रूप से AI-जनित के रूप में चिह्नित करता है।",
+        gu: "Prerna AI ચિંતન માટે AI-જનિત, જ્યોતિષ-શૈલી માર્ગદર્શન આપે છે. આ ખાતરીપૂર્વકની આગાહી નથી, અને દરેક જવાબને સ્પષ્ટપણે AI-જનિત તરીકે દર્શાવે છે.",
       },
     },
     {

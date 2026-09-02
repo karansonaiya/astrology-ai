@@ -6,7 +6,7 @@ import { generateAstrologyReply } from "@/lib/ai";
 import { verifyCaptcha } from "@/lib/captcha";
 
 // No login required — a free, unauthenticated "try it once" question for
-// marketing-site visitors, so someone can see what Jyoti AI does before
+// marketing-site visitors, so someone can see what Prerna AI does before
 // signing up. Deliberately NOT wired to the credit system (no account to
 // charge); rate-limited by IP instead, matching the logged-in free quota
 // (FREE_QUESTIONS_CAP = 3, see src/lib/pricing/catalog.ts) so the "give

@@ -30,7 +30,7 @@ class TwilioSmsProvider implements SmsProvider {
       body: new URLSearchParams({
         To: phone,
         From: from,
-        Body: `Your Jyoti AI verification code is ${code}. It expires in a few minutes.`,
+        Body: `Your Prerna AI verification code is ${code}. It expires in a few minutes.`,
       }),
     });
 

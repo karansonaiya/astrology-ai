@@ -46,7 +46,7 @@ export default function LoginPage() {
   // /api/onboarding can link it once the account is actually created.
   useEffect(() => {
     const ref = searchParams.get("ref");
-    if (ref) document.cookie = `jyoti_ref=${ref}; path=/; max-age=86400; SameSite=Lax`;
+    if (ref) document.cookie = `prerna_ref=${ref}; path=/; max-age=86400; SameSite=Lax`;
   }, [searchParams]);
 
   return (

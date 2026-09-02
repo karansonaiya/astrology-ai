@@ -1,6 +1,6 @@
 # Security & sensitive-data handling
 
-This document summarizes how Jyoti AI treats sensitive data in code, matching what's implemented (not aspirational).
+This document summarizes how Prerna AI treats sensitive data in code, matching what's implemented (not aspirational).
 
 ## What's sensitive
 

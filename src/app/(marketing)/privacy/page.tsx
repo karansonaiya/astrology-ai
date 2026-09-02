@@ -4,7 +4,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy">
       <p>
-        This policy explains what data Jyoti AI (&ldquo;we&rdquo;) collects, why, and the controls you have over it. Jyoti AI
+        This policy explains what data Prerna AI (&ldquo;we&rdquo;) collects, why, and the controls you have over it. Prerna AI
         is designed around data minimization and privacy-by-default.
       </p>
 
@@ -15,7 +15,7 @@ export default function PrivacyPage() {
           Birth details (date, time, place): <strong>entirely optional</strong>, stored only if you explicitly
           consent, and used only to personalize insights.
         </li>
-        <li>Chat messages and questions you send to Jyoti AI, and the AI-generated responses.</li>
+        <li>Chat messages and questions you send to Prerna AI, and the AI-generated responses.</li>
         <li>Payment and order records (never full card details — these are handled by our payment processor).</li>
         <li>Basic usage data (feature usage, language preference, device type) to operate and improve the product.</li>
       </ul>
@@ -38,7 +38,7 @@ export default function PrivacyPage() {
 
       <h2>Data sharing</h2>
       <p>
-        We share data only with service providers necessary to run Jyoti AI: our database/hosting provider, our
+        We share data only with service providers necessary to run Prerna AI: our database/hosting provider, our
         configured AI provider (Anthropic or OpenAI, depending on deployment), and our payment processor
         (Razorpay). We do not sell personal data to advertisers or data brokers.
       </p>

@@ -5,6 +5,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { verifyOtp } from "@/lib/auth/otp";
 import type { AppLocale } from "@/lib/i18n/config";
+import { authConfig } from "@/auth.config";
 
 // Carries a specific reason (result.reason from verifyOtp, or
 // "invalid_request" / "account_suspended" / "account_deleted") through to
@@ -84,12 +85,9 @@ async function maybePromoteAdmin(userId: string, email: string | null) {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
-  trustHost: true,
-  pages: {
-    signIn: "/login",
-  },
   providers,
   events: {
     // Fires once when the Prisma adapter creates a brand-new user — this is
@@ -100,6 +98,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   callbacks: {
+    ...authConfig.callbacks, // keep the Prisma-free session() callback as-is
     async jwt({ token, user }) {
       if (user?.id) {
         const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
@@ -111,14 +110,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
       }
       return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.uid as string;
-        session.user.role = token.role as string;
-        session.user.locale = token.locale as AppLocale;
-      }
-      return session;
     },
   },
 });

@@ -37,7 +37,7 @@ export default function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "jyoti-ai-data-export.json";
+    a.download = "prerna-ai-data-export.json";
     a.click();
     URL.revokeObjectURL(url);
   };

@@ -57,11 +57,11 @@ async function main() {
   // dev, use the email tab on /login with the address below — the code is
   // shown on-screen (devOtpNotice) since no real OTP provider is configured.
   const admin = await prisma.user.upsert({
-    where: { email: "admin@jyoti.ai" },
+    where: { email: "admin@prernaai.com" },
     update: {},
     create: {
-      email: "admin@jyoti.ai",
-      name: "Jyoti AI Admin",
+      email: "admin@prernaai.com",
+      name: "Prerna AI Admin",
       role: "admin",
       emailVerified: new Date(),
       ageConfirmed: true,
@@ -71,10 +71,10 @@ async function main() {
   await prisma.creditWallet.upsert({ where: { userId: admin.id }, update: {}, create: { userId: admin.id, balance: 100 } });
 
   const demoUser = await prisma.user.upsert({
-    where: { email: "demo@jyoti.ai" },
+    where: { email: "demo@prernaai.com" },
     update: {},
     create: {
-      email: "demo@jyoti.ai",
+      email: "demo@prernaai.com",
       name: "Demo User",
       role: "user",
       locale: "en",
@@ -170,8 +170,8 @@ async function main() {
   }
 
   console.log("Seed complete.");
-  console.log("Demo admin login: /login → email tab → admin@jyoti.ai → code shown on screen (dev mode)");
-  console.log("Demo user login:  /login → email tab → demo@jyoti.ai → code shown on screen (dev mode)");
+  console.log("Demo admin login: /login → email tab → admin@prernaai.com → code shown on screen (dev mode)");
+  console.log("Demo user login:  /login → email tab → demo@prernaai.com → code shown on screen (dev mode)");
 }
 
 main()

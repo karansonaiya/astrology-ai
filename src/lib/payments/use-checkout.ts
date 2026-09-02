@@ -78,7 +78,7 @@ export function useCheckout() {
         key: order.razorpayKeyId,
         amount: order.amountInPaise,
         currency: order.currency,
-        name: "Jyoti AI",
+        name: "Prerna AI",
         description: order.label,
         order_id: order.providerOrderId,
         handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {

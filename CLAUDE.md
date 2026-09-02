@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# Jyoti AI — project rules
+# Prerna AI — project rules
 
 Astrology SaaS: Next.js (latest, breaking changes vs. training data — read
 `node_modules/next/dist/docs/` before writing Next-specific code), Prisma +

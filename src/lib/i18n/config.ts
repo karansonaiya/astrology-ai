@@ -9,7 +9,7 @@ export const localeLabels: Record<AppLocale, string> = {
   gu: "ગુજરાતી",
 };
 
-export const localeCookieName = "jyoti_locale";
+export const localeCookieName = "prerna_locale";
 
 export function isAppLocale(value: string | undefined | null): value is AppLocale {
   return !!value && (locales as readonly string[]).includes(value);

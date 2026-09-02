@@ -1,11 +1,12 @@
 @import "tailwindcss";
 
 /* ==========================================================================
-   Jyoti AI design tokens
+   Prerna AI design tokens
    Default mode: warm "flame" dark theme — a softer, warm charcoal (not
-   near-black) with a vivid saffron/flame-orange primary accent, echoing
-   "Jyoti" (light/flame). Light mode is a first-class alternative, toggled
-   via the `.light` class on <html> (see ThemeProvider).
+   near-black) with a vivid saffron/flame-orange primary accent, echoing the
+   mark's sparkle/spark-of-inspiration motif (see logo.tsx). Light mode is a
+   first-class alternative, toggled via the `.light` class on <html> (see
+   ThemeProvider).
    ========================================================================== */
 
 :root {

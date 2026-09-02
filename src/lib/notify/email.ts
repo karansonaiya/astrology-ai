@@ -22,7 +22,7 @@ class ResendEmailProvider implements EmailProvider {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: process.env.EMAIL_FROM ?? "Jyoti AI <no-reply@jyoti.ai>",
+        from: process.env.EMAIL_FROM ?? "Prerna AI <no-reply@prernaai.com>",
         to,
         subject,
         text,

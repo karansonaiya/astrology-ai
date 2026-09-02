@@ -7,21 +7,21 @@ import { useT } from "@/lib/i18n/provider";
 
 export function InstallButton({ className }: { className?: string }) {
   const t = useT();
-  const [available, setAvailable] = useState(() => typeof window !== "undefined" && !!window.__jyotiInstallPrompt);
+  const [available, setAvailable] = useState(() => typeof window !== "undefined" && !!window.__prernaInstallPrompt);
 
   useEffect(() => {
     const handler = () => setAvailable(true);
-    window.addEventListener("jyoti-install-available", handler);
-    return () => window.removeEventListener("jyoti-install-available", handler);
+    window.addEventListener("prerna-install-available", handler);
+    return () => window.removeEventListener("prerna-install-available", handler);
   }, []);
 
   if (!available) return null;
 
   const onClick = async () => {
-    const promptEvent = window.__jyotiInstallPrompt;
+    const promptEvent = window.__prernaInstallPrompt;
     if (!promptEvent) return;
     await promptEvent.prompt();
-    window.__jyotiInstallPrompt = undefined;
+    window.__prernaInstallPrompt = undefined;
     setAvailable(false);
   };
 

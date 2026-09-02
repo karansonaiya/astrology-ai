@@ -77,11 +77,11 @@ export async function POST(req: NextRequest) {
 
     await getOrCreateWallet(user.id);
 
-    const refCode = req.cookies.get("jyoti_ref")?.value;
+    const refCode = req.cookies.get("prerna_ref")?.value;
     if (refCode) await linkReferral(user.id, refCode);
 
     const res = NextResponse.json({ ok: true });
-    if (refCode) res.cookies.set("jyoti_ref", "", { maxAge: 0, path: "/" });
+    if (refCode) res.cookies.set("prerna_ref", "", { maxAge: 0, path: "/" });
     return res;
   } catch (err) {
     return errorResponse(err);

@@ -23,11 +23,11 @@ const notoDev = Noto_Sans_Devanagari({
 });
 
 export const metadata: Metadata = {
-  title: "Jyoti AI — Private AI-powered astrology insights",
+  title: "Prerna AI — Private AI-powered astrology insights",
   description: "Private, AI-powered astrology-style guidance in Gujarati, Hindi, and English. AI-generated guidance for reflection, not certainty.",
   manifest: "/manifest.webmanifest",
-  applicationName: "Jyoti AI",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Jyoti AI" },
+  applicationName: "Prerna AI",
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Prerna AI" },
   icons: {
     icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
     apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],

@@ -5,7 +5,9 @@
 //
 // Scope, deliberately explicit rather than a pattern match, so a real
 // user account can never be swept up by accident:
-//   - The two prisma/seed.ts demo accounts (admin@jyoti.ai, demo@jyoti.ai)
+//   - The two prisma/seed.ts demo accounts (admin@prernaai.com,
+//     demo@prernaai.com — plus the old @jyoti.ai emails from before the
+//     Jyoti AI → Prerna AI rebrand, in case those rows are still around)
 //   - Any user whose phone matches the +9199999000xx range used throughout
 //     this project's live-testing sessions (see CLAUDE.md's testing
 //     discipline — these were always throwaway numbers, never real ones)
@@ -15,7 +17,7 @@
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
-const SEED_EMAILS = ["admin@jyoti.ai", "demo@jyoti.ai"];
+const SEED_EMAILS = ["admin@prernaai.com", "demo@prernaai.com", "admin@jyoti.ai", "demo@jyoti.ai"];
 const TEST_PHONE_RE = /^\+9199999000\d\d$/;
 
 async function main() {

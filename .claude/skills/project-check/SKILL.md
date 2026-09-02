@@ -1,9 +1,9 @@
 ---
 name: project-check
-description: Verifies a change to the Jyoti AI codebase is production-ready before calling it done — typecheck, lint, i18n completeness, env sync, and a live check on any external integration touched. Use before telling the user a feature/fix is finished, especially after touching AI providers, the astrology provider, payments, Prisma schema, or user-facing text.
+description: Verifies a change to the Prerna AI codebase is production-ready before calling it done — typecheck, lint, i18n completeness, env sync, and a live check on any external integration touched. Use before telling the user a feature/fix is finished, especially after touching AI providers, the astrology provider, payments, Prisma schema, or user-facing text.
 ---
 
-# Project check — Jyoti AI production-readiness pass
+# Project check — Prerna AI production-readiness pass
 
 Run this before declaring any change finished. Report each step's result;
 don't silently skip a failing one.

@@ -31,7 +31,7 @@ export async function geocodeBirthPlace(city: string, country?: string | null): 
   const res = await fetch(url, {
     headers: {
       // Nominatim requires a real identifying User-Agent per its usage policy.
-      "User-Agent": "JyotiAI/1.0 (astrology birth-chart lookup)",
+      "User-Agent": "PrernaAI/1.0 (astrology birth-chart lookup)",
       Accept: "application/json",
     },
   });
@@ -115,7 +115,7 @@ export async function searchPlaces(query: string): Promise<PlaceSuggestion[]> {
   })}`;
 
   const res = await fetch(url, {
-    headers: { "User-Agent": "JyotiAI/1.0 (astrology birth-chart lookup)", Accept: "application/json" },
+    headers: { "User-Agent": "PrernaAI/1.0 (astrology birth-chart lookup)", Accept: "application/json" },
   });
   if (!res.ok) return [];
 

@@ -1,5 +1,5 @@
 // ==========================================================================
-// Jyoti AI — Prisma schema
+// Prerna AI — Prisma schema
 // PostgreSQL. Every sensitive field (birth data, chat content, payment
 // data) is treated as sensitive: see docs/SECURITY.md for handling rules.
 // ==========================================================================

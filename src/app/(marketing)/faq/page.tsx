@@ -7,9 +7,9 @@ const FAQS = [
   {
     q: { en: "Is this real astrology or AI-generated?", hi: "क्या यह असली ज्योतिष है या AI-जनित?", gu: "શું આ ખરું જ્યોતિષ છે કે AI-જનિત?" },
     a: {
-      en: "Jyoti AI provides AI-generated, astrology-style guidance for reflection — not a certain prediction. Every answer is clearly labelled.",
-      hi: "Jyoti AI चिंतन के लिए AI-जनित, ज्योतिष-शैली मार्गदर्शन देता है — निश्चित भविष्यवाणी नहीं। हर जवाब स्पष्ट रूप से चिह्नित है।",
-      gu: "Jyoti AI ચિંતન માટે AI-જનિત, જ્યોતિષ-શૈલી માર્ગદર્શન આપે છે — ખાતરીપૂર્વકની આગાહી નહીં. દરેક જવાબ સ્પષ્ટપણે દર્શાવેલ છે.",
+      en: "Prerna AI provides AI-generated, astrology-style guidance for reflection — not a certain prediction. Every answer is clearly labelled.",
+      hi: "Prerna AI चिंतन के लिए AI-जनित, ज्योतिष-शैली मार्गदर्शन देता है — निश्चित भविष्यवाणी नहीं। हर जवाब स्पष्ट रूप से चिह्नित है।",
+      gu: "Prerna AI ચિંતન માટે AI-જનિત, જ્યોતિષ-શૈલી માર્ગદર્શન આપે છે — ખાતરીપૂર્વકની આગાહી નહીં. દરેક જવાબ સ્પષ્ટપણે દર્શાવેલ છે.",
     },
   },
   {
@@ -29,11 +29,11 @@ const FAQS = [
     },
   },
   {
-    q: { en: "Can Jyoti AI diagnose health, legal, or financial issues?", hi: "क्या Jyoti AI स्वास्थ्य, कानूनी या वित्तीय मुद्दों का निदान कर सकता है?", gu: "શું Jyoti AI આરોગ્ય, કાનૂની કે નાણાકીય મુદ્દાઓનું નિદાન કરી શકે?" },
+    q: { en: "Can Prerna AI diagnose health, legal, or financial issues?", hi: "क्या Prerna AI स्वास्थ्य, कानूनी या वित्तीय मुद्दों का निदान कर सकता है?", gu: "શું Prerna AI આરોગ્ય, કાનૂની કે નાણાકીય મુદ્દાઓનું નિદાન કરી શકે?" },
     a: {
-      en: "No. Jyoti AI is not able to give medical, legal, or financial advice, and will always direct you to a qualified professional for these.",
-      hi: "नहीं। Jyoti AI चिकित्सा, कानूनी या वित्तीय सलाह नहीं दे सकता, और हमेशा आपको इसके लिए किसी योग्य विशेषज्ञ के पास भेजेगा।",
-      gu: "ના. Jyoti AI તબીબી, કાનૂની કે નાણાકીય સલાહ આપી શકતું નથી, અને હંમેશા તમને આ માટે યોગ્ય નિષ્ણાત પાસે મોકલશે.",
+      en: "No. Prerna AI is not able to give medical, legal, or financial advice, and will always direct you to a qualified professional for these.",
+      hi: "नहीं। Prerna AI चिकित्सा, कानूनी या वित्तीय सलाह नहीं दे सकता, और हमेशा आपको इसके लिए किसी योग्य विशेषज्ञ के पास भेजेगा।",
+      gu: "ના. Prerna AI તબીબી, કાનૂની કે નાણાકીય સલાહ આપી શકતું નથી, અને હંમેશા તમને આ માટે યોગ્ય નિષ્ણાત પાસે મોકલશે.",
     },
   },
 ];

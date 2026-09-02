@@ -4,6 +4,7 @@ import { requireUser, errorResponse } from "@/lib/auth/guard";
 import { relationshipInsightSchema } from "@/lib/validations/insights";
 import { consumeQuestionCredit, OutOfCreditsError } from "@/lib/credits";
 import { generateAstrologyReply } from "@/lib/ai";
+import { getOrComputeKundliCalculation, summarizeKundliForAi } from "@/lib/astrology/adapter";
 import type { AppLocale } from "@/lib/i18n/config";
 
 export async function POST(req: NextRequest) {
@@ -23,11 +24,32 @@ export async function POST(req: NextRequest) {
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
     const locale = (dbUser?.locale ?? "en") as AppLocale;
 
+    // Ground the insight in the user's REAL calculated chart when one's
+    // available — same fix/reasoning as the chat route (see its comment):
+    // this feature is billed as astrology-based, so it should actually use
+    // the astrology data this app calculates, not just generic AI advice on
+    // free-text input. Best-effort: falls back to no chart context on any
+    // failure rather than blocking the request.
+    const birthProfile = await prisma.birthProfile.findFirst({
+      where: { userId: user.id, forSelf: true, deletedAt: null },
+      orderBy: { createdAt: "asc" },
+    });
+    let birthContext: string | undefined;
+    if (birthProfile) {
+      try {
+        const calc = await getOrComputeKundliCalculation(birthProfile);
+        birthContext = summarizeKundliForAi(calc);
+      } catch {
+        // fall through — insight still works without chart grounding
+      }
+    }
+
     const reply = await generateAstrologyReply({
       userId: user.id,
       locale,
       history: [],
       userMessage: parsed.data.situation,
+      birthContext,
       feature: "relationship",
     });
 
