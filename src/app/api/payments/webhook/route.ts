@@ -17,50 +17,62 @@ import { fulfillOrder } from "@/lib/payments/entitlement";
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
 
-  const provider = getPaymentProvider();
-  let signatureValid: boolean;
+  // Everything below is wrapped in one try/catch — getPaymentProvider()
+  // itself throws if PAYMENT_PROVIDER=cashfree but CASHFREE_APP_ID/
+  // CASHFREE_SECRET_KEY aren't set, and that call used to sit *outside* any
+  // try/catch here. Found live: that produced an unhandled exception on
+  // Netlify with an opaque, empty-body 500 (no {error: "..."} at all) —
+  // instead of the deliberate webhook_not_configured response below.
   try {
-    signatureValid = provider.verifyWebhookSignature(rawBody, req.headers);
-  } catch (err) {
-    console.error("[webhook] verification error", err);
-    return NextResponse.json({ error: "webhook_not_configured" }, { status: 500 });
-  }
+    const provider = getPaymentProvider();
 
-  if (!signatureValid) {
-    return NextResponse.json({ error: "invalid_signature" }, { status: 400 });
-  }
-
-  const event = provider.parseWebhookEvent(rawBody);
-  const order = event.providerOrderId ? await prisma.order.findUnique({ where: { providerOrderId: event.providerOrderId } }) : null;
-
-  try {
-    await prisma.paymentEvent.create({
-      data: {
-        orderId: order?.id,
-        provider: "cashfree",
-        eventId: event.eventId,
-        eventType: event.eventType,
-        rawPayload: JSON.parse(rawBody),
-        signatureVerified: true,
-        processedAt: new Date(),
-      },
-    });
-  } catch (err: unknown) {
-    // Unique constraint violation => we've already processed this exact
-    // event (Cashfree retried delivery). Acknowledge and stop — idempotency.
-    if ((err as { code?: string })?.code === "P2002") {
-      return NextResponse.json({ ok: true, deduped: true });
+    let signatureValid: boolean;
+    try {
+      signatureValid = provider.verifyWebhookSignature(rawBody, req.headers);
+    } catch (err) {
+      console.error("[webhook] verification error", err);
+      return NextResponse.json({ error: "webhook_not_configured" }, { status: 500 });
     }
-    throw err;
-  }
 
-  if (order && event.status === "paid") {
-    await fulfillOrder(order.id);
-  }
+    if (!signatureValid) {
+      return NextResponse.json({ error: "invalid_signature" }, { status: 400 });
+    }
 
-  if (order && event.status === "failed") {
-    await prisma.order.update({ where: { id: order.id }, data: { status: "failed" } });
-  }
+    const event = provider.parseWebhookEvent(rawBody);
+    const order = event.providerOrderId ? await prisma.order.findUnique({ where: { providerOrderId: event.providerOrderId } }) : null;
 
-  return NextResponse.json({ ok: true });
+    try {
+      await prisma.paymentEvent.create({
+        data: {
+          orderId: order?.id,
+          provider: "cashfree",
+          eventId: event.eventId,
+          eventType: event.eventType,
+          rawPayload: JSON.parse(rawBody),
+          signatureVerified: true,
+          processedAt: new Date(),
+        },
+      });
+    } catch (err: unknown) {
+      // Unique constraint violation => we've already processed this exact
+      // event (Cashfree retried delivery). Acknowledge and stop — idempotency.
+      if ((err as { code?: string })?.code === "P2002") {
+        return NextResponse.json({ ok: true, deduped: true });
+      }
+      throw err;
+    }
+
+    if (order && event.status === "paid") {
+      await fulfillOrder(order.id);
+    }
+
+    if (order && event.status === "failed") {
+      await prisma.order.update({ where: { id: order.id }, data: { status: "failed" } });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[webhook] unhandled error", err);
+    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+  }
 }
