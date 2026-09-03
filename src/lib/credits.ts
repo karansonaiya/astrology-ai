@@ -58,6 +58,24 @@ export async function consumeQuestionCredit(userId: string, relatedEntity?: stri
   });
 }
 
+/**
+ * Undoes exactly one consumeQuestionCredit() call — for when the AI
+ * generation it paid for then fails anyway (e.g. Gemini still down after
+ * retries). Needs to know whether the free quota or paid balance was
+ * charged (see consumeQuestionCredit's return value), since those are two
+ * different counters and "refund" means something different for each —
+ * grantCredits() alone only ever touches the paid balance.
+ */
+export async function refundQuestionCredit(userId: string, usedFree: boolean, relatedEntity?: string) {
+  if (usedFree) {
+    return prisma.creditWallet.update({
+      where: { userId },
+      data: { freeQuestionsUsed: { decrement: 1 } },
+    });
+  }
+  return grantCredits(userId, 1, "refund", "AI question failed after retries — credit refunded", relatedEntity);
+}
+
 export async function grantCredits(
   userId: string,
   amount: number,

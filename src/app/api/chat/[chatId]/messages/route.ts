@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser, errorResponse } from "@/lib/auth/guard";
 import { sendMessageSchema } from "@/lib/validations/chat";
 import { rateLimit } from "@/lib/rate-limit";
-import { consumeQuestionCredit, OutOfCreditsError } from "@/lib/credits";
+import { consumeQuestionCredit, refundQuestionCredit, OutOfCreditsError } from "@/lib/credits";
 import { generateAstrologyReply } from "@/lib/ai";
 import { getOrComputeKundliCalculation, summarizeKundliForAi } from "@/lib/astrology/adapter";
 import { redactForLogs } from "@/lib/utils";
@@ -46,8 +46,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
     });
     if (!chat) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
+    let usedFree: boolean;
     try {
-      await consumeQuestionCredit(user.id, `chat:${chatId}`);
+      const consumed = await consumeQuestionCredit(user.id, `chat:${chatId}`);
+      usedFree = consumed.usedFree;
     } catch (err) {
       if (err instanceof OutOfCreditsError) {
         return NextResponse.json({ error: "out_of_credits" }, { status: 402 });
@@ -88,20 +90,39 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
     }
     const birthContext = [summarizeBirthProfile(birthProfile), kundliSummary].filter(Boolean).join(" ") || undefined;
 
-    const result = await generateAstrologyReply({
-      userId: user.id,
-      locale: chat.locale as AppLocale,
-      history: chat.messages.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })),
-      userMessage: parsed.data.content,
-      userImage: parsed.data.image,
-      birthContext,
-      feature: "chat",
-      includeFollowUp: true,
-      // Tone/identity flavor only (see src/lib/personas/catalog.ts's header
-      // comment) — real-chart grounding above is completely unaffected by
-      // which persona (if any) this chat uses.
-      personaFlavor: getPersona(chat.personaCode)?.systemFlavor,
-    });
+    // The credit above is already spent by this point — if generation fails
+    // anyway (e.g. Gemini still down after provider.ts's own retries), that
+    // must not be a paid-for-nothing loss for the user. Found live: a
+    // transient Gemini 503 crashed the whole request with no retry AND no
+    // refund, silently costing a real question. Refund runs before
+    // re-throwing, and a specific ai_unavailable error (vs a generic
+    // internal_error) lets the client say something clearer than "try
+    // again" with no context.
+    let result;
+    try {
+      result = await generateAstrologyReply({
+        userId: user.id,
+        locale: chat.locale as AppLocale,
+        history: chat.messages.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })),
+        userMessage: parsed.data.content,
+        userImage: parsed.data.image,
+        birthContext,
+        feature: "chat",
+        includeFollowUp: true,
+        // Tone/identity flavor only (see src/lib/personas/catalog.ts's header
+        // comment) — real-chart grounding above is completely unaffected by
+        // which persona (if any) this chat uses.
+        personaFlavor: getPersona(chat.personaCode)?.systemFlavor,
+      });
+    } catch (err) {
+      await refundQuestionCredit(user.id, usedFree, `chat:${chatId}`);
+      // Otherwise this user message sits in the chat forever with no reply
+      // and no way to retry it specifically — deleting it means a retry just
+      // looks like sending the question again, not a visible extra row.
+      await prisma.message.delete({ where: { id: userMsg.id } }).catch(() => {});
+      console.error("[chat/messages] AI generation failed, credit refunded", err);
+      return NextResponse.json({ error: "ai_unavailable" }, { status: 503 });
+    }
 
     const assistantMsg = await prisma.message.create({
       data: {

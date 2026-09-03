@@ -128,6 +128,10 @@ class OpenAiProvider implements AiProvider {
 // ---------------------------------------------------------------------------
 // Google Gemini
 // ---------------------------------------------------------------------------
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 class GeminiProvider implements AiProvider {
   private model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
@@ -135,63 +139,81 @@ class GeminiProvider implements AiProvider {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: req.system }] },
-          contents: req.messages.map((m) => ({
-            role: m.role === "assistant" ? "model" : "user",
-            parts: m.image
-              ? [
-                  { text: m.content || "What do you see in this image?" },
-                  { inline_data: { mime_type: m.image.mimeType, data: m.image.data } },
-                ]
-              : [{ text: m.content }],
-          })),
-          // thinkingConfig.thinkingBudget: Gemini's internal "thinking"
-          // tokens silently count against maxOutputTokens, so replies can
-          // get cut off mid-sentence even at a seemingly generous budget.
-          // thinkingBudget: 0 would fully disable thinking, but as of the
-          // currently configured GEMINI_MODEL=gemini-3.6-flash, 0 is
-          // rejected outright with a 400 INVALID_ARGUMENT (reproduced live
-          // 2026-09-02 — every chat/career/relationship/report call failed
-          // with a 500 because of this). 1 is the smallest value this model
-          // accepts. IMPORTANT, found live the same day: 1 is NOT a
-          // reliable cap on actual thinking usage for this model — a
-          // Gujarati chat reply still spent 600-900+ tokens on invisible
-          // thinking regardless (it scaled with whatever maxOutputTokens
-          // room was available, not with the requested budget), truncating
-          // the visible reply after 1-2 sentences. So thinkingBudget here
-          // is really just "the minimum this model will accept", not a
-          // truncation fix — the actual fix for truncation is giving
-          // maxOutputTokens enough headroom in the first place (see
-          // index.ts's MAX_OUTPUT_TOKENS comment). Re-verify all of this if
-          // GEMINI_MODEL changes.
-          generationConfig: { maxOutputTokens: req.maxTokens, thinkingConfig: { thinkingBudget: 1 } },
-        }),
-      }
-    );
+    const body = JSON.stringify({
+      system_instruction: { parts: [{ text: req.system }] },
+      contents: req.messages.map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: m.image
+          ? [
+              { text: m.content || "What do you see in this image?" },
+              { inline_data: { mime_type: m.image.mimeType, data: m.image.data } },
+            ]
+          : [{ text: m.content }],
+      })),
+      // thinkingConfig.thinkingBudget: Gemini's internal "thinking"
+      // tokens silently count against maxOutputTokens, so replies can
+      // get cut off mid-sentence even at a seemingly generous budget.
+      // thinkingBudget: 0 would fully disable thinking, but as of the
+      // currently configured GEMINI_MODEL=gemini-3.6-flash, 0 is
+      // rejected outright with a 400 INVALID_ARGUMENT (reproduced live
+      // 2026-09-02 — every chat/career/relationship/report call failed
+      // with a 500 because of this). 1 is the smallest value this model
+      // accepts. IMPORTANT, found live the same day: 1 is NOT a
+      // reliable cap on actual thinking usage for this model — a
+      // Gujarati chat reply still spent 600-900+ tokens on invisible
+      // thinking regardless (it scaled with whatever maxOutputTokens
+      // room was available, not with the requested budget), truncating
+      // the visible reply after 1-2 sentences. So thinkingBudget here
+      // is really just "the minimum this model will accept", not a
+      // truncation fix — the actual fix for truncation is giving
+      // maxOutputTokens enough headroom in the first place (see
+      // index.ts's MAX_OUTPUT_TOKENS comment). Re-verify all of this if
+      // GEMINI_MODEL changes.
+      generationConfig: { maxOutputTokens: req.maxTokens, thinkingConfig: { thinkingBudget: 1 } },
+    });
 
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      throw new Error(`Gemini API error ${res.status}: ${body.slice(0, 300)}`);
+    // Gemini returns 503 ("model overloaded, try again") and occasionally 429
+    // fairly often at ordinary traffic levels — genuinely transient, not a
+    // real failure. Found live: an unhandled 503 crashed a chat message
+    // outright (no retry existed at all), and — worse — the user's credit
+    // had already been deducted before the AI call ran, so a purely
+    // transient hiccup cost them a real question for nothing. Retrying here
+    // means most of these never even reach the caller as an error.
+    const RETRYABLE_STATUSES = new Set([429, 503]);
+    const MAX_ATTEMPTS = 3;
+    let lastError: Error | undefined;
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${apiKey}`,
+        { method: "POST", headers: { "content-type": "application/json" }, body }
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        const text = (data.candidates?.[0]?.content?.parts ?? [])
+          .map((p: { text?: string }) => p.text ?? "")
+          .join("");
+
+        return {
+          text,
+          promptTokens: data.usageMetadata?.promptTokenCount ?? 0,
+          completionTokens: data.usageMetadata?.candidatesTokenCount ?? 0,
+          model: this.model,
+          provider: "gemini",
+        };
+      }
+
+      const responseBody = await res.text().catch(() => "");
+      lastError = new Error(`Gemini API error ${res.status}: ${responseBody.slice(0, 300)}`);
+
+      if (!RETRYABLE_STATUSES.has(res.status) || attempt === MAX_ATTEMPTS) {
+        throw lastError;
+      }
+      await sleep(500 * attempt); // 500ms, then 1000ms
     }
 
-    const data = await res.json();
-    const text = (data.candidates?.[0]?.content?.parts ?? [])
-      .map((p: { text?: string }) => p.text ?? "")
-      .join("");
-
-    return {
-      text,
-      promptTokens: data.usageMetadata?.promptTokenCount ?? 0,
-      completionTokens: data.usageMetadata?.candidatesTokenCount ?? 0,
-      model: this.model,
-      provider: "gemini",
-    };
+    throw lastError!;
   }
 }
 

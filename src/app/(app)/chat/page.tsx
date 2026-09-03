@@ -147,6 +147,8 @@ export default function ChatPage() {
       }
       if (err instanceof ApiError && err.status === 402) {
         setOutOfCreditsOpen(true);
+      } else if (err instanceof ApiError && err.status === 503) {
+        toast({ title: t("errors.aiUnavailable"), variant: "danger" });
       } else {
         toast({ title: t("errors.generic"), variant: "danger" });
       }
@@ -211,6 +213,8 @@ export default function ChatPage() {
         if (image && imagePreviewUrl) setPendingImage({ data: image.data, mimeType: image.mimeType, previewUrl: imagePreviewUrl });
         if (err instanceof ApiError && err.status === 402) {
           setOutOfCreditsOpen(true);
+        } else if (err instanceof ApiError && err.status === 503) {
+          toast({ title: t("errors.aiUnavailable"), variant: "danger" });
         } else {
           toast({ title: t("errors.generic"), variant: "danger" });
         }

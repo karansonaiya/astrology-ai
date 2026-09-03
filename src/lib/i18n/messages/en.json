@@ -471,6 +471,7 @@
     "network": "Network error — please check your connection.",
     "unauthorized": "Please log in to continue.",
     "notFound": "We couldn't find that.",
-    "rateLimited": "You're sending requests too quickly. Please wait a moment."
+    "rateLimited": "You're sending requests too quickly. Please wait a moment.",
+    "aiUnavailable": "Prerna AI is temporarily busy — your credit wasn't charged. Please try again in a moment."
   }
 }
