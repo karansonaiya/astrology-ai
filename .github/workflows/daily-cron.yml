@@ -1,0 +1,48 @@
+name: Daily content automation
+
+# Netlify has no equivalent of vercel.json's `crons` block (it only reads
+# that config on Vercel) — so /api/cron/generate-horoscopes and
+# /api/cron/prefill-panchang, despite both being written to support "any
+# external scheduler" (see their own route.ts comments), were never
+# actually being triggered on the live Netlify deployment. Found live:
+# HoroscopeContent had nothing published past 2026-09-01 despite the app
+# running fine otherwise. GitHub Actions' own cron scheduler covers the
+# gap for free, from the same repo, with no new external service to sign
+# up for. Schedule times match vercel.json's UTC times exactly, so both
+# configs stay meaningful if this project ever moves back to Vercel.
+on:
+  schedule:
+    - cron: "0 0 * * *"   # prefill-panchang, 00:00 UTC
+    - cron: "30 0 * * *"  # generate-horoscopes, 00:30 UTC
+  workflow_dispatch: {} # manual "Run workflow" button, for backfills/testing
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine which job this run is for
+        id: which
+        run: |
+          # workflow_dispatch has no cron schedule, so run both in that case.
+          if [ "${{ github.event.schedule }}" = "30 0 * * *" ]; then
+            echo "horoscopes=true" >> "$GITHUB_OUTPUT"
+            echo "panchang=false" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 0 * * *" ]; then
+            echo "horoscopes=false" >> "$GITHUB_OUTPUT"
+            echo "panchang=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "horoscopes=true" >> "$GITHUB_OUTPUT"
+            echo "panchang=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate daily horoscopes
+        if: steps.which.outputs.horoscopes == 'true'
+        run: |
+          curl -sS -f -X GET "${{ vars.APP_URL }}/api/cron/generate-horoscopes" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+
+      - name: Prefill panchang cache
+        if: steps.which.outputs.panchang == 'true'
+        run: |
+          curl -sS -f -X GET "${{ vars.APP_URL }}/api/cron/prefill-panchang" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
