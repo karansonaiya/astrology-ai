@@ -7,7 +7,7 @@ import { useT } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
-export function LogoutButton({ variant = "icon" }: { variant?: "icon" | "full" }) {
+export function LogoutButton({ variant = "icon" }: { variant?: "icon" | "full" | "menu-item" }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -23,6 +23,17 @@ export function LogoutButton({ variant = "icon" }: { variant?: "icon" | "full" }
         <Button variant="ghost" size="icon" aria-label={t("common.logout")} onClick={() => setOpen(true)}>
           <LogOut size={16} />
         </Button>
+      ) : variant === "menu-item" ? (
+        // Plain row, no Button wrapper — meant to sit inside a
+        // DropdownMenuItem (see app-header.tsx's account dropdown), which
+        // already provides the hover/focus/padding styling itself.
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 text-danger"
+          onClick={() => setOpen(true)}
+        >
+          <LogOut size={15} /> {t("common.logout")}
+        </button>
       ) : (
         <Button variant="outline" onClick={() => setOpen(true)}>
           <LogOut size={16} /> {t("common.logout")}
