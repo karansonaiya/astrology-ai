@@ -77,10 +77,14 @@ function applySecurityHeaders(res: NextResponse) {
   // allowed and its challenge iframe allowed — see src/lib/captcha.ts and
   // src/components/ui/captcha-widget.tsx.
   // Cashfree's JS SDK (loaded from sdk.cashfree.com — see use-checkout.ts)
-  // opens its hosted checkout in an iframe/popup served from
-  // payments(.-test).cashfree.com and the SDK itself talks to
-  // api.cashfree.com — both sandbox and production domains are allowed
-  // here since PAYMENT_PROVIDER/CASHFREE_ENV can differ per deployment.
+  // opens its hosted checkout as a CHAIN of nested iframes, not a single
+  // frame from one documented domain — confirmed live via an actual
+  // checkout attempt, one CSP violation at a time: first sdk.cashfree.com
+  // itself, then sandbox.cashfree.com nested inside it. All the plausible
+  // Cashfree domains (sdk/api/sandbox/payments/payments-test) are allowed
+  // here so a same-mechanism nested frame doesn't get blocked next.
+  // Sandbox and production domains are both included since PAYMENT_PROVIDER/
+  // CASHFREE_ENV can differ per deployment.
   const scriptSrc =
     process.env.NODE_ENV === "development"
       ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.cashfree.com https://challenges.cloudflare.com"
@@ -95,7 +99,7 @@ function applySecurityHeaders(res: NextResponse) {
       "img-src 'self' data: blob:",
       "font-src 'self' data:",
       "connect-src 'self' https://api.cashfree.com https://sandbox.cashfree.com https://challenges.cloudflare.com",
-      "frame-src 'self' https://payments.cashfree.com https://payments-test.cashfree.com https://challenges.cloudflare.com",
+      "frame-src 'self' https://sdk.cashfree.com https://api.cashfree.com https://sandbox.cashfree.com https://payments.cashfree.com https://payments-test.cashfree.com https://challenges.cloudflare.com",
       "object-src 'none'",
       "base-uri 'self'",
     ].join("; ")
