@@ -195,19 +195,29 @@ class GeminiProvider implements AiProvider {
           .map((p: { text?: string }) => p.text ?? "")
           .join("");
 
-        return {
-          text,
-          promptTokens: data.usageMetadata?.promptTokenCount ?? 0,
-          completionTokens: data.usageMetadata?.candidatesTokenCount ?? 0,
-          model: this.model,
-          provider: "gemini",
-        };
+        // Found live, directly against the real API while it was under
+        // heavy load: an HTTP 200 with a completely empty candidates/parts
+        // array — no error to catch, but nothing to show the user either,
+        // and (before this check) nothing here would have stopped it from
+        // silently costing a real credit for a blank reply. Treated the
+        // same as a retryable failure rather than trusting "ok" alone.
+        if (text.trim().length > 0) {
+          return {
+            text,
+            promptTokens: data.usageMetadata?.promptTokenCount ?? 0,
+            completionTokens: data.usageMetadata?.candidatesTokenCount ?? 0,
+            model: this.model,
+            provider: "gemini",
+          };
+        }
+        lastError = new Error("Gemini API returned an empty response (HTTP 200, no candidate text) — likely overload");
+      } else {
+        const responseBody = await res.text().catch(() => "");
+        lastError = new Error(`Gemini API error ${res.status}: ${responseBody.slice(0, 300)}`);
+        if (!RETRYABLE_STATUSES.has(res.status)) throw lastError;
       }
 
-      const responseBody = await res.text().catch(() => "");
-      lastError = new Error(`Gemini API error ${res.status}: ${responseBody.slice(0, 300)}`);
-
-      if (!RETRYABLE_STATUSES.has(res.status) || attempt === MAX_ATTEMPTS) {
+      if (attempt === MAX_ATTEMPTS) {
         throw lastError;
       }
       await sleep(500 * attempt); // 500ms, then 1000ms
