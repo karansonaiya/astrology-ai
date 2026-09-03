@@ -32,7 +32,7 @@ export default function HoroscopePage() {
   const [sign, setSign] = useState<ZodiacSign>("aries");
   const [period, setPeriod] = useState<"daily" | "weekly" | "monthly">("daily");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["horoscope", sign, period, locale],
     queryFn: () => apiFetch<HoroscopeResponse>(`/api/horoscope?sign=${sign}&period=${period}&locale=${locale}`),
   });
@@ -55,6 +55,11 @@ export default function HoroscopePage() {
           >
             <span className="text-lg" aria-hidden="true">{ZODIAC_SYMBOLS[s]}</span>
             {ZODIAC_LABELS[s][locale]}
+            {/* English name too, when the UI isn't already in English — so
+                a Gujarati/Hindi speaker (or anyone debugging with an admin)
+                can tell at a glance which sign maps to which without
+                translating each label mentally. */}
+            {locale !== "en" && <span className="text-[10px] text-muted">{ZODIAC_LABELS[s].en}</span>}
           </button>
         ))}
       </div>
@@ -92,7 +97,15 @@ export default function HoroscopePage() {
               </Card>
             ) : (
               <Card>
-                <CardContent className="py-10 text-center text-muted">{t("horoscope.notPublished")}</CardContent>
+                {/* isError (the fetch itself failed, e.g. a 500) used to be
+                    indistinguishable from a genuine "not published yet" —
+                    both just fell through to the same empty `data` check.
+                    Found live: every sign 500'd at once and this still
+                    quietly showed "not published", masking a real server
+                    error as if it were routine missing content. */}
+                <CardContent className="py-10 text-center text-muted">
+                  {isError ? t("horoscope.loadError") : t("horoscope.notPublished")}
+                </CardContent>
               </Card>
             )}
           </TabsContent>

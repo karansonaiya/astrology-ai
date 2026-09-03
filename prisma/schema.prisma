@@ -6,6 +6,18 @@
 
 generator client {
   provider = "prisma-client-js"
+  // "native" covers this Windows dev machine; "rhel-openssl-3.0.x" covers
+  // Netlify's actual Next.js API-route runtime (AWS Lambda, Amazon Linux) —
+  // without it, `prisma generate` (run during Netlify's OWN Linux build
+  // step) only produces whatever binary THAT build machine's OS happens to
+  // resolve to, which doesn't necessarily match the Lambda runtime the
+  // function actually executes in. Found live: /api/horoscope (a plain
+  // Prisma read, no other external dependency) 500'd for every single sign,
+  // and /api/auth/otp/request (a plain Prisma write) 502'd too — both
+  // routes work fine locally, and neither touches anything env-var-shaped
+  // that was still missing today (Gemini/Cashfree/etc.), pointing at Prisma
+  // itself failing to load its query engine at runtime on Netlify.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {

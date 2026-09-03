@@ -253,7 +253,8 @@
     "reflection": "Reflection prompt",
     "selectSign": "Select your zodiac sign",
     "generalNotice": "General AI-generated horoscope for reflection, not a certain prediction.",
-    "notPublished": "Today's horoscope for this sign isn't published yet — please check back soon."
+    "notPublished": "Today's horoscope for this sign isn't published yet — please check back soon.",
+    "loadError": "Couldn't load this horoscope right now — please try again in a moment."
   },
   "panchang": {
     "title": "Today's Panchang",
