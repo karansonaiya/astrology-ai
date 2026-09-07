@@ -55,7 +55,11 @@ export function BottomNav() {
 
   return (
     <>
-      <nav className="glass fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-border px-2 py-2 md:hidden">
+      {/* Solid, not `.glass` — the translucent+blur combo let scrolled page
+          content (e.g. dasha date rows) show through and overlap the nav's
+          own labels/icons on real devices. A bottom tab bar needs a fully
+          opaque background, no exceptions. */}
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-border bg-surface px-2 py-2 md:hidden">
         {items.map((item) => {
           const active = item.href === activeHref;
           return (

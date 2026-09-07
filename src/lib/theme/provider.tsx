@@ -1,9 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-
-type Theme = "dark" | "light";
-const THEME_COOKIE = "prerna_theme";
+import { THEME_COOKIE, type Theme } from "./shared";
 
 const ThemeContext = createContext<{ theme: Theme; toggleTheme: () => void; setTheme: (t: Theme) => void } | null>(
   null
@@ -34,6 +32,3 @@ export function useTheme() {
   if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
   return ctx;
 }
-
-export { THEME_COOKIE };
-export type { Theme };

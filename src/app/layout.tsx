@@ -4,7 +4,7 @@ import { cookies, headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "./providers";
 import { isAppLocale, resolveLocaleFromBrowser, localeCookieName, type AppLocale } from "@/lib/i18n/config";
-import { THEME_COOKIE, type Theme } from "@/lib/theme/provider";
+import { THEME_COOKIE, type Theme } from "@/lib/theme/shared";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { InstallPromptListener } from "@/components/pwa/install-prompt-listener";
 

@@ -22,10 +22,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="flex min-h-screen">
       <PresenceHeartbeat />
       <AppSidebar />
-      <div className="flex flex-1 flex-col">
+      {/* min-w-0: without it, a flex child's content (e.g. kundli's wide
+          planetary-positions table) can force this column — and the whole
+          top-level flex row with it — wider than the viewport, causing the
+          entire page to scroll sideways on mobile and clip text. Flex items
+          default to min-width:auto, not 0; this is the standard fix. */}
+      <div className="flex min-w-0 flex-1 flex-col">
         <AppHeader />
         <MaintenanceBanner />
-        <main className="flex-1 pb-20 md:pb-0">{children}</main>
+        <main className="min-w-0 flex-1 pb-20 md:pb-0">{children}</main>
       </div>
       <BottomNav />
     </div>
