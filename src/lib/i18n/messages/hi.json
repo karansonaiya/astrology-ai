@@ -225,8 +225,9 @@
     "reportSent": "धन्यवाद — इसे समीक्षा के लिए भेज दिया गया है।",
     "aiTypingNotice": "Prerna AI विचार कर रहा है…",
     "outOfCredits": "आपके सवाल खत्म हो गए हैं। चैट जारी रखने के लिए क्रेडिट जोड़ें।",
-    "outOfCreditsTitle": "आपके क्रेडिट खत्म हो गए हैं",
-    "outOfCreditsDesc": "AI-संचालित जानकारी पाना जारी रखने के लिए क्रेडिट जोड़ें या किसी प्लान में अपग्रेड करें।",
+    "outOfCreditsTitle": "आपके सवाल खत्म हो गए — पर अभी और जानने को बाकी है",
+    "outOfCreditsDesc": "आपकी असली गणना की गई कुंडली में अभी और भी बताने को है। आगे जानने के लिए क्रेडिट जोड़ें।",
+    "outOfCreditsDescPersona": "{persona} अभी आपकी असली कुंडली समझा ही रहे थे। जहाँ छोड़ा था वहीं से जारी रखने के लिए क्रेडिट जोड़ें।",
     "viewPlans": "प्लान और क्रेडिट देखें",
     "buyCredits": "क्रेडिट खरीदें",
     "suggestedFollowUp": "आप यह भी पूछ सकते हैं",
@@ -398,7 +399,9 @@
     "filterGeneral": "सामान्य",
     "filterLove": "प्रेम",
     "filterCareer": "करियर",
-    "filterMarriage": "विवाह"
+    "filterMarriage": "विवाह",
+    "filterEducation": "शिक्षा",
+    "filterHealth": "स्वास्थ्य"
   },
   "pricing": {
     "title": "मूल्य निर्धारण",

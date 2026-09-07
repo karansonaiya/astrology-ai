@@ -19,6 +19,8 @@ const SPECIALTY_FILTERS: { value: "all" | PersonaSpecialty; labelKey: string }[]
   { value: "love", labelKey: "personas.filterLove" },
   { value: "career", labelKey: "personas.filterCareer" },
   { value: "marriage", labelKey: "personas.filterMarriage" },
+  { value: "education", labelKey: "personas.filterEducation" },
+  { value: "health", labelKey: "personas.filterHealth" },
 ];
 
 const SPECIALTY_BADGE_KEY: Record<PersonaSpecialty, string> = {
@@ -26,6 +28,8 @@ const SPECIALTY_BADGE_KEY: Record<PersonaSpecialty, string> = {
   love: "personas.filterLove",
   career: "personas.filterCareer",
   marriage: "personas.filterMarriage",
+  education: "personas.filterEducation",
+  health: "personas.filterHealth",
 };
 
 export default function ChatPersonasPage() {

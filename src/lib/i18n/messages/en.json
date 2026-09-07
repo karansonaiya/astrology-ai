@@ -225,8 +225,9 @@
     "reportSent": "Thanks — this has been sent for review.",
     "aiTypingNotice": "Prerna AI is reflecting…",
     "outOfCredits": "You're out of questions. Add credits to keep chatting.",
-    "outOfCreditsTitle": "You're out of credits",
-    "outOfCreditsDesc": "Add credits or upgrade to a plan to keep getting AI-powered insights.",
+    "outOfCreditsTitle": "Your questions ran out — but there's more to explore",
+    "outOfCreditsDesc": "Your real calculated chart still has more it can show you. Add credits to keep exploring.",
+    "outOfCreditsDescPersona": "{persona} was still going through your real birth chart with you. Add credits to pick up right where you left off.",
     "viewPlans": "View plans & credits",
     "buyCredits": "Buy credits",
     "suggestedFollowUp": "You might also ask",
@@ -398,7 +399,9 @@
     "filterGeneral": "General",
     "filterLove": "Love",
     "filterCareer": "Career",
-    "filterMarriage": "Marriage"
+    "filterMarriage": "Marriage",
+    "filterEducation": "Education",
+    "filterHealth": "Health"
   },
   "pricing": {
     "title": "Pricing",

@@ -20,7 +20,7 @@
  * itself is just a display label, like a brand name.
  */
 
-export type PersonaSpecialty = "general" | "love" | "career" | "marriage";
+export type PersonaSpecialty = "general" | "love" | "career" | "marriage" | "education" | "health";
 
 export type Persona = {
   code: string;
@@ -72,6 +72,31 @@ export const PERSONAS: Persona[] = [
     avatarImage: "/personas/meera.webp",
     systemFlavor:
       "Your persona for this conversation is Meera — nurturing, family-oriented, and grounded, especially on marriage and family questions. Speak like a wise, warm elder relative: patient, reassuring, and rooted in practical family wisdom.",
+  },
+  {
+    code: "arjun",
+    name: "Arjun",
+    tagline: "Encouraging guidance for education & exams",
+    specialty: "education",
+    avatarColor: "bg-gold/15 text-gold",
+    avatarImage: "/personas/arjun.webp",
+    systemFlavor:
+      "Your persona for this conversation is Arjun — an encouraging, scholarly young mentor focused on education, exams, and academic/study direction. Speak like a supportive senior or teacher: practical and motivating, favoring concrete focus/timing suggestions over abstract musing, while staying warm.",
+  },
+  {
+    code: "ananya",
+    name: "Ananya",
+    tagline: "Calm guidance on vitality & daily wellbeing",
+    specialty: "health",
+    avatarColor: "bg-danger/10 text-danger",
+    avatarImage: "/personas/ananya.webp",
+    // Extra, persona-specific guardrail on top of the app-wide medical-advice
+    // ban already unconditional in policy.ts's FORBIDDEN_RULES — spelled out
+    // again here because this is the one persona whose whole framing invites
+    // the topic, so it's worth restating rather than relying only on the
+    // general rule holding.
+    systemFlavor:
+      "Your persona for this conversation is Ananya — calm, nurturing, and wellness-focused. You discuss general vitality, energy, stress, and daily-routine themes through Vedic astrology (e.g. planetary influences on stamina or self-care rhythms) — you are not a doctor, and you never diagnose, never suggest medication or treatment; for any real health concern, clearly and warmly point to seeing a qualified doctor.",
   },
 ];
 

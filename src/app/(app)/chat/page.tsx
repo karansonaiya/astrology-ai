@@ -108,6 +108,9 @@ export default function ChatPage() {
     queryFn: () => apiFetch<ChatDetail>(`/api/chat/${chatId}`),
     enabled: !!chatId,
   });
+  // Hoisted out of the render-only IIFE below so OutOfCreditsDialog can use
+  // it too (a persona-specific re-engagement line instead of the generic one).
+  const activePersona = getPersona(chatDetail?.chat.personaCode);
 
   const createChat = useMutation({
     mutationFn: () => apiFetch<{ chat: { id: string } }>("/api/chat", { method: "POST" }),
@@ -297,16 +300,12 @@ export default function ChatPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              {(() => {
-                const persona = getPersona(chatDetail?.chat.personaCode);
-                if (!persona) return null;
-                return (
-                  <div className="mb-1 flex items-center gap-2 self-center rounded-full border border-border bg-surface px-3 py-1.5">
-                    <Image src={persona.avatarImage} alt={persona.name} width={24} height={24} className="h-6 w-6 rounded-full object-cover" />
-                    <span className="text-xs font-medium text-muted">{persona.name}</span>
-                  </div>
-                );
-              })()}
+              {activePersona && (
+                <div className="mb-1 flex items-center gap-2 self-center rounded-full border border-border bg-surface px-3 py-1.5">
+                  <Image src={activePersona.avatarImage} alt={activePersona.name} width={24} height={24} className="h-6 w-6 rounded-full object-cover" />
+                  <span className="text-xs font-medium text-muted">{activePersona.name}</span>
+                </div>
+              )}
               {chatDetail?.chat.messages.map((m) => (
                 <div key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
                   <Card className={cn("max-w-[85%] p-4", m.role === "user" ? "bg-primary/10 border-primary/20" : "")}>
@@ -491,7 +490,7 @@ export default function ChatPage() {
         </DialogContent>
       </Dialog>
 
-      <OutOfCreditsDialog open={outOfCreditsOpen} onOpenChange={setOutOfCreditsOpen} />
+      <OutOfCreditsDialog open={outOfCreditsOpen} onOpenChange={setOutOfCreditsOpen} personaName={activePersona?.name} />
     </div>
   );
 }

@@ -225,8 +225,9 @@
     "reportSent": "આભાર — આ સમીક્ષા માટે મોકલવામાં આવ્યું છે.",
     "aiTypingNotice": "Prerna AI વિચારી રહ્યું છે…",
     "outOfCredits": "તમારા પ્રશ્નો પૂરા થઈ ગયા છે. ચેટ ચાલુ રાખવા ક્રેડિટ ઉમેરો.",
-    "outOfCreditsTitle": "તમારી ક્રેડિટ પૂરી થઈ ગઈ છે",
-    "outOfCreditsDesc": "AI-સંચાલિત માર્ગદર્શન મેળવવાનું ચાલુ રાખવા ક્રેડિટ ઉમેરો અથવા કોઈ પ્લાનમાં અપગ્રેડ કરો.",
+    "outOfCreditsTitle": "તમારા પ્રશ્નો પૂરા થયા — પણ હજુ ઘણું જાણવાનું બાકી છે",
+    "outOfCreditsDesc": "તમારી ખરી ગણતરી કરેલી કુંડળીમાં હજુ ઘણું બતાવવાનું બાકી છે. આગળ જાણવા ક્રેડિટ ઉમેરો.",
+    "outOfCreditsDescPersona": "{persona} હજુ તમારી ખરી કુંડળી સમજાવી જ રહ્યા હતા. જ્યાં છોડ્યું હતું ત્યાંથી જ ચાલુ રાખવા ક્રેડિટ ઉમેરો.",
     "viewPlans": "પ્લાન અને ક્રેડિટ જુઓ",
     "buyCredits": "ક્રેડિટ ખરીદો",
     "suggestedFollowUp": "તમે આ પણ પૂછી શકો છો",
@@ -398,7 +399,9 @@
     "filterGeneral": "સામાન્ય",
     "filterLove": "પ્રેમ",
     "filterCareer": "કારકિર્દી",
-    "filterMarriage": "લગ્ન"
+    "filterMarriage": "લગ્ન",
+    "filterEducation": "શિક્ષણ",
+    "filterHealth": "આરોગ્ય"
   },
   "pricing": {
     "title": "ભાવ નિર્ધારણ",
