@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUser, errorResponse } from "@/lib/auth/guard";
+import { getEmailProvider } from "@/lib/notify/email";
 
 const createTicketSchema = z.object({
   subject: z.string().min(3).max(200),
@@ -32,6 +33,19 @@ export async function POST(req: NextRequest) {
     const ticket = await prisma.supportTicket.create({
       data: { userId: user.id, subject: parsed.data.subject, message: parsed.data.message },
     });
+
+    const inbox = process.env.SUPPORT_INBOX_EMAIL;
+    if (inbox) {
+      try {
+        await getEmailProvider().send(
+          inbox,
+          `New support ticket: ${parsed.data.subject}`,
+          `From: ${user.email ?? "(no email on file)"} (userId: ${user.id})\n\n${parsed.data.message}`
+        );
+      } catch (err) {
+        console.error("Failed to send support ticket notification email", err);
+      }
+    }
 
     return NextResponse.json({ ticket });
   } catch (err) {

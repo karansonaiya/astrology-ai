@@ -25,7 +25,7 @@ export default function TermsPage() {
       <h2>Payments</h2>
       <p>
         Prices are shown before purchase and include applicable taxes unless stated otherwise. Payments are
-        processed by Cashfree. See our Refund & Cancellation Policy for refund eligibility.
+        processed by Cashfree. All purchases are final and non-refundable, except where required by law.
       </p>
 
       <h2>Account suspension</h2>

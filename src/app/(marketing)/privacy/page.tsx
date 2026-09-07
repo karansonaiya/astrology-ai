@@ -16,7 +16,7 @@ export default function PrivacyPage() {
           consent, and used only to personalize insights.
         </li>
         <li>Chat messages and questions you send to Prerna AI, and the AI-generated responses.</li>
-        <li>Payment and order records (never full card details — these are handled by our payment processor).</li>
+        <li>Payment and order records (never full card details; these are handled by our payment processor).</li>
         <li>Basic usage data (feature usage, language preference, device type) to operate and improve the product.</li>
       </ul>
 
@@ -24,7 +24,7 @@ export default function PrivacyPage() {
       <ul>
         <li>To generate personalized AI guidance and calculate birth-chart data where an engine is connected.</li>
         <li>To process payments, grant entitlements, and provide customer support.</li>
-        <li>To maintain safety — reviewing flagged conversations for policy violations.</li>
+        <li>To maintain safety by reviewing flagged conversations for policy violations.</li>
         <li>We do not use your data to train third-party AI models beyond what your chosen AI provider&apos;s own policy allows for API usage, and we never sell your data.</li>
       </ul>
 

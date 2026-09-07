@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { CaptchaWidget } from "@/components/ui/captcha-widget";
 import { AiMarkdown } from "@/components/ui/ai-markdown";
+import { FAQS } from "@/lib/content/faqs";
 
 const TRUST_ICONS = [ShieldCheck, Languages, ReceiptText, Sparkles];
 
@@ -111,32 +112,10 @@ export default function LandingPage() {
     { icon: Languages, title: t("landing.featureLanguageTitle"), desc: t("landing.featureLanguageDesc") },
   ];
 
-  const faqs = [
-    {
-      q: { en: "Is this real astrology or AI-generated?", hi: "क्या यह असली ज्योतिष है या AI-जनित?", gu: "શું આ ખરું જ્યોતિષ છે કે AI-જનિત?" },
-      a: {
-        en: "Prerna AI provides AI-generated, astrology-style guidance for reflection. It is not a certain prediction, and it clearly labels every answer as AI-generated.",
-        hi: "Prerna AI चिंतन के लिए AI-जनित, ज्योतिष-शैली मार्गदर्शन देता है। यह निश्चित भविष्यवाणी नहीं है, और हर जवाब को स्पष्ट रूप से AI-जनित के रूप में चिह्नित करता है।",
-        gu: "Prerna AI ચિંતન માટે AI-જનિત, જ્યોતિષ-શૈલી માર્ગદર્શન આપે છે. આ ખાતરીપૂર્વકની આગાહી નથી, અને દરેક જવાબને સ્પષ્ટપણે AI-જનિત તરીકે દર્શાવે છે.",
-      },
-    },
-    {
-      q: { en: "Is my birth data safe?", hi: "क्या मेरा जन्म डेटा सुरक्षित है?", gu: "શું મારો જન્મ ડેટા સુરક્ષિત છે?" },
-      a: {
-        en: "Birth details are optional, stored only with your consent, never sold, and can be permanently deleted anytime from Settings.",
-        hi: "जन्म जानकारी वैकल्पिक है, केवल आपकी सहमति से सेव होती है, कभी बेची नहीं जाती, और सेटिंग्स से कभी भी स्थायी रूप से हटाई जा सकती है।",
-        gu: "જન્મ વિગતો વૈકલ્પિક છે, ફક્ત તમારી સંમતિથી સેવ થાય છે, ક્યારેય વેચાતી નથી, અને સેટિંગ્સમાંથી ગમે ત્યારે કાયમી ધોરણે ડિલીટ કરી શકાય છે.",
-      },
-    },
-    {
-      q: { en: "What languages are supported?", hi: "कौन सी भाषाएं समर्थित हैं?", gu: "કઈ ભાષાઓ સપોર્ટેડ છે?" },
-      a: {
-        en: "Gujarati, Hindi, and English — fully, across the entire app and in AI responses.",
-        hi: "गुजराती, हिंदी और अंग्रेज़ी — पूरे ऐप और AI जवाबों में पूरी तरह से।",
-        gu: "ગુજરાતી, હિન્દી અને અંગ્રેજી — સમગ્ર એપ અને AI જવાબોમાં સંપૂર્ણપણે.",
-      },
-    },
-  ];
+  // Shared with the dedicated /faq page (src/lib/content/faqs.ts) so the two
+  // never drift — the homepage shows the first 4 as a teaser, with a "View
+  // all FAQs" link below for the rest, rather than dumping all 8 here.
+  const faqs = FAQS.slice(0, 4);
 
   return (
     <div>
@@ -288,6 +267,11 @@ export default function LandingPage() {
                 </CardHeader>
               </Card>
             ))}
+          </div>
+          <div className="mt-6 text-center">
+            <Button asChild variant="outline">
+              <Link href="/faq">{t("landing.viewAllFaqs")}</Link>
+            </Button>
           </div>
         </div>
       </section>

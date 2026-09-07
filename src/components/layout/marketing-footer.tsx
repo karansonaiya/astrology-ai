@@ -15,6 +15,7 @@ export function MarketingFooter() {
         { href: "/features", label: t("nav.features") },
         { href: "/horoscope", label: t("nav.dailyHoroscope") },
         { href: "/panchang", label: t("nav.panchang") },
+        { href: "/blog", label: t("nav.blog") },
         { href: "/pricing", label: t("nav.pricing") },
       ],
     },
@@ -31,7 +32,6 @@ export function MarketingFooter() {
         { href: "/safety", label: t("nav.safety") },
         { href: "/privacy", label: t("nav.privacy") },
         { href: "/terms", label: t("nav.terms") },
-        { href: "/refund-policy", label: t("nav.refund") },
       ],
     },
   ];

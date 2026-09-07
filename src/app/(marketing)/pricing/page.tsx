@@ -101,9 +101,7 @@ export default function PricingPage() {
 
       <div className="mt-10 flex items-center gap-2 text-sm text-muted">
         <Check size={14} className="text-success" />
-        <Link href="/refund-policy" className="underline underline-offset-2">
-          {t("pricing.refundPolicyLink")}
-        </Link>
+        {t("pricing.noRefundsNotice")}
       </div>
     </div>
   );

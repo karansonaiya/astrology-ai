@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useI18n, useT } from "@/lib/i18n/provider";
 import { apiFetch } from "@/lib/api-client";
@@ -29,7 +30,14 @@ type HoroscopeResponse =
 export default function HoroscopePage() {
   const t = useT();
   const { locale } = useI18n();
-  const [sign, setSign] = useState<ZodiacSign>("aries");
+  // Lets the blog's zodiac-profile pages ("See today's horoscope for this
+  // sign") deep-link straight to the right tab, e.g. /horoscope?sign=leo,
+  // instead of always landing on Aries.
+  const searchParams = useSearchParams();
+  const initialSign = searchParams.get("sign");
+  const [sign, setSign] = useState<ZodiacSign>(
+    initialSign && (ZODIAC_SIGNS as readonly string[]).includes(initialSign) ? (initialSign as ZodiacSign) : "aries"
+  );
   const [period, setPeriod] = useState<"daily" | "weekly" | "monthly">("daily");
 
   const { data, isLoading, isError } = useQuery({

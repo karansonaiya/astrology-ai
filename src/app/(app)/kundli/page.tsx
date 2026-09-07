@@ -46,7 +46,13 @@ type KundliExplanation = {
 
 export default function KundliPage() {
   const t = useT();
-  const { data, isLoading } = useQuery({ queryKey: ["kundli"], queryFn: () => apiFetch<KundliResponse>("/api/kundli") });
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+    isRefetching,
+  } = useQuery({ queryKey: ["kundli"], queryFn: () => apiFetch<KundliResponse>("/api/kundli") });
 
   const [mode, setMode] = useState<"mine" | "form" | "result">("mine");
   const [othersResult, setOthersResult] = useState<LookupResponse | null>(null);
@@ -85,6 +91,18 @@ export default function KundliPage() {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8 md:px-6">
         <Skeleton className="h-72" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-14 text-center md:px-6">
+        <TriangleAlert size={28} className="mx-auto mb-3 text-danger" />
+        <h1 className="font-heading text-xl font-semibold">{t("kundli.loadErrorTitle")}</h1>
+        <Button className="mt-5" onClick={() => refetch()} disabled={isRefetching}>
+          {t("common.retry")}
+        </Button>
       </div>
     );
   }

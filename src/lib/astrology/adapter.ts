@@ -116,6 +116,61 @@ class RealAstrologyProvider implements AstrologyProvider {
 // ---------------------------------------------------------------------------
 let prokeralaToken: { value: string; expiresAt: number } | null = null;
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Same retry shape/timing as lib/ai/provider.ts's GeminiProvider.complete,
+// for consistency across the codebase's external-API call sites.
+const PROKERALA_RETRYABLE_STATUSES = new Set([429, 503]);
+const PROKERALA_MAX_ATTEMPTS = 3;
+const PROKERALA_REQUEST_TIMEOUT_MS = 15_000;
+
+/**
+ * Wraps fetch with a per-request timeout (AbortController) and retries on
+ * 429/503/network-error/timeout up to PROKERALA_MAX_ATTEMPTS. Found live:
+ * ProkeralaAstrologyProvider had zero timeout and zero retry logic on any of
+ * its calls (token, kundli, planet-position, dasha) — a hung or transiently
+ * overloaded Prokerala call previously either hung the whole request
+ * indefinitely or failed the kundli generation outright with no retry,
+ * which is exactly what "sometimes doesn't generate" looks like from a
+ * user's perspective. A timeout here is treated as a retryable failure,
+ * same as a 429/503, not an unhandled hang. Non-retryable statuses (e.g.
+ * 400/401/404) are returned as-is so the caller's existing !res.ok handling
+ * still produces the same error message as before.
+ */
+async function fetchProkeralaWithRetry(url: string, init: RequestInit = {}): Promise<Response> {
+  let lastError: Error | undefined;
+
+  for (let attempt = 1; attempt <= PROKERALA_MAX_ATTEMPTS; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), PROKERALA_REQUEST_TIMEOUT_MS);
+
+    try {
+      const res = await fetch(url, { ...init, signal: controller.signal });
+      clearTimeout(timeout);
+
+      if (res.ok || !PROKERALA_RETRYABLE_STATUSES.has(res.status)) return res;
+
+      const body = await res.text().catch(() => "");
+      lastError = new Error(`Prokerala API error ${res.status}: ${body.slice(0, 300)}`);
+    } catch (err) {
+      clearTimeout(timeout);
+      lastError =
+        err instanceof Error && err.name === "AbortError"
+          ? new Error(`Prokerala API request timed out after ${PROKERALA_REQUEST_TIMEOUT_MS}ms`)
+          : err instanceof Error
+            ? err
+            : new Error(String(err));
+    }
+
+    if (attempt === PROKERALA_MAX_ATTEMPTS) throw lastError;
+    await sleep(500 * attempt); // 500ms, then 1000ms
+  }
+
+  throw lastError!;
+}
+
 /** Exported for reuse by other Prokerala-backed features (e.g. panchang.ts) — same app, same OAuth client. */
 export async function getProkeralaToken(): Promise<string> {
   if (prokeralaToken && prokeralaToken.expiresAt > Date.now() + 30_000) {
@@ -128,7 +183,7 @@ export async function getProkeralaToken(): Promise<string> {
     throw new Error("PROKERALA_CLIENT_ID / PROKERALA_CLIENT_SECRET is not configured");
   }
 
-  const res = await fetch("https://api.prokerala.com/token", {
+  const res = await fetchProkeralaWithRetry("https://api.prokerala.com/token", {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -206,8 +261,8 @@ class ProkeralaAstrologyProvider implements AstrologyProvider {
     const authHeaders = { Authorization: `Bearer ${token}` };
 
     const [kundliRes, planetRes] = await Promise.all([
-      fetch(`https://api.prokerala.com/v2/astrology/kundli?${qs}`, { headers: authHeaders }),
-      fetch(`https://api.prokerala.com/v2/astrology/planet-position?${qs}`, { headers: authHeaders }),
+      fetchProkeralaWithRetry(`https://api.prokerala.com/v2/astrology/kundli?${qs}`, { headers: authHeaders }),
+      fetchProkeralaWithRetry(`https://api.prokerala.com/v2/astrology/planet-position?${qs}`, { headers: authHeaders }),
     ]);
 
     if (!kundliRes.ok) {
@@ -270,7 +325,7 @@ class ProkeralaAstrologyProvider implements AstrologyProvider {
 
     let dasha: KundliResult["dasha"] = null;
     if (input.birthTimeKnown) {
-      const dashaRes = await fetch(`https://api.prokerala.com/v2/astrology/dasha-periods?${qs}`, {
+      const dashaRes = await fetchProkeralaWithRetry(`https://api.prokerala.com/v2/astrology/dasha-periods?${qs}`, {
         headers: authHeaders,
       });
       if (dashaRes.ok) {
@@ -341,7 +396,7 @@ async function getProkeralaTransitPositions(datetime: string, latitude: number, 
   const token = await getProkeralaToken();
   const coordinates = `${latitude},${longitude}`;
   const qs = new URLSearchParams({ ayanamsa: "1", coordinates, datetime, la: "en" }).toString();
-  const res = await fetch(`https://api.prokerala.com/v2/astrology/planet-position?${qs}`, {
+  const res = await fetchProkeralaWithRetry(`https://api.prokerala.com/v2/astrology/planet-position?${qs}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {

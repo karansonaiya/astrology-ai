@@ -21,6 +21,7 @@ export function MarketingHeader() {
     { href: "/features", label: t("nav.features") },
     { href: "/horoscope", label: t("nav.dailyHoroscope") },
     { href: "/panchang", label: t("nav.panchang") },
+    { href: "/blog", label: t("nav.blog") },
     { href: "/pricing", label: t("nav.pricing") },
     { href: "/faq", label: t("nav.faq") },
   ];

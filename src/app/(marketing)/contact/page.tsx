@@ -22,7 +22,7 @@ export default function ContactPage() {
           <CardHeader>
             <Mail size={20} className="mb-2 text-primary" />
             <CardTitle className="text-base">Email support</CardTitle>
-            <CardDescription>support@prernaai.com</CardDescription>
+            <CardDescription>prernaai03@gmail.com</CardDescription>
           </CardHeader>
         </Card>
         <Card>

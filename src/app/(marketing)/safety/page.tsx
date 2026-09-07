@@ -19,7 +19,7 @@ export default function SafetyPage() {
       <ul>
         <li>Not a medical, legal, or financial advisor. It cannot diagnose conditions, give legal conclusions, or predict markets.</li>
         <li>Not a crisis or emergency service.</li>
-        <li>Not a guarantee of any outcome — career, marriage, business, or otherwise.</li>
+        <li>Not a guarantee of any outcome, whether career, marriage, business, or otherwise.</li>
       </ul>
 
       <h2>If you are in crisis</h2>

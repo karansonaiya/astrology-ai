@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, errorResponse } from "@/lib/auth/guard";
+import { getEmailProvider } from "@/lib/notify/email";
 
 const patchSchema = z.object({
   reply: z.string().max(4000).optional(),
@@ -31,6 +32,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       },
       include: { replies: true },
     });
+
+    if (parsed.data.reply) {
+      try {
+        const owner = await prisma.user.findUnique({ where: { id: ticket.userId }, select: { email: true } });
+        if (owner?.email) {
+          await getEmailProvider().send(
+            owner.email,
+            `You have a reply on your support ticket: ${ticket.subject}`,
+            `An admin replied to your support ticket "${ticket.subject}":\n\n${parsed.data.reply}\n\nLog in to view the full conversation.`
+          );
+        }
+      } catch (err) {
+        console.error("Failed to send support ticket reply notification email", err);
+      }
+    }
 
     return NextResponse.json({ ticket });
   } catch (err) {
