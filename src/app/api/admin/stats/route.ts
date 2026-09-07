@@ -7,9 +7,14 @@ export async function GET() {
     await requireAdmin(["admin", "support_agent", "content_editor"]);
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    // Matches the heartbeat interval in presence-heartbeat.tsx (60s) with
+    // enough slack for a missed beat or two — not a literal "online right
+    // now" signal, just "seen in the last few minutes".
+    const onlineWindowAgo = new Date(Date.now() - 5 * 60 * 1000);
 
     const [
       totalUsers,
+      onlineNow,
       newUsers30d,
       paidOrders,
       totalRevenue,
@@ -20,6 +25,7 @@ export async function GET() {
       recentTickets,
     ] = await Promise.all([
       prisma.user.count({ where: { status: { not: "deleted" } } }),
+      prisma.user.count({ where: { lastActiveAt: { gte: onlineWindowAgo } } }),
       prisma.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
       prisma.order.count({ where: { status: "paid" } }),
       prisma.order.aggregate({ where: { status: "paid" }, _sum: { amountInPaise: true } }),
@@ -39,6 +45,7 @@ export async function GET() {
 
     return NextResponse.json({
       totalUsers,
+      onlineNow,
       newUsers30d,
       paidOrders,
       totalRevenueInPaise: totalRevenue._sum.amountInPaise ?? 0,

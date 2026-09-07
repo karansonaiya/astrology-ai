@@ -5,6 +5,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppHeader } from "@/components/layout/app-header";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { MaintenanceBanner } from "@/components/layout/maintenance-banner";
+import { PresenceHeartbeat } from "@/components/layout/presence-heartbeat";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -19,6 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen">
+      <PresenceHeartbeat />
       <AppSidebar />
       <div className="flex flex-1 flex-col">
         <AppHeader />

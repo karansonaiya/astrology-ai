@@ -2,12 +2,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
-import { formatInr } from "@/lib/utils";
+import { formatInr, cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type Stats = {
   totalUsers: number;
+  onlineNow: number;
   newUsers30d: number;
   paidOrders: number;
   totalRevenueInPaise: number;
@@ -21,7 +22,14 @@ type Stats = {
 };
 
 export default function AdminDashboardPage() {
-  const { data, isLoading } = useQuery({ queryKey: ["admin-stats"], queryFn: () => apiFetch<Stats>("/api/admin/stats") });
+  // refetchInterval gives the "online now" tile a live feel without a
+  // websocket — it's already just a "seen in the last 5 minutes" heuristic
+  // (see presence-heartbeat.tsx), so polling every 15s is honest and cheap.
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-stats"],
+    queryFn: () => apiFetch<Stats>("/api/admin/stats"),
+    refetchInterval: 15_000,
+  });
 
   if (isLoading || !data) {
     return (
@@ -31,6 +39,7 @@ export default function AdminDashboardPage() {
 
   const tiles = [
     { label: "Total users", value: data.totalUsers },
+    { label: "Online now (last 5 min)", value: data.onlineNow, highlight: data.onlineNow > 0 },
     { label: "New users (30d)", value: data.newUsers30d },
     { label: "Paid orders", value: data.paidOrders },
     { label: "Revenue", value: formatInr(data.totalRevenueInPaise) },
@@ -49,7 +58,10 @@ export default function AdminDashboardPage() {
         {tiles.map((tile) => (
           <Card key={tile.label}>
             <CardContent className="py-5">
-              <p className="text-2xl font-semibold">{tile.value}</p>
+              <p className={cn("flex items-center gap-2 text-2xl font-semibold", "highlight" in tile && tile.highlight && "text-success")}>
+                {"highlight" in tile && tile.highlight && <span className="h-2 w-2 rounded-full bg-success" />}
+                {tile.value}
+              </p>
               <p className="mt-1 text-xs text-muted">{tile.label}</p>
             </CardContent>
           </Card>

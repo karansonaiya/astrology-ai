@@ -226,6 +226,14 @@ model User {
   status UserStatus @default(active)
   locale Locale     @default(en)
 
+  // Updated by a client-side heartbeat (src/components/layout/presence-
+  // heartbeat.tsx) roughly once a minute while an authenticated page is
+  // open and visible — not a real-time websocket presence signal, just a
+  // "seen recently" timestamp. The admin dashboard's "online now" count is
+  // users with this within the last few minutes, labelled as such rather
+  // than claiming literal live presence.
+  lastActiveAt DateTime?
+
   ageConfirmed Boolean @default(false)
 
   referralCode     String  @unique @default(cuid())
