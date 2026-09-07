@@ -1,4 +1,4 @@
-import { getProkeralaToken } from "./adapter";
+import { getProkeralaToken, fetchProkeralaWithRetry } from "./adapter";
 
 /**
  * Panchang / Choghadiya / Muhurat calculation. Separate from adapter.ts
@@ -119,9 +119,17 @@ class ProkeralaPanchangProvider implements PanchangProvider {
     }).toString();
     const authHeaders = { Authorization: `Bearer ${token}` };
 
+    // fetchProkeralaWithRetry (not raw fetch): panchang alone makes 4
+    // simultaneous Prokerala calls against the account-wide 5-req/60s cap,
+    // so it takes only one other concurrent call (another user, the prefill
+    // cron, a month-view lookup) to tip it into a 429 — found live, this
+    // failed for a real city while a fresh single-request test to the same
+    // endpoint succeeded seconds later. Same fix already applied to
+    // adapter.ts's kundli calls for the identical "sometimes doesn't
+    // generate" symptom; this provider had been missed.
     const endpoints = ["panchang", "choghadiya", "auspicious-period", "inauspicious-period"] as const;
     const responses = await Promise.all(
-      endpoints.map((ep) => fetch(`https://api.prokerala.com/v2/astrology/${ep}?${qs}`, { headers: authHeaders }))
+      endpoints.map((ep) => fetchProkeralaWithRetry(`https://api.prokerala.com/v2/astrology/${ep}?${qs}`, { headers: authHeaders }))
     );
 
     for (const [i, res] of responses.entries()) {

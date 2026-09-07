@@ -139,7 +139,7 @@ const PROKERALA_REQUEST_TIMEOUT_MS = 15_000;
  * 400/401/404) are returned as-is so the caller's existing !res.ok handling
  * still produces the same error message as before.
  */
-async function fetchProkeralaWithRetry(url: string, init: RequestInit = {}): Promise<Response> {
+export async function fetchProkeralaWithRetry(url: string, init: RequestInit = {}): Promise<Response> {
   let lastError: Error | undefined;
 
   for (let attempt = 1; attempt <= PROKERALA_MAX_ATTEMPTS; attempt++) {
