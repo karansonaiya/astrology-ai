@@ -381,7 +381,19 @@ model BirthProfile {
 
 model KundliCalculation {
   id             String   @id @default(cuid())
-  birthProfileId String
+  // @unique (not just an index): confirmed live in the codebase that a
+  // birth profile is only ever meant to have ONE current calculation —
+  // /api/birth-profile already deleteMany()s this row on any profile edit
+  // instead of keeping history, and getOrComputeKundliCalculation always
+  // reads "the latest" as if there's exactly one. The gap: nothing stopped
+  // two concurrent requests (e.g. two tabs, or chat + the kundli page
+  // loading at once) from both seeing "no row yet" and both calling
+  // create(), leaving two rows for the same profile — real duplicate data,
+  // and a wasted second real Prokerala call every time it happened. The
+  // unique constraint below plus switching create() to upsert() (see
+  // adapter.ts) makes Postgres itself resolve the race atomically via
+  // ON CONFLICT, instead of hoping the two requests never actually overlap.
+  birthProfileId String @unique
 
   provider    String // "mock" | "prokerala" | "astrologyapi" | ...
   isDemoData  Boolean @default(true)
@@ -404,8 +416,6 @@ model KundliCalculation {
   calculatedAt DateTime @default(now())
 
   birthProfile BirthProfile @relation(fields: [birthProfileId], references: [id], onDelete: Cascade)
-
-  @@index([birthProfileId])
 }
 
 model CompatibilityRequest {

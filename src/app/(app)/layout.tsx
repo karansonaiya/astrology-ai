@@ -6,6 +6,7 @@ import { AppHeader } from "@/components/layout/app-header";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { MaintenanceBanner } from "@/components/layout/maintenance-banner";
 import { PresenceHeartbeat } from "@/components/layout/presence-heartbeat";
+import { BfcacheGuard } from "@/components/layout/bfcache-guard";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -21,6 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen">
       <PresenceHeartbeat />
+      <BfcacheGuard />
       <AppSidebar />
       {/* min-w-0: without it, a flex child's content (e.g. kundli's wide
           planetary-positions table) can force this column — and the whole

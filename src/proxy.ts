@@ -62,6 +62,21 @@ export default auth((req) => {
 
   const res = NextResponse.next();
   applySecurityHeaders(res);
+
+  // Found live: "log out, then press the browser Back button" could still
+  // show the old authenticated page (header, dashboard content) exactly as
+  // it looked before — the browser's back-forward cache (bfcache) restores
+  // a full snapshot of the page instead of asking the server again, so the
+  // server-side session check in (app)/layout.tsx never gets a chance to
+  // redirect to /login. `Cache-Control: no-store` on every logged-in page
+  // is the documented way to opt a page out of bfcache in every major
+  // browser, so Back always re-requests the page and re-runs that check —
+  // correct anyway for personalized, per-user content that should never
+  // sit in a shared/browser cache regardless of the bfcache angle.
+  if (isProtected || isAdmin) {
+    res.headers.set("Cache-Control", "no-store, must-revalidate");
+  }
+
   return res;
 });
 

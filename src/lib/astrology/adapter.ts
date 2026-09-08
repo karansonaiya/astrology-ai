@@ -507,19 +507,33 @@ export async function getOrComputeKundliCalculation(profile: {
     };
   }
 
-  return prisma.kundliCalculation.create({
-    data: {
-      birthProfileId: profile.id,
-      provider: result.provider,
-      isDemoData: result.isDemoData,
-      sunSign: result.sunSign,
-      moonSign: result.moonSign,
-      ascendant: result.ascendant,
-      nakshatra: result.nakshatra,
-      planetaryPositions: result.planetaryPositions ?? undefined,
-      houses: result.houses ?? undefined,
-      dasha: result.dasha ?? undefined,
-    },
+  // upsert, not create: two nearly-simultaneous requests for the same
+  // profile (two tabs, or the kundli page and chat both loading at once)
+  // could both pass the `existing` check above as null and both reach
+  // here. Before this, both then called create() and left two rows for
+  // the same birthProfileId — real duplicate data, plus a wasted second
+  // real Prokerala call every time it happened. birthProfileId is now
+  // @unique (see schema.prisma), so Postgres resolves this atomically via
+  // ON CONFLICT: whichever request's write loses the race updates the
+  // winner's row with the same freshly-computed real data instead of
+  // erroring out or creating a duplicate. explanation/explanationLocale
+  // are deliberately left untouched on the update path — this is a chart
+  // recompute, not a reason to invalidate a cached AI explanation.
+  const data = {
+    provider: result.provider,
+    isDemoData: result.isDemoData,
+    sunSign: result.sunSign,
+    moonSign: result.moonSign,
+    ascendant: result.ascendant,
+    nakshatra: result.nakshatra,
+    planetaryPositions: result.planetaryPositions ?? undefined,
+    houses: result.houses ?? undefined,
+    dasha: result.dasha ?? undefined,
+  };
+  return prisma.kundliCalculation.upsert({
+    where: { birthProfileId: profile.id },
+    create: { birthProfileId: profile.id, ...data },
+    update: data,
   });
 }
 
