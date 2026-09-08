@@ -30,6 +30,18 @@ export function AccordionTrigger({ className, children, ...props }: React.Compon
 export function AccordionContent({ className, children, ...props }: React.ComponentProps<typeof RadixAccordion.Content>) {
   return (
     <RadixAccordion.Content
+      // forceMount: without this, Radix unmounts a closed item's children
+      // from the DOM entirely once it finishes closing (or on first
+      // render, before it's ever been opened) — found live, checking the
+      // actual server-rendered HTML: a FAQ answer that's never been
+      // clicked open renders as a completely empty <div>, no text at all.
+      // For content added specifically so search engines can read it,
+      // that defeats the point — a crawler reading raw HTML (or one that
+      // never interacts with the accordion) would see no answer. forceMount
+      // keeps the answer text in the markup always; the native `hidden`
+      // attribute Radix still applies for a closed item is what keeps it
+      // visually collapsed and out of layout, same as before.
+      forceMount
       className={cn(
         // will-change hints the browser to optimize this specific element
         // for a height change ahead of time, instead of discovering it

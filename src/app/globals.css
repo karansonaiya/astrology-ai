@@ -64,9 +64,15 @@
   /* AccordionContent's expand/collapse — Radix exposes
      --radix-accordion-content-height as a live CSS var during the
      transition, so animating to/from it (rather than a fixed px value)
-     works for any answer length. */
-  --animate-accordion-down: accordion-down 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-accordion-up: accordion-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+     works for any answer length. `forwards` matters here specifically
+     because AccordionContent is forceMount-ed (so a closed FAQ answer
+     stays in the HTML for crawlers instead of being unmounted — see
+     accordion.tsx): without it, once the "closing" animation finishes,
+     the browser drops back to the element's natural (full) height
+     instead of staying collapsed at 0, since there's no longer a native
+     `hidden` attribute doing that job. */
+  --animate-accordion-down: accordion-down 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-accordion-up: accordion-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes accordion-down {
