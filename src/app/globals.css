@@ -61,6 +61,21 @@
   --color-ring: var(--color-ring);
   --font-sans: var(--font-body);
   --font-heading: var(--font-heading);
+  /* AccordionContent's expand/collapse — Radix exposes
+     --radix-accordion-content-height as a live CSS var during the
+     transition, so animating to/from it (rather than a fixed px value)
+     works for any answer length. */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+}
+
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
 }
 
 * {

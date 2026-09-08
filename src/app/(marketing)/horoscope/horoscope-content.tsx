@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
+import { PageFaqSection } from "@/components/layout/page-faq-section";
+import { HOROSCOPE_FAQS } from "@/lib/content/page-faqs";
 import { cn } from "@/lib/utils";
 
 type HoroscopeResponse =
@@ -119,6 +121,8 @@ export function HoroscopeContent() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <PageFaqSection faqs={HOROSCOPE_FAQS} />
     </div>
   );
 }

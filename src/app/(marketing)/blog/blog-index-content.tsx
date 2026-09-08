@@ -5,6 +5,8 @@ import { useI18n, useT } from "@/lib/i18n/provider";
 import { ZODIAC_SIGNS, ZODIAC_SYMBOLS, ZODIAC_LABELS } from "@/lib/zodiac";
 import { ZODIAC_PROFILES } from "@/lib/content/zodiac-profiles";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { PageFaqSection } from "@/components/layout/page-faq-section";
+import { BLOG_FAQS } from "@/lib/content/page-faqs";
 
 export function BlogIndexContent() {
   const t = useT();
@@ -35,6 +37,8 @@ export function BlogIndexContent() {
           );
         })}
       </div>
+
+      <PageFaqSection faqs={BLOG_FAQS} />
     </div>
   );
 }

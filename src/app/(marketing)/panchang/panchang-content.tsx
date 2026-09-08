@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CityAutocomplete } from "@/components/ui/city-autocomplete";
+import { PageFaqSection } from "@/components/layout/page-faq-section";
+import { PANCHANG_FAQS } from "@/lib/content/page-faqs";
 import { cn } from "@/lib/utils";
 
 type TimeWindow = { start: string; end: string };
@@ -167,6 +169,8 @@ export function PanchangContent() {
           <MonthView city={query.city} country={query.country} coords={query.coords} onSelectDay={showDay} />
         </TabsContent>
       </Tabs>
+
+      <PageFaqSection faqs={PANCHANG_FAQS} />
     </div>
   );
 }
