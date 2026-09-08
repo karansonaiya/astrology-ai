@@ -134,6 +134,28 @@ function sleep(ms: number) {
 
 class GeminiProvider implements AiProvider {
   private model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  // Each free-tier Gemini model has its OWN separate RPM/RPD quota bucket
+  // (confirmed live against the account's own Rate Limit page) — so a
+  // model reporting "quota exceeded" says nothing about whether a
+  // different model is exhausted too. GEMINI_FALLBACK_MODELS is an
+  // optional comma-separated list tried in order, after the primary
+  // GEMINI_MODEL, specifically for that case.
+  //
+  // IMPORTANT, found live: the account's Rate Limit dashboard lists rows
+  // (and shows quota numbers) for models this same account's API key can
+  // no longer actually call — every "gemini-2.5-*" model 404'd with "no
+  // longer available to new users" on a real generateContent request,
+  // despite the dashboard showing free RPD for them. Verified live via
+  // ListModels + a real call to each candidate before picking any of
+  // these: only the "gemini-3.x" family (3.5/3.6/3.7/3.8-flash,
+  // 3.1-flash-lite, 3-flash-preview) actually returned 200. Don't add a
+  // model here on the dashboard's say-so alone — confirm it with a real
+  // call first, the same way.
+
+  private fallbackModels = (process.env.GEMINI_FALLBACK_MODELS ?? "")
+    .split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
 
   async complete(req: CompletionRequest): Promise<CompletionResult> {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -172,20 +194,49 @@ class GeminiProvider implements AiProvider {
       generationConfig: { maxOutputTokens: req.maxTokens, thinkingConfig: { thinkingBudget: 1 } },
     });
 
-    // Gemini returns 503 ("model overloaded, try again") and occasionally 429
-    // fairly often at ordinary traffic levels — genuinely transient, not a
-    // real failure. Found live: an unhandled 503 crashed a chat message
-    // outright (no retry existed at all), and — worse — the user's credit
-    // had already been deducted before the AI call ran, so a purely
-    // transient hiccup cost them a real question for nothing. Retrying here
-    // means most of these never even reach the caller as an error.
-    const RETRYABLE_STATUSES = new Set([429, 503]);
+    // Model fallback chain: primary model first, then GEMINI_FALLBACK_MODELS
+    // in order, then one bonus retry of the primary model at the very end
+    // (bounded, not infinite — a per-minute RPM quota may have reset again
+    // by the time every fallback model has also been tried, but looping
+    // through the whole chain forever would make one failing request hang
+    // indefinitely instead of eventually surfacing a real error).
+    const chain = [this.model, ...this.fallbackModels, this.model];
+
+    let lastError: Error | undefined;
+    for (let i = 0; i < chain.length; i++) {
+      const model = chain[i];
+      try {
+        return await this.callModel(model, apiKey, body);
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        const isLastAttempt = i === chain.length - 1;
+        if (!isLastAttempt) {
+          console.warn(`[gemini] ${model} failed (${lastError.message.slice(0, 120)}), falling back to ${chain[i + 1]}`);
+        }
+      }
+    }
+    throw lastError!;
+  }
+
+  /**
+   * One model's own retry loop — 503 ("model overloaded") and an empty-200
+   * response are genuinely transient for the SAME model and worth retrying
+   * in place (found live: both happen fairly often at ordinary traffic
+   * levels, and an unhandled 503 used to crash a chat message outright
+   * after the user's credit was already deducted). 429 (quota exceeded) is
+   * NOT retried here — that model's quota window is exhausted right now,
+   * so an instant retry of the same model can't succeed; complete()'s
+   * fallback chain moves to a different model (a separate quota bucket)
+   * instead, which is the only thing that actually helps.
+   */
+  private async callModel(model: string, apiKey: string, body: string): Promise<CompletionResult> {
+    const RETRYABLE_STATUSES = new Set([503]);
     const MAX_ATTEMPTS = 3;
     let lastError: Error | undefined;
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         { method: "POST", headers: { "content-type": "application/json" }, body }
       );
 
@@ -206,7 +257,7 @@ class GeminiProvider implements AiProvider {
             text,
             promptTokens: data.usageMetadata?.promptTokenCount ?? 0,
             completionTokens: data.usageMetadata?.candidatesTokenCount ?? 0,
-            model: this.model,
+            model,
             provider: "gemini",
           };
         }
