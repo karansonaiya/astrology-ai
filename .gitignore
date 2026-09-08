@@ -30,8 +30,14 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — real secrets never committed, but .env.example (the
+# placeholder template every real .env is copied from) is meant to be
+# tracked, same as any other project file. Found live: `.env*` alone also
+# matched and silently ignored .env.example, so every edit to it this
+# session (new Ads/Gemini-fallback vars, etc.) was never actually
+# reaching git — a fresh clone would be missing them entirely.
 .env*
+!.env.example
 
 # vercel
 .vercel
