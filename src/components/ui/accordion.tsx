@@ -31,7 +31,12 @@ export function AccordionContent({ className, children, ...props }: React.Compon
   return (
     <RadixAccordion.Content
       className={cn(
-        "overflow-hidden text-sm leading-relaxed text-muted data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
+        // will-change hints the browser to optimize this specific element
+        // for a height change ahead of time, instead of discovering it
+        // needs to mid-animation — found live, without it the expand felt
+        // stepped/jerky rather than a continuous glide, worse the more
+        // else was on the page (e.g. the other FAQ column's items).
+        "overflow-hidden text-sm leading-relaxed text-muted [will-change:height] data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
         className
       )}
       {...props}
