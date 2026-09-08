@@ -15,8 +15,23 @@ import { generateHoroscopesForDate, type GenerateHoroscopesResult } from "@/lib/
  *
  * Idempotent — safe to trigger more than once a day; already-existing
  * period/locale/sign rows for the date are skipped, not re-created.
+ *
+ * Optional `?locale=en|hi|gu` scopes one call to a single locale instead of
+ * all 3. Found live: a single request doing all 3 locales × up to 12 signs
+ * (36 AI calls) reliably 502'd on Netlify — its function timeout kills the
+ * request mid-run before all 3 locales finish. daily-cron.yml now calls
+ * this once per locale (with its own retry) instead of once for everything,
+ * so each individual request has a third of the work and a real chance of
+ * finishing before Netlify's timeout, with the already-idempotent skip
+ * logic making a retry cheap (it only redoes whatever didn't finish).
+ * Omitting `locale` keeps the old all-3-locales-in-one-call behavior, still
+ * useful for a local/manual full run.
  */
 const LOCALES = ["en", "hi", "gu"] as const;
+type Locale = (typeof LOCALES)[number];
+function isLocale(v: string | null): v is Locale {
+  return v != null && (LOCALES as readonly string[]).includes(v);
+}
 
 function isAuthorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
@@ -52,6 +67,12 @@ export async function GET(req: NextRequest) {
 async function handle(req: NextRequest) {
   if (!isAuthorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
+  const requestedLocale = new URL(req.url).searchParams.get("locale");
+  if (requestedLocale != null && !isLocale(requestedLocale)) {
+    return NextResponse.json({ error: "invalid_locale" }, { status: 400 });
+  }
+  const locales: readonly Locale[] = requestedLocale ? [requestedLocale] : LOCALES;
+
   const { dateStr, weekday, dayOfMonth } = getIstToday();
   const periodDate = new Date(`${dateStr}T00:00:00.000Z`);
 
@@ -62,10 +83,10 @@ async function handle(req: NextRequest) {
   const results: Record<string, Record<string, GenerateHoroscopesResult>> = {};
   for (const period of periods) {
     results[period] = {};
-    for (const locale of LOCALES) {
+    for (const locale of locales) {
       results[period][locale] = await generateHoroscopesForDate({ period, locale, periodDate, autoPublish: true });
     }
   }
 
-  return NextResponse.json({ date: dateStr, periodsRun: periods, results });
+  return NextResponse.json({ date: dateStr, periodsRun: periods, locales, results });
 }

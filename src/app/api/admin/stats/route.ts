@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, errorResponse } from "@/lib/auth/guard";
+import { countOnlineAnonymousVisitors } from "@/lib/presence";
 
 export async function GET() {
   try {
@@ -15,6 +16,7 @@ export async function GET() {
     const [
       totalUsers,
       onlineNow,
+      onlineVisitors,
       newUsers30d,
       paidOrders,
       totalRevenue,
@@ -26,6 +28,11 @@ export async function GET() {
     ] = await Promise.all([
       prisma.user.count({ where: { status: { not: "deleted" } } }),
       prisma.user.count({ where: { lastActiveAt: { gte: onlineWindowAgo } } }),
+      // Anonymous, not-logged-in visitors on the public marketing pages —
+      // deliberately a separate number from onlineNow (real logged-in
+      // users), not merged into it: the two are different populations and
+      // merging them would misrepresent both.
+      countOnlineAnonymousVisitors(),
       prisma.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
       prisma.order.count({ where: { status: "paid" } }),
       prisma.order.aggregate({ where: { status: "paid" }, _sum: { amountInPaise: true } }),
@@ -46,6 +53,7 @@ export async function GET() {
     return NextResponse.json({
       totalUsers,
       onlineNow,
+      onlineVisitors,
       newUsers30d,
       paidOrders,
       totalRevenueInPaise: totalRevenue._sum.amountInPaise ?? 0,

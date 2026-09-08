@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Noto_Sans_Gujarati, Noto_Sans_Devanagari } from "next/font/google";
 import { cookies, headers } from "next/headers";
+import Script from "next/script";
 import "./globals.css";
 import { Providers } from "./providers";
 import { isAppLocale, resolveLocaleFromBrowser, localeCookieName, type AppLocale } from "@/lib/i18n/config";
@@ -56,9 +57,25 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const cookieTheme = cookieStore.get(THEME_COOKIE)?.value;
   const theme: Theme = cookieTheme === "light" ? "light" : "dark";
 
+  const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
+
   return (
     <html lang={locale} className={theme === "light" ? "light" : undefined} suppressHydrationWarning>
       <body className={`${inter.variable} ${notoGu.variable} ${notoDev.variable} cosmic-bg antialiased`}>
+        {/* Google AdSense's account-verification snippet. `beforeInteractive`
+            is what makes Next guarantee this lands in the real <head> (see
+            Next's next/script docs) — AdSense's own verification step
+            checks for exactly that, on any page it crawls. This alone never
+            shows an ad anywhere; only <AdSlot /> (blog/faq/panchang/
+            horoscope) does that, gated on ad config + subscriber status. */}
+        {adsenseClientId && (
+          <Script
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`}
+            crossOrigin="anonymous"
+            strategy="beforeInteractive"
+          />
+        )}
         <Providers initialLocale={locale} initialTheme={theme}>
           {children}
         </Providers>

@@ -37,9 +37,32 @@ jobs:
 
       - name: Generate daily horoscopes
         if: steps.which.outputs.horoscopes == 'true'
+        # One request per locale, not one request for all 3 — found live
+        # that a single all-locales call (up to 36 AI generations) reliably
+        # 502'd from Netlify's function timeout, which is exactly what was
+        # showing up as this job's daily failure email. Each locale is now a
+        # third of the work, and idempotent (already-generated signs are
+        # skipped instantly), so a retry after a timeout is cheap and only
+        # redoes whatever didn't finish. The job only actually fails (and
+        # emails) if one locale still can't get through after 3 tries.
         run: |
-          curl -sS -f -X GET "${{ vars.APP_URL }}/api/cron/generate-horoscopes" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+          for locale in en hi gu; do
+            echo "== horoscopes: $locale =="
+            success=false
+            for attempt in 1 2 3; do
+              if curl -sS -f -X GET "${{ vars.APP_URL }}/api/cron/generate-horoscopes?locale=$locale" \
+                   -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"; then
+                success=true
+                break
+              fi
+              echo "attempt $attempt for locale=$locale failed, retrying in 10s..."
+              sleep 10
+            done
+            if [ "$success" != "true" ]; then
+              echo "::error::horoscope generation failed for locale=$locale after 3 attempts"
+              exit 1
+            fi
+          done
 
       - name: Prefill panchang cache
         if: steps.which.outputs.panchang == 'true'

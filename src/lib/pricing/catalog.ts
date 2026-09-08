@@ -47,7 +47,7 @@ export const PLANS = [
   {
     code: "monthly_premium",
     name: "Monthly Premium",
-    description: "Higher daily question quota, priority response time, and one free report credit each month.",
+    description: "Higher daily question quota, priority response time, one free report credit each month, and no ads anywhere on the site.",
     priceInPaise: 14900,
     billingPeriod: "monthly",
     creditsGranted: 30,

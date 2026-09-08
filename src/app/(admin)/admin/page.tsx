@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 type Stats = {
   totalUsers: number;
   onlineNow: number;
+  onlineVisitors: number;
   newUsers30d: number;
   paidOrders: number;
   totalRevenueInPaise: number;
@@ -39,7 +40,13 @@ export default function AdminDashboardPage() {
 
   const tiles = [
     { label: "Total users", value: data.totalUsers },
-    { label: "Online now (last 5 min)", value: data.onlineNow, highlight: data.onlineNow > 0 },
+    // Two different populations, kept separate rather than summed into one
+    // number: logged-in app users (real accounts, User.lastActiveAt) vs.
+    // anonymous visitors browsing the public site (no account, a
+    // localStorage-only id — see anon-presence-heartbeat.tsx). Both are the
+    // same "seen in the last 5 min" heuristic, just measuring different things.
+    { label: "Logged-in now (last 5 min)", value: data.onlineNow, highlight: data.onlineNow > 0 },
+    { label: "Site visitors now (last 5 min)", value: data.onlineVisitors, highlight: data.onlineVisitors > 0 },
     { label: "New users (30d)", value: data.newUsers30d },
     { label: "Paid orders", value: data.paidOrders },
     { label: "Revenue", value: formatInr(data.totalRevenueInPaise) },

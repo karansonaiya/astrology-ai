@@ -85,10 +85,26 @@ function applySecurityHeaders(res: NextResponse) {
   // here so a same-mechanism nested frame doesn't get blocked next.
   // Sandbox and production domains are both included since PAYMENT_PROVIDER/
   // CASHFREE_ENV can differ per deployment.
+  //
+  // Google AdSense (see src/components/ads/*, only active when
+  // NEXT_PUBLIC_ADSENSE_CLIENT_ID is set) needs its own, wider allowance:
+  // the loader script comes from pagead2.googlesyndication.com, but the
+  // actual ad creative + the click/impression beacons it fires can come
+  // from any of googlesyndication.com's/doubleclick.net's/googleadservices'
+  // subdomains, and ad *images* are effectively unenumerable (they're
+  // whatever the winning advertiser hosts) — trying to allowlist every real
+  // ad creative host one at a time isn't practical, so img-src is widened to
+  // any https origin here specifically for that reason, same trade-off any
+  // site running third-party ads makes. Everything else stays scoped to the
+  // specific Google ad domains, not a blanket allow.
+  const adsenseScriptSrc = "https://*.googlesyndication.com https://*.doubleclick.net https://*.googletagservices.com https://*.googleadservices.com";
+  const adsenseFrameSrc = "https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com";
+  const adsenseConnectSrc = "https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com";
+
   const scriptSrc =
     process.env.NODE_ENV === "development"
-      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.cashfree.com https://challenges.cloudflare.com"
-      : "script-src 'self' 'unsafe-inline' https://sdk.cashfree.com https://challenges.cloudflare.com";
+      ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.cashfree.com https://challenges.cloudflare.com ${adsenseScriptSrc}`
+      : `script-src 'self' 'unsafe-inline' https://sdk.cashfree.com https://challenges.cloudflare.com ${adsenseScriptSrc}`;
 
   res.headers.set(
     "Content-Security-Policy",
@@ -96,10 +112,10 @@ function applySecurityHeaders(res: NextResponse) {
       "default-src 'self'",
       scriptSrc,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob:",
+      "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https://api.cashfree.com https://sandbox.cashfree.com https://challenges.cloudflare.com",
-      "frame-src 'self' https://sdk.cashfree.com https://api.cashfree.com https://sandbox.cashfree.com https://payments.cashfree.com https://payments-test.cashfree.com https://challenges.cloudflare.com",
+      `connect-src 'self' https://api.cashfree.com https://sandbox.cashfree.com https://challenges.cloudflare.com ${adsenseConnectSrc}`,
+      `frame-src 'self' https://sdk.cashfree.com https://api.cashfree.com https://sandbox.cashfree.com https://payments.cashfree.com https://payments-test.cashfree.com https://challenges.cloudflare.com ${adsenseFrameSrc}`,
       "object-src 'none'",
       "base-uri 'self'",
     ].join("; ")
