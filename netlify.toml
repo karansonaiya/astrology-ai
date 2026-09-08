@@ -1,0 +1,18 @@
+# Netlify's build-time secret scanner ("Scanning for secrets in code and
+# build output") flags any env var whose value shows up in the build output
+# — but NEXT_PUBLIC_* vars are *supposed* to end up in the client bundle,
+# that's what the prefix means in Next.js. It has no way to tell "this is
+# a real secret that leaked" apart from "this is public config working
+# exactly as intended", so it treats both the same and fails the build.
+#
+# Found live: NEXT_PUBLIC_ADSENSE_CLIENT_ID (Google AdSense's publisher id
+# — meant to be public, it has to reach the browser for ads to load at all)
+# tripped this and failed the whole deploy. SECRETS_SCAN_OMIT_KEYS is
+# Netlify's documented way to tell the scanner "skip these specific keys",
+# narrower than disabling the scan entirely (SECRETS_SCAN_ENABLED=false),
+# which would also stop it from catching an actual leaked secret elsewhere.
+#
+# If a future NEXT_PUBLIC_* var trips the same false positive, add it to
+# this comma-separated list rather than turning the scanner off.
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_ADSENSE_CLIENT_ID,NEXT_PUBLIC_ADSENSE_SLOT_ID"
