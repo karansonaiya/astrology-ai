@@ -39,6 +39,22 @@ export default function AdminContentPage() {
 
   const { data, isLoading } = useQuery({ queryKey: ["admin-content"], queryFn: () => apiFetch<{ content: Content[] }>("/api/admin/content/horoscope") });
 
+  // How much of today's (or whichever date/period is picked above) content
+  // actually exists — found live that without this, the only way to check
+  // "did today's horoscope actually generate?" was scrolling the flat list
+  // below by eye. 12 signs x 3 locales (en/hi/gu) is always the full set,
+  // regardless of period (daily/weekly/monthly).
+  const TOTAL_EXPECTED = ZODIAC_SIGNS.length * 3;
+  const matchingContent = (data?.content ?? []).filter(
+    (c) => c.period === genForm.period && c.periodDate.slice(0, 10) === genForm.periodDate
+  );
+  const localeCounts = { en: 0, hi: 0, gu: 0 } as Record<"en" | "hi" | "gu", number>;
+  let publishedCount = 0;
+  for (const c of matchingContent) {
+    if (c.locale in localeCounts) localeCounts[c.locale as "en" | "hi" | "gu"]++;
+    if (c.status === "published") publishedCount++;
+  }
+
   const generate = useMutation({
     mutationFn: () => apiFetch<GenerateResponse>("/api/admin/content/horoscope/generate", { method: "POST", body: JSON.stringify(genForm) }),
     onSuccess: (res) => {
@@ -108,6 +124,17 @@ export default function AdminContentPage() {
           <Button onClick={() => generate.mutate()} disabled={generate.isPending}>
             {generate.isPending ? "Generating (en+hi+gu)…" : "Generate all 12 signs · all 3 languages"}
           </Button>
+        </CardContent>
+        <CardContent className="pt-0">
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm">
+            <Badge variant={matchingContent.length === TOTAL_EXPECTED ? "success" : matchingContent.length === 0 ? "default" : "gold"}>
+              {matchingContent.length} / {TOTAL_EXPECTED} generated
+            </Badge>
+            <span className="text-xs text-muted">
+              for <strong>{genForm.periodDate}</strong> ({genForm.period}) — en {localeCounts.en}/12 · hi {localeCounts.hi}/12 · gu {localeCounts.gu}/12
+              {matchingContent.length > 0 && <> · {publishedCount}/{matchingContent.length} published</>}
+            </span>
+          </div>
         </CardContent>
         <CardContent className="flex flex-wrap items-center justify-between gap-2 pt-0 text-xs text-muted">
           <span>

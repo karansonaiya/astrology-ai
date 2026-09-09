@@ -10,10 +10,30 @@ name: Daily content automation
 # gap for free, from the same repo, with no new external service to sign
 # up for. Schedule times match vercel.json's UTC times exactly, so both
 # configs stay meaningful if this project ever moves back to Vercel.
+#
+# Found live, a second time: after this workflow had been running for a
+# few days, HoroscopeContent rows for 2026-09-07/08 turned out to have
+# been created by GitHub's schedule trigger, but 5-7 hours late (07:24 UTC
+# and 05:12 UTC respectively, not the configured 00:30 UTC) — and on
+# 2026-09-09 it still hadn't fired by 09:13 UTC (8.5+ hours late), forcing
+# a manual "Generate all 12 signs" click in the admin panel instead.
+# GitHub's own docs confirm `schedule` is best-effort with no fixed SLA,
+# and low-activity repos get deprioritized further. Since
+# generate-horoscopes is already idempotent (existing sign/locale/period
+# rows are skipped instantly, not re-created), the fix is redundancy, not
+# a smarter scheduler: fire it every 2 hours through the IST morning
+# instead of once. A successful run makes every later retry that day a
+# handful of instant no-op skip-checks — cheap insurance against any one
+# firing being dropped or delayed past when users start checking.
 on:
   schedule:
-    - cron: "0 0 * * *"   # prefill-panchang, 00:00 UTC
-    - cron: "30 0 * * *"  # generate-horoscopes, 00:30 UTC
+    - cron: "0 0 * * *"    # prefill-panchang, 00:00 UTC (once — not seen to have this problem)
+    - cron: "30 0 * * *"   # generate-horoscopes — primary attempt, 00:30 UTC (06:00 IST)
+    - cron: "30 2 * * *"   # generate-horoscopes — retry, 02:30 UTC (08:00 IST)
+    - cron: "30 4 * * *"   # generate-horoscopes — retry, 04:30 UTC (10:00 IST)
+    - cron: "30 6 * * *"   # generate-horoscopes — retry, 06:30 UTC (12:00 IST)
+    - cron: "30 8 * * *"   # generate-horoscopes — retry, 08:30 UTC (14:00 IST)
+    - cron: "30 10 * * *"  # generate-horoscopes — retry, 10:30 UTC (16:00 IST)
   workflow_dispatch: {} # manual "Run workflow" button, for backfills/testing
 
 jobs:
@@ -23,13 +43,17 @@ jobs:
       - name: Determine which job this run is for
         id: which
         run: |
-          # workflow_dispatch has no cron schedule, so run both in that case.
-          if [ "${{ github.event.schedule }}" = "30 0 * * *" ]; then
-            echo "horoscopes=true" >> "$GITHUB_OUTPUT"
-            echo "panchang=false" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.event.schedule }}" = "0 0 * * *" ]; then
+          # Exactly one schedule string (the panchang one) means "panchang
+          # only" — every other schedule string is a generate-horoscopes
+          # attempt (primary or one of the retries above), so match on that
+          # rather than listing every retry time here too. workflow_dispatch
+          # has no schedule string at all, so run both in that case.
+          if [ "${{ github.event.schedule }}" = "0 0 * * *" ]; then
             echo "horoscopes=false" >> "$GITHUB_OUTPUT"
             echo "panchang=true" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ github.event.schedule }}" ]; then
+            echo "horoscopes=true" >> "$GITHUB_OUTPUT"
+            echo "panchang=false" >> "$GITHUB_OUTPUT"
           else
             echo "horoscopes=true" >> "$GITHUB_OUTPUT"
             echo "panchang=true" >> "$GITHUB_OUTPUT"
