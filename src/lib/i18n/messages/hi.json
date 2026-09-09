@@ -306,6 +306,12 @@
     "compatibleWith": "आमतौर पर इनके साथ अनुकूल",
     "seeYourHoroscope": "इस राशि का आज का राशिफल देखें"
   },
+  "contact": {
+    "legalTitle": "कानूनी और व्यापारी विवरण",
+    "legalName": "कानूनी नाम",
+    "legalEmailLabel": "ईमेल",
+    "legalPhoneLabel": "फ़ोन"
+  },
   "kundli": {
     "title": "कुंडली / जन्म कुंडली",
     "sunSign": "सूर्य राशि",

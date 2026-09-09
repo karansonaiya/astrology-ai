@@ -34,6 +34,28 @@ export default function ContactPage() {
         </Card>
       </div>
 
+      {/* Legal/merchant identity — required by our payment gateway's (Cashfree)
+          verification: the individual/entity actually operating a site that
+          collects payments needs to be identifiable on it, not just in the
+          gateway's own backend paperwork. */}
+      <Card className="mt-5">
+        <CardHeader>
+          <CardTitle className="text-base">{t("contact.legalTitle")}</CardTitle>
+          <div className="mt-2 flex flex-col gap-1 text-sm text-muted">
+            <p>
+              <span className="font-medium text-foreground">{t("contact.legalName")}:</span> Karan Navinbhai Sonaiya
+            </p>
+            <p>
+              <span className="font-medium text-foreground">{t("contact.legalEmailLabel")}:</span>{" "}
+              sonaiyakaran339@gmail.com
+            </p>
+            <p>
+              <span className="font-medium text-foreground">{t("contact.legalPhoneLabel")}:</span> +91 8490853065
+            </p>
+          </div>
+        </CardHeader>
+      </Card>
+
       <Button asChild className="mt-8">
         <Link href="/help">{t("help.title")}</Link>
       </Button>

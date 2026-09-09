@@ -306,6 +306,12 @@
     "compatibleWith": "Generally compatible with",
     "seeYourHoroscope": "See today's horoscope for this sign"
   },
+  "contact": {
+    "legalTitle": "Legal & merchant details",
+    "legalName": "Legal name",
+    "legalEmailLabel": "Email",
+    "legalPhoneLabel": "Phone"
+  },
   "kundli": {
     "title": "Kundli / Birth Chart",
     "sunSign": "Sun sign",

@@ -306,6 +306,12 @@
     "compatibleWith": "સામાન્ય રીતે આમની સાથે કમ્પેટિબલ",
     "seeYourHoroscope": "આ રાશિનું આજનું રાશિફળ જુઓ"
   },
+  "contact": {
+    "legalTitle": "કાનૂની અને વેપારી વિગતો",
+    "legalName": "કાનૂની નામ",
+    "legalEmailLabel": "ઈમેલ",
+    "legalPhoneLabel": "ફોન"
+  },
   "kundli": {
     "title": "કુંડળી / જન્મ પત્રિકા",
     "sunSign": "સૂર્ય રાશિ",
