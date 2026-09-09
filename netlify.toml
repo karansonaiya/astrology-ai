@@ -14,5 +14,17 @@
 #
 # If a future NEXT_PUBLIC_* var trips the same false positive, add it to
 # this comma-separated list rather than turning the scanner off.
+#
+# Found live, a second time: RESEND_API_KEY and VAPID_PRIVATE_KEY (both
+# genuinely server-only — neither is NEXT_PUBLIC_, neither is ever read from
+# client code) also tripped the scanner, flagged only inside
+# .netlify/.next/cache/turbopack/*.sst — Turbopack's own internal
+# incremental-build cache, not the actual deployed site or functions output.
+# Next.js/Turbopack snapshots the full resolved env into that cache for its
+# own bookkeeping; the scanner can't tell that apart from a real leak into
+# something that's actually served. Omitting them here is safe on the same
+# basis as the AdSense keys above — nothing about these two is exposed to a
+# visitor just because the scanner's blunt string-match found the value
+# inside Turbopack's private cache directory.
 [build.environment]
-  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_ADSENSE_CLIENT_ID,NEXT_PUBLIC_ADSENSE_SLOT_ID"
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_ADSENSE_CLIENT_ID,NEXT_PUBLIC_ADSENSE_SLOT_ID,RESEND_API_KEY,VAPID_PRIVATE_KEY"
