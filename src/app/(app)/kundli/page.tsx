@@ -17,6 +17,7 @@ import { ZodiacWheel } from "@/components/astrology/zodiac-wheel";
 import { CityAutocomplete } from "@/components/ui/city-autocomplete";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
+import { ShareButton } from "@/components/ui/share-button";
 import { ZODIAC_LABELS, type ZodiacSign } from "@/lib/zodiac";
 import { CORE_EXPLANATIONS, PLANET_LABELS, HOUSE_THEMES, buildPlanetInterpretation } from "@/lib/astrology/interpretations";
 import type { AppLocale } from "@/lib/i18n/config";
@@ -373,8 +374,17 @@ function KundliExplanationSection({ own, name, calc }: { own: boolean; name?: st
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">{t("kundli.shortSummaryTitle")}</CardTitle>
+          {/* Shares the summary text plus a link to the public homepage
+              (NOT this /kundli URL) — the recipient has no session of their
+              own to view someone else's private chart page, so the useful
+              thing to hand them is an invite to try Prerna AI themselves. */}
+          <ShareButton
+            title={t("kundli.shortSummaryTitle")}
+            text={explanation.shortSummary}
+            url={process.env.NEXT_PUBLIC_APP_URL || "https://prernaai.netlify.app"}
+          />
         </CardHeader>
         <CardContent>
           <p className="text-sm leading-relaxed">{explanation.shortSummary}</p>

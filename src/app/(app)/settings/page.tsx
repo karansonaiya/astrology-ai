@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useToast } from "@/components/ui/toast";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { InstallButton } from "@/components/layout/install-button";
+import { usePushSubscription } from "@/lib/push/use-push-subscription";
 
 export default function SettingsPage() {
   const t = useT();
@@ -20,8 +21,22 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [notifications, setNotifications] = useState(false);
+  const push = usePushSubscription();
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const handleNotificationsChange = async (wantOn: boolean) => {
+    if (wantOn) {
+      const ok = await push.subscribe();
+      if (!ok) {
+        toast({
+          title: push.state === "denied" ? t("settings.notificationsBlocked") : t("errors.generic"),
+          variant: "danger",
+        });
+      }
+    } else {
+      await push.unsubscribe();
+    }
+  };
 
   const deleteBirthDetails = useMutation({
     mutationFn: () => apiFetch("/api/birth-profile", { method: "DELETE" }),
@@ -79,8 +94,17 @@ export default function SettingsPage() {
           <CardDescription>{t("settings.notificationsDesc")}</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-between">
-          <span className="text-sm text-muted">Daily horoscope reminder</span>
-          <Switch checked={notifications} onCheckedChange={setNotifications} />
+          <span className="text-sm text-muted">
+            {t("settings.dailyReminderLabel")}
+            {push.state === "unsupported" && ` — ${t("settings.notificationsUnsupported")}`}
+            {push.state === "denied" && ` — ${t("settings.notificationsBlocked")}`}
+            {push.state === "dev-only" && ` — ${t("settings.notificationsDevOnly")}`}
+          </span>
+          <Switch
+            checked={push.subscribed}
+            onCheckedChange={handleNotificationsChange}
+            disabled={push.loading || push.state === "unsupported" || push.state === "denied" || push.state === "dev-only"}
+          />
         </CardContent>
       </Card>
 

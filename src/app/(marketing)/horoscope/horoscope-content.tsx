@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { PageFaqSection } from "@/components/layout/page-faq-section";
 import { HOROSCOPE_FAQS } from "@/lib/content/page-faqs";
+import { ShareButton } from "@/components/ui/share-button";
 import { cn } from "@/lib/utils";
 
 type HoroscopeResponse =
@@ -91,7 +92,13 @@ export function HoroscopeContent() {
                   <CardTitle>
                     {ZODIAC_SYMBOLS[sign]} {ZODIAC_LABELS[sign][locale]}
                   </CardTitle>
-                  <AiDisclosureBadge label={t("common.aiGuidanceBadge")} />
+                  <div className="flex items-center gap-2">
+                    <AiDisclosureBadge label={t("common.aiGuidanceBadge")} />
+                    <ShareButton
+                      title={t("horoscope.title")}
+                      text={`${ZODIAC_LABELS[sign][locale]} (${t(`horoscope.${period}`)}): ${data.content.reflection}`}
+                    />
+                  </div>
                 </CardHeader>
                 <CardContent className="grid gap-4 sm:grid-cols-2">
                   <Field label={t("horoscope.career")} value={data.content.career} />

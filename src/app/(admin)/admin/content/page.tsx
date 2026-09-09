@@ -42,23 +42,24 @@ export default function AdminContentPage() {
   // How much of today's (or whichever date/period is picked above) content
   // actually exists — found live that without this, the only way to check
   // "did today's horoscope actually generate?" was scrolling the flat list
-  // below by eye. 12 signs x 3 locales (en/hi/gu) is always the full set,
-  // regardless of period (daily/weekly/monthly).
-  const TOTAL_EXPECTED = ZODIAC_SIGNS.length * 3;
-  const matchingContent = (data?.content ?? []).filter(
-    (c) => c.period === genForm.period && c.periodDate.slice(0, 10) === genForm.periodDate
-  );
-  const localeCounts = { en: 0, hi: 0, gu: 0 } as Record<"en" | "hi" | "gu", number>;
-  let publishedCount = 0;
-  for (const c of matchingContent) {
-    if (c.locale in localeCounts) localeCounts[c.locale as "en" | "hi" | "gu"]++;
-    if (c.status === "published") publishedCount++;
-  }
+  // below by eye. A dedicated summary query (not derived from `data.content`
+  // above) — that list is windowed to a recent range for its own reasons
+  // (see its route.ts), and deriving this count from it would silently go
+  // wrong the moment someone picks a date outside that window.
+  type Summary = { total: number; expected: number; published: number; byLocale: Record<"en" | "hi" | "gu", number> };
+  const { data: summary } = useQuery({
+    queryKey: ["admin-content-summary", genForm.period, genForm.periodDate],
+    queryFn: () =>
+      apiFetch<Summary>(
+        `/api/admin/content/horoscope/summary?period=${genForm.period}&periodDate=${genForm.periodDate}`
+      ),
+  });
 
   const generate = useMutation({
     mutationFn: () => apiFetch<GenerateResponse>("/api/admin/content/horoscope/generate", { method: "POST", body: JSON.stringify(genForm) }),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["admin-content"] });
+      qc.invalidateQueries({ queryKey: ["admin-content-summary"] });
       const locales = Object.keys(res.results);
       const totalCreated = locales.reduce((n, l) => n + res.results[l].created.length, 0);
       const totalSkipped = locales.reduce((n, l) => n + res.results[l].skipped.length, 0);
@@ -77,6 +78,7 @@ export default function AdminContentPage() {
     mutationFn: () => apiFetch("/api/admin/content/horoscope", { method: "POST", body: JSON.stringify(form) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-content"] });
+      qc.invalidateQueries({ queryKey: ["admin-content-summary"] });
       setForm(EMPTY_FORM);
       toast({ title: "Draft created", variant: "success" });
     },
@@ -84,7 +86,10 @@ export default function AdminContentPage() {
 
   const publish = useMutation({
     mutationFn: (id: string) => apiFetch(`/api/admin/content/horoscope/${id}`, { method: "PATCH", body: JSON.stringify({ status: "published" }) }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-content"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-content"] });
+      qc.invalidateQueries({ queryKey: ["admin-content-summary"] });
+    },
   });
 
   const publishAllDrafts = useMutation({
@@ -97,6 +102,7 @@ export default function AdminContentPage() {
     },
     onSuccess: (count) => {
       qc.invalidateQueries({ queryKey: ["admin-content"] });
+      qc.invalidateQueries({ queryKey: ["admin-content-summary"] });
       toast({ title: `Published ${count} draft(s)`, variant: "success" });
     },
   });
@@ -127,13 +133,15 @@ export default function AdminContentPage() {
         </CardContent>
         <CardContent className="pt-0">
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm">
-            <Badge variant={matchingContent.length === TOTAL_EXPECTED ? "success" : matchingContent.length === 0 ? "default" : "gold"}>
-              {matchingContent.length} / {TOTAL_EXPECTED} generated
+            <Badge variant={!summary ? "default" : summary.total === summary.expected ? "success" : summary.total === 0 ? "default" : "gold"}>
+              {summary ? `${summary.total} / ${summary.expected} generated` : "…"}
             </Badge>
-            <span className="text-xs text-muted">
-              for <strong>{genForm.periodDate}</strong> ({genForm.period}) — en {localeCounts.en}/12 · hi {localeCounts.hi}/12 · gu {localeCounts.gu}/12
-              {matchingContent.length > 0 && <> · {publishedCount}/{matchingContent.length} published</>}
-            </span>
+            {summary && (
+              <span className="text-xs text-muted">
+                for <strong>{genForm.periodDate}</strong> ({genForm.period}) — en {summary.byLocale.en}/12 · hi {summary.byLocale.hi}/12 · gu {summary.byLocale.gu}/12
+                {summary.total > 0 && <> · {summary.published}/{summary.total} published</>}
+              </span>
+            )}
           </div>
         </CardContent>
         <CardContent className="flex flex-wrap items-center justify-between gap-2 pt-0 text-xs text-muted">

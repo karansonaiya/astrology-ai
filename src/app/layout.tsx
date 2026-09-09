@@ -24,6 +24,12 @@ const notoDev = Noto_Sans_Devanagari({
 });
 
 export const metadata: Metadata = {
+  // Lets Next.js resolve any relative URL in metadata (OG/Twitter images,
+  // canonical links) into an absolute one — found live, this was unset, so
+  // those would have silently resolved against whatever host actually served
+  // the request instead of the real canonical domain. Same fallback/env-var
+  // story as sitemap.ts and robots.ts (see their header comments).
+  metadataBase: new URL((process.env.NEXT_PUBLIC_APP_URL || "https://prernaai.netlify.app").replace(/\/$/, "")),
   title: "Prerna AI — Private AI-powered astrology insights",
   description: "Private, AI-powered astrology-style guidance in Gujarati, Hindi, and English. AI-generated guidance for reflection, not certainty.",
   manifest: "/manifest.webmanifest",

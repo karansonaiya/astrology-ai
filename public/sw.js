@@ -84,3 +84,41 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+// Daily-reminder push notifications (see src/lib/push/send.ts) — the
+// payload is plain JSON ({ title, body, url }), not anything sensitive
+// (never birth details or chat content), so showing it verbatim is fine.
+self.addEventListener("push", (event) => {
+  let payload = { title: "Prerna AI", body: "" , url: "/"};
+  try {
+    if (event.data) payload = { ...payload, ...event.data.json() };
+  } catch {
+    // Malformed/non-JSON push payload — fall back to the generic title/body
+    // above rather than letting the whole handler throw and show nothing.
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      data: { url: payload.url || "/" },
+    })
+  );
+});
+
+// Focuses an already-open tab on the target URL instead of always opening a
+// new one, if one exists — standard PWA notification-click pattern.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || "/";
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (new URL(client.url).pathname === targetUrl && "focus" in client) return client.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
+    })
+  );
+});

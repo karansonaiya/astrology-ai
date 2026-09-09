@@ -267,6 +267,7 @@ model User {
   consents            Consent[]
   dataExportRequests  DataExportRequest[]
   otpCodes            OtpCode[]
+  pushSubscriptions   PushSubscription[]
 
   @@index([role])
   @@index([status])
@@ -645,6 +646,28 @@ model PlaceSearchCache {
   results Json // PlaceSuggestion[], see src/lib/geo.ts
 
   createdAt DateTime @default(now())
+}
+
+/**
+ * One browser's Web Push subscription (see src/lib/push/send.ts) — a user
+ * can have several (phone + laptop, or after reinstalling the PWA), so this
+ * is keyed by `endpoint` (unique per browser/device registration with its
+ * push service — FCM for Chrome, Mozilla's for Firefox, etc.), not by user
+ * alone. Deleted proactively when a send comes back 410 Gone (the browser
+ * unsubscribed or the endpoint expired) — see sendPushToUser's cleanup.
+ */
+model PushSubscription {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  endpoint String @unique
+  p256dh   String // PushSubscriptionKeys.p256dh
+  auth     String // PushSubscriptionKeys.auth
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model HoroscopeContent {

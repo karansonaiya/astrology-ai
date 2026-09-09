@@ -26,10 +26,27 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
 
+    // A flat `take: 200` cap silently drops anything older than ~5-6 days
+    // once daily generation is producing 36 rows/day (12 signs x 3 locales) —
+    // found live, this was already close to happening. Scoping by a trailing
+    // date window instead means the row count naturally stays bounded (a
+    // period further back just falls out of the window, on purpose) rather
+    // than an arbitrary cutoff that keeps shrinking in days-of-coverage as
+    // volume grows. 45 days covers "did this month's content generate"
+    // checks with room to spare; the admin dashboard's own summary endpoint
+    // (see summary/route.ts) is what the per-date counter actually relies
+    // on, so this list's window can stay generous without needing to be
+    // exact for that purpose too.
+    const since = new Date();
+    since.setUTCDate(since.getUTCDate() - 45);
+
     const content = await prisma.horoscopeContent.findMany({
-      where: status ? { status: status as never } : undefined,
+      where: {
+        ...(status ? { status: status as never } : {}),
+        periodDate: { gte: since },
+      },
       orderBy: { periodDate: "desc" },
-      take: 200,
+      take: 500,
     });
     return NextResponse.json({ content });
   } catch (err) {

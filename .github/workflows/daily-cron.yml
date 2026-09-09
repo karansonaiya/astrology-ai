@@ -29,6 +29,7 @@ on:
   schedule:
     - cron: "0 0 * * *"    # prefill-panchang, 00:00 UTC (once — not seen to have this problem)
     - cron: "30 0 * * *"   # generate-horoscopes — primary attempt, 00:30 UTC (06:00 IST)
+    - cron: "0 1 * * *"    # send-daily-reminder push, 01:00 UTC (06:30 IST) — after the primary attempt above has had time to finish
     - cron: "30 2 * * *"   # generate-horoscopes — retry, 02:30 UTC (08:00 IST)
     - cron: "30 4 * * *"   # generate-horoscopes — retry, 04:30 UTC (10:00 IST)
     - cron: "30 6 * * *"   # generate-horoscopes — retry, 06:30 UTC (12:00 IST)
@@ -43,20 +44,28 @@ jobs:
       - name: Determine which job this run is for
         id: which
         run: |
-          # Exactly one schedule string (the panchang one) means "panchang
-          # only" — every other schedule string is a generate-horoscopes
-          # attempt (primary or one of the retries above), so match on that
-          # rather than listing every retry time here too. workflow_dispatch
-          # has no schedule string at all, so run both in that case.
+          # Exactly one schedule string each for panchang and the reminder
+          # push — every other schedule string is a generate-horoscopes
+          # attempt (primary or one of the retries above), so that one is
+          # matched by exclusion rather than listing every retry time here
+          # too. workflow_dispatch has no schedule string at all, so run
+          # everything in that case (manual backfill/testing).
           if [ "${{ github.event.schedule }}" = "0 0 * * *" ]; then
             echo "horoscopes=false" >> "$GITHUB_OUTPUT"
             echo "panchang=true" >> "$GITHUB_OUTPUT"
+            echo "reminder=false" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 1 * * *" ]; then
+            echo "horoscopes=false" >> "$GITHUB_OUTPUT"
+            echo "panchang=false" >> "$GITHUB_OUTPUT"
+            echo "reminder=true" >> "$GITHUB_OUTPUT"
           elif [ -n "${{ github.event.schedule }}" ]; then
             echo "horoscopes=true" >> "$GITHUB_OUTPUT"
             echo "panchang=false" >> "$GITHUB_OUTPUT"
+            echo "reminder=false" >> "$GITHUB_OUTPUT"
           else
             echo "horoscopes=true" >> "$GITHUB_OUTPUT"
             echo "panchang=true" >> "$GITHUB_OUTPUT"
+            echo "reminder=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Generate daily horoscopes
@@ -93,3 +102,14 @@ jobs:
         run: |
           curl -sS -f -X GET "${{ vars.APP_URL }}/api/cron/prefill-panchang" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+
+      - name: Send daily reminder push
+        if: steps.which.outputs.reminder == 'true'
+        # Best-effort, not `-f` — a subscriber base of zero (push not
+        # configured yet, or nobody's opted in) still returns 200 with
+        # {sent: 0}, so this only fails on a genuine server error, and even
+        # then a missed reminder once isn't worth failing the whole workflow
+        # run over (unlike horoscope generation, there's no content-gap risk).
+        run: |
+          curl -sS -X GET "${{ vars.APP_URL }}/api/cron/send-daily-reminder" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" || true
