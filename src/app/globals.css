@@ -61,27 +61,12 @@
   --color-ring: var(--color-ring);
   --font-sans: var(--font-body);
   --font-heading: var(--font-heading);
-  /* AccordionContent's expand/collapse — Radix exposes
-     --radix-accordion-content-height as a live CSS var during the
-     transition, so animating to/from it (rather than a fixed px value)
-     works for any answer length. `forwards` matters here specifically
-     because AccordionContent is forceMount-ed (so a closed FAQ answer
-     stays in the HTML for crawlers instead of being unmounted — see
-     accordion.tsx): without it, once the "closing" animation finishes,
-     the browser drops back to the element's natural (full) height
-     instead of staying collapsed at 0, since there's no longer a native
-     `hidden` attribute doing that job. */
-  --animate-accordion-down: accordion-down 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  --animate-accordion-up: accordion-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes accordion-down {
-  from { height: 0; }
-  to { height: var(--radix-accordion-content-height); }
-}
-@keyframes accordion-up {
-  from { height: var(--radix-accordion-content-height); }
-  to { height: 0; }
+  /* AccordionContent's expand/collapse used to animate via @keyframes
+     driven by Radix's --radix-accordion-content-height variable — replaced
+     (see accordion.tsx's own comment) with a CSS *transition* on
+     grid-template-rows, which doesn't need any custom keyframes/vars at
+     all and is immune to the stale-height-on-rapid-toggle glitch the
+     keyframe approach had. */
 }
 
 * {
