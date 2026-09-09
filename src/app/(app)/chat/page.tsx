@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Send, Trash2, ThumbsUp, ThumbsDown, Flag, Paperclip, X } from "lucide-react";
+import { Plus, Send, Trash2, ThumbsUp, ThumbsDown, Flag, Paperclip, X, Sparkles } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -384,11 +384,20 @@ export default function ChatPage() {
 
         {followUpQuestion && !sendMessage.isPending && !isSendingFirstMessage && (
           <div className="border-t border-border px-4 pt-3 md:px-8">
-            <p className="mb-1.5 text-xs text-muted">{t("chat.suggestedFollowUp")}</p>
+            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted">
+              <Sparkles size={12} className="text-primary" />
+              {t("chat.suggestedFollowUp")}
+            </p>
+            {/* rounded-full (a pill) is right for a short one-line tag, but
+                this is a full sentence that can wrap to 2-3 lines — found
+                live, a pill shape around wrapped text stretches into an
+                odd, lopsided oval instead of a clean card. rounded-xl
+                (a normal rounded-corner rectangle) reads correctly at any
+                length or line count. */}
             <button
               type="button"
               onClick={() => submit(followUpQuestion)}
-              className="focus-ring rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-left text-xs text-foreground hover:border-primary/50 hover:bg-primary/10"
+              className="focus-ring block w-full rounded-xl border border-primary/30 bg-primary/5 px-3.5 py-2.5 text-left text-sm leading-relaxed text-foreground transition-colors hover:border-primary/50 hover:bg-primary/10"
             >
               {followUpQuestion}
             </button>
