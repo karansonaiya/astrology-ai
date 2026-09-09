@@ -1,4 +1,5 @@
 import tzLookup from "tz-lookup";
+import { prisma } from "@/lib/prisma";
 
 /**
  * Turns a free-text birth city/country into coordinates + IANA timezone, so
@@ -15,12 +16,28 @@ import tzLookup from "tz-lookup";
  *
  * Timezone: resolved offline from the coordinates via `tz-lookup` — no
  * second network call, and no birth-place data leaves the server twice.
+ *
+ * Cached (GeocodeCache, no expiry) by the exact normalized query string —
+ * found live, this had zero caching before, so the same common city
+ * (Ahmedabad, Surat, Mumbai...) typed by many different users re-hit
+ * Nominatim every single time. A city's coordinates never change, and
+ * skipping the repeat call isn't just faster — it's what keeps this app
+ * within Nominatim's ~1 req/s policy as real traffic grows, instead of
+ * risking an IP ban that would break onboarding for everyone.
  */
 export type GeocodeResult = { latitude: number; longitude: number; timezone: string };
+
+function normalizeQuery(city: string, country?: string | null): string {
+  return [city, country].filter(Boolean).join(", ").trim().toLowerCase();
+}
 
 export async function geocodeBirthPlace(city: string, country?: string | null): Promise<GeocodeResult | null> {
   const query = [city, country].filter(Boolean).join(", ");
   if (!query.trim()) return null;
+
+  const cacheKey = normalizeQuery(city, country);
+  const cached = await prisma.geocodeCache.findUnique({ where: { query: cacheKey } }).catch(() => null);
+  if (cached) return { latitude: cached.latitude, longitude: cached.longitude, timezone: cached.timezone };
 
   const url = `https://nominatim.openstreetmap.org/search?${new URLSearchParams({
     q: query,
@@ -48,6 +65,12 @@ export async function geocodeBirthPlace(city: string, country?: string | null): 
 
   const timezone = resolveTimezone(latitude, longitude);
   if (!timezone) return null;
+
+  await prisma.geocodeCache
+    .upsert({ where: { query: cacheKey }, create: { query: cacheKey, latitude, longitude, timezone }, update: { latitude, longitude, timezone } })
+    .catch(() => {
+      // best-effort cache write — a failed write shouldn't fail the actual geocode the user is waiting on
+    });
 
   return { latitude, longitude, timezone };
 }
@@ -87,6 +110,11 @@ type NominatimSearchResult = {
   };
 };
 
+// Small in-memory layer on top of PlaceSearchCache purely to skip a DB
+// round-trip for a repeat keystroke within the same request burst (same
+// spirit as panchang.ts's in-memory layer over PanchangCache) — the DB
+// table is what actually makes this shared across users and serverless
+// instances, which a plain Map on its own never was.
 const searchCache = new Map<string, { value: PlaceSuggestion[]; expiresAt: number }>();
 const SEARCH_CACHE_TTL_MS = 60 * 60 * 1000;
 
@@ -104,8 +132,15 @@ export async function searchPlaces(query: string): Promise<PlaceSuggestion[]> {
   if (q.length < 2) return [];
 
   const cacheKey = q.toLowerCase();
-  const hit = searchCache.get(cacheKey);
-  if (hit && hit.expiresAt > Date.now()) return hit.value;
+  const memHit = searchCache.get(cacheKey);
+  if (memHit && memHit.expiresAt > Date.now()) return memHit.value;
+
+  const dbHit = await prisma.placeSearchCache.findUnique({ where: { query: cacheKey } }).catch(() => null);
+  if (dbHit) {
+    const value = dbHit.results as unknown as PlaceSuggestion[];
+    searchCache.set(cacheKey, { value, expiresAt: Date.now() + SEARCH_CACHE_TTL_MS });
+    return value;
+  }
 
   const url = `https://nominatim.openstreetmap.org/search?${new URLSearchParams({
     q,
@@ -134,5 +169,10 @@ export async function searchPlaces(query: string): Promise<PlaceSuggestion[]> {
     .filter((s): s is PlaceSuggestion => s !== null);
 
   searchCache.set(cacheKey, { value: suggestions, expiresAt: Date.now() + SEARCH_CACHE_TTL_MS });
+  await prisma.placeSearchCache
+    .upsert({ where: { query: cacheKey }, create: { query: cacheKey, results: suggestions as object }, update: { results: suggestions as object } })
+    .catch(() => {
+      // best-effort cache write — a failed write shouldn't fail the actual search the user is waiting on
+    });
   return suggestions;
 }

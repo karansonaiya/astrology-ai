@@ -602,6 +602,51 @@ model KundliLookupCache {
   @@unique([birthDate, birthTime, latitude, longitude])
 }
 
+/**
+ * Cache for geocodeBirthPlace() (src/lib/geo.ts) — turning a free-typed
+ * "city, country" into coordinates + timezone. Found live: this had NO
+ * caching at all before, so every birth-profile save, kundli lookup, or
+ * compatibility check that didn't already have exact coordinates (from
+ * CityAutocomplete) made a fresh real call to Nominatim (OpenStreetMap) —
+ * even for the same common city (Ahmedabad, Surat, Mumbai...) typed by many
+ * different users. A city's coordinates never change, so this is cached
+ * forever, no expiry — same principle as KundliLookupCache. Nominatim's own
+ * usage policy caps free use at ~1 request/second; skipping a repeat
+ * geocode for a place already resolved isn't just faster, it's what keeps
+ * this app within that policy as real traffic grows instead of risking an
+ * IP ban that would break onboarding for everyone.
+ */
+model GeocodeCache {
+  id String @id @default(cuid())
+
+  /** Normalized input this result is for — lowercased, trimmed "city, country" (or just "city"). Free-text geocoding is inherently fuzzy (multiple real places can share a name), so this caches by the exact input string asked, not by the resolved coordinates. */
+  query String @unique
+
+  latitude  Float
+  longitude Float
+  timezone  String
+
+  createdAt DateTime @default(now())
+}
+
+/**
+ * Cache for searchPlaces() (src/lib/geo.ts) — the CityAutocomplete
+ * type-ahead's suggestion list. This already had an in-memory cache before
+ * this table existed, but that only helps a single server instance; on
+ * Netlify, a cold start or a different concurrent instance gets an empty
+ * Map and re-hits Nominatim regardless. This table is the shared layer
+ * underneath it — the in-memory Map stays on top purely to skip a DB
+ * round-trip for a repeat keystroke within the same request burst.
+ */
+model PlaceSearchCache {
+  id String @id @default(cuid())
+
+  query   String @unique // lowercased search text typed so far
+  results Json // PlaceSuggestion[], see src/lib/geo.ts
+
+  createdAt DateTime @default(now())
+}
+
 model HoroscopeContent {
   id         String          @id @default(cuid())
   zodiacSign ZodiacSign
