@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, errorResponse } from "@/lib/auth/guard";
 import { kundliLookupSchema } from "@/lib/validations/kundli";
-import { getAstrologyProvider } from "@/lib/astrology/adapter";
+import { getCachedKundliByBirthDetails } from "@/lib/astrology/adapter";
 import { geocodeBirthPlace, resolveTimezone } from "@/lib/geo";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -34,7 +34,10 @@ export async function POST(req: NextRequest) {
         : await geocodeBirthPlace(birthCity, birthCountry).catch(() => null);
     if (!geo || !geo.timezone) return NextResponse.json({ error: "place_not_found" }, { status: 422 });
 
-    const calculation = await getAstrologyProvider().calculateKundli({
+    // Cached by birth details, not just computed fresh — see adapter.ts:
+    // the same person looked up again (by this user or a different one)
+    // reuses the real calculation instead of another Prokerala call.
+    const calculation = await getCachedKundliByBirthDetails({
       birthDate: new Date(`${birthDate}T00:00:00.000Z`),
       birthTimeKnown,
       birthTime: birthTimeKnown ? birthTime ?? null : null,

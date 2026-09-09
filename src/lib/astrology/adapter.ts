@@ -537,6 +537,63 @@ export async function getOrComputeKundliCalculation(profile: {
   });
 }
 
+/**
+ * Cached kundli calculation for birth details that AREN'T a saved
+ * BirthProfile — "look up someone else's kundli" and each half of a
+ * compatibility check. getOrComputeKundliCalculation (above) keys off
+ * birthProfileId, which doesn't exist for these ad-hoc lookups; this keys
+ * off the actual birth details instead (city-level rounding, same as
+ * panchang.ts's cache), so the same birth date/time/place looked up again —
+ * by the same user or a different one — reuses the real calculation
+ * instead of re-hitting Prokerala's tight 5-req/60s rate limit. Found live:
+ * neither /api/kundli/lookup nor /api/compatibility had ANY caching before
+ * this — every single request was a fresh real Prokerala call.
+ */
+function roundCoord(n: number): number {
+  return Math.round(n * 100) / 100; // ~1km precision, matches panchang.ts
+}
+
+export async function getCachedKundliByBirthDetails(input: BirthInput): Promise<KundliResult> {
+  // No coordinates — same "needs setup" shape ProkeralaAstrologyProvider
+  // itself returns for this case; nothing meaningful to key a cache on.
+  if (input.latitude == null || input.longitude == null) {
+    return getAstrologyProvider().calculateKundli(input);
+  }
+
+  const latitude = roundCoord(input.latitude);
+  const longitude = roundCoord(input.longitude);
+  const birthDate = new Date(
+    Date.UTC(input.birthDate.getUTCFullYear(), input.birthDate.getUTCMonth(), input.birthDate.getUTCDate())
+  );
+  // A real sentinel string, not SQL NULL — Postgres treats every NULL as
+  // distinct within a unique constraint, so two "unknown time" lookups for
+  // the same person would never actually dedupe against each other if this
+  // column allowed null instead.
+  const birthTime = input.birthTimeKnown && input.birthTime ? input.birthTime : "unknown";
+
+  const where = { birthDate_birthTime_latitude_longitude: { birthDate, birthTime, latitude, longitude } };
+
+  const existing = await prisma.kundliLookupCache.findUnique({ where });
+  if (existing) return existing.data as unknown as KundliResult;
+
+  const result = await getAstrologyProvider().calculateKundli({ ...input, latitude, longitude });
+
+  // Don't cache a calculation that couldn't actually be done (configRequired
+  // or no sunSign) — same principle as getOrComputeKundliCalculation, e.g. a
+  // transient provider failure shouldn't get permanently remembered as
+  // "these birth details have no chart".
+  if (!result.configRequired && result.sunSign) {
+    await prisma.kundliLookupCache
+      .upsert({ where, create: { birthDate, birthTime, latitude, longitude, data: result as object }, update: { data: result as object } })
+      .catch(() => {
+        // best-effort cache write — a failed write shouldn't fail the
+        // actual lookup the user is waiting on
+      });
+  }
+
+  return result;
+}
+
 /** Compact, AI-prompt-ready summary of a calculated chart. Returns undefined when there's nothing real to summarize (no provider configured, or the calc never resolved) — the caller then just falls back to whatever birth-detail text context it already had. Accepts either a live KundliResult or a persisted KundliCalculation row (their relevant fields line up). */
 export function summarizeKundliForAi(calc: {
   isDemoData: boolean;

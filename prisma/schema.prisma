@@ -570,6 +570,38 @@ model PanchangCache {
   @@index([date])
 }
 
+/**
+ * Cache for ad-hoc kundli calculations NOT tied to any saved BirthProfile —
+ * "look up someone else's kundli" and each half of a compatibility check.
+ * getOrComputeKundliCalculation (keyed by birthProfileId) doesn't apply here
+ * since there's no profile row at all; this keys off the actual birth
+ * details instead, same city-level rounding PanchangCache uses. Found live:
+ * neither of those two features had ANY caching before this — every single
+ * lookup or compatibility check was a fresh real Prokerala call, unlike the
+ * profile-based kundli path, which is real waste against Prokerala's tight
+ * 5-req/60s account-wide rate limit if the same birth details (a friend, a
+ * celebrity, the same couple checking again) get looked up more than once.
+ */
+model KundliLookupCache {
+  id String @id @default(cuid())
+
+  birthDate DateTime // UTC midnight of the birth date
+  /** "HH:mm", or the literal string "unknown" when birth time isn't known — a
+      real sentinel rather than SQL NULL, since Postgres treats every NULL as
+      distinct in a unique constraint and wouldn't actually dedupe unknown-time
+      lookups against each other. */
+  birthTime String
+  /** Lat/long rounded to 2dp (~1km) — same rounding PanchangCache uses. */
+  latitude  Float
+  longitude Float
+
+  data Json // full KundliResult, see src/lib/astrology/adapter.ts
+
+  createdAt DateTime @default(now())
+
+  @@unique([birthDate, birthTime, latitude, longitude])
+}
+
 model HoroscopeContent {
   id         String          @id @default(cuid())
   zodiacSign ZodiacSign
