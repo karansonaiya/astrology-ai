@@ -64,39 +64,47 @@ export default function ChatPersonasPage() {
         </TabsList>
 
         <TabsContent value={filter}>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          {/* grid-cols-2 from the smallest width up (not sm:grid-cols-2) —
+              matches the photo-forward, 2-up card style the founder asked
+              to match (a real astrologer-marketplace app's persona picker):
+              portrait image filling the top of the card, name/specialty/CTA
+              in a solid area below. Rating and a per-minute price aren't
+              carried over from that reference — this app has neither (no
+              live per-minute human sessions to rate or bill), so the layout
+              is matched, not invented numbers to fill the same slots. */}
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-4">
             {visible.map((persona) => (
-              <Card key={persona.code}>
-                <CardContent className="flex items-start gap-3 pt-5">
+              <Card key={persona.code} className="overflow-hidden">
+                <div className="relative aspect-[3/4] w-full bg-surface-raised">
                   {imageFailed[persona.code] ? (
-                    <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${persona.avatarColor}`}>
+                    <div className={`flex h-full w-full items-center justify-center text-2xl font-semibold ${persona.avatarColor}`}>
                       {initialsFromName(persona.name)}
                     </div>
                   ) : (
                     <Image
                       src={persona.avatarImage}
                       alt={persona.name}
-                      width={64}
-                      height={64}
-                      className="h-16 w-16 shrink-0 rounded-full object-cover"
+                      fill
+                      sizes="(min-width: 640px) 240px, 50vw"
+                      className="object-cover"
                       onError={() => setImageFailed((prev) => ({ ...prev, [persona.code]: true }))}
                     />
                   )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-heading text-base font-semibold">{persona.name}</p>
-                      <Badge variant="default">{t(SPECIALTY_BADGE_KEY[persona.specialty])}</Badge>
-                    </div>
-                    <p className="mt-0.5 text-xs text-muted">{persona.tagline}</p>
-                    <Button
-                      size="sm"
-                      className="mt-3"
-                      disabled={startChat.isPending && startingCode === persona.code}
-                      onClick={() => startChat.mutate(persona.code)}
-                    >
-                      {t("personas.startChat")}
-                    </Button>
+                </div>
+                <CardContent className="flex flex-col gap-1.5 p-3">
+                  <div className="flex items-center gap-1.5">
+                    <p className="min-w-0 truncate font-heading text-sm font-semibold sm:text-base">{persona.name}</p>
                   </div>
+                  <Badge variant="default" className="w-fit">{t(SPECIALTY_BADGE_KEY[persona.specialty])}</Badge>
+                  <p className="line-clamp-2 text-xs text-muted">{persona.tagline}</p>
+                  <Button
+                    size="sm"
+                    className="mt-1.5 w-full"
+                    disabled={startChat.isPending && startingCode === persona.code}
+                    onClick={() => startChat.mutate(persona.code)}
+                  >
+                    {t("personas.startChat")}
+                  </Button>
                 </CardContent>
               </Card>
             ))}
