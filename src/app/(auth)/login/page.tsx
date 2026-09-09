@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useT } from "@/lib/i18n/provider";
@@ -117,7 +117,6 @@ const OTP_ERROR_KEYS: Record<string, string> = {
 
 function OtpFlow({ channel, consentOk, callbackUrl }: { channel: "phone" | "email"; consentOk: boolean; callbackUrl: string }) {
   const t = useT();
-  const router = useRouter();
   const { toast } = useToast();
 
   const [destination, setDestination] = useState("");
@@ -203,7 +202,19 @@ function OtpFlow({ channel, consentOk, callbackUrl }: { channel: "phone" | "emai
       lastAutoSubmitted.current = null;
       return;
     }
-    router.push(callbackUrl);
+    // Deliberately a hard navigation, not router.push(). Found live: after
+    // signIn(..., { redirect: false }) sets the session cookie, a
+    // client-side router.push straight to /dashboard could land on a blank
+    // white screen that only a manual browser refresh fixed. (app)/layout.tsx
+    // reads the session server-side via auth() per request, and next-auth's
+    // client SessionProvider caches its own session state separately — a
+    // soft App Router transition doesn't reliably force either of those to
+    // pick up the just-created session before rendering, so the dashboard's
+    // client-side pieces could render against stale/absent session state.
+    // A full page load re-fetches everything from scratch against the
+    // now-real cookie, the same fix already used for the logout/bfcache
+    // stale-page issue (see BfcacheGuard).
+    window.location.href = callbackUrl;
   };
 
   // Auto-submit once a full 6-digit code is typed/pasted — a standard OTP-UX
