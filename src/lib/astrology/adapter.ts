@@ -512,7 +512,19 @@ export async function getOrComputeKundliCalculation(profile: {
     where: { birthProfileId: profile.id },
     orderBy: { calculatedAt: "desc" },
   });
-  if (existing) return existing;
+  // A row calculated before yogas/aspects existed as columns has them both
+  // null even though its houses (gated on the same birthTimeKnown flag)
+  // are NOT null — that combination can only happen for a pre-migration
+  // row, since every current calculation always fills in aspects whenever
+  // houses gets filled in. Found live: a founder's own already-cached
+  // chart from before this feature kept silently serving the old row
+  // forever with no yogas/aspects, since this check used to just return
+  // any cached row unconditionally. Recomputing (not just backfilling in
+  // place) is deliberate — reruns the same real Prokerala call the
+  // dashboard would have made if this had never been cached, so the
+  // refreshed row is consistent top to bottom, not a partial patch.
+  const isStalePreMigrationRow = existing && existing.houses != null && existing.yogas == null && existing.aspects == null;
+  if (existing && !isStalePreMigrationRow) return existing;
 
   const result = await getAstrologyProvider().calculateKundli({
     birthDate: profile.birthDate,
