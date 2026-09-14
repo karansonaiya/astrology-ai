@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, MessageCircle, Users, User, Sun, Sparkles, GitCompareArrows, Briefcase, Heart,
-  FileText, Wallet, CreditCard, Gift, Settings, LifeBuoy,
+  FileText, Wallet, CreditCard, Gift, Settings, LifeBuoy, Hand, Hash,
 } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,8 @@ export function AppSidebar() {
         { href: "/profile", icon: User, label: t("nav.profile") },
         { href: "/horoscope", icon: Sun, label: t("nav.dailyHoroscope") },
         { href: "/kundli", icon: Sparkles, label: t("nav.kundli") },
+        { href: "/palm-reading", icon: Hand, label: t("nav.palmReading") },
+        { href: "/numerology", icon: Hash, label: t("nav.numerology") },
         { href: "/compatibility", icon: GitCompareArrows, label: t("nav.compatibility") },
         { href: "/career", icon: Briefcase, label: t("nav.career") },
         { href: "/relationship", icon: Heart, label: t("nav.relationship") },

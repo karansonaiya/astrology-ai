@@ -68,6 +68,8 @@
     "personas": "AI Astrologers",
     "profile": "Birth Profile",
     "kundli": "Kundli",
+    "palmReading": "Palm Reading",
+    "numerology": "Numerology",
     "compatibility": "Compatibility",
     "career": "Career & Business",
     "relationship": "Relationship",
@@ -478,6 +480,32 @@
     "promptTitle": "Never miss your daily reflection",
     "promptDesc": "Turn on notifications for a gentle daily reminder to check your horoscope.",
     "promptEnable": "Enable"
+  },
+  "numerology": {
+    "title": "Numerology",
+    "subtitle": "Your Life Path, Destiny, Soul Urge, Personality, and Birthday numbers - calculated from your real name and birth date, not guessed.",
+    "fullName": "Full name",
+    "birthDate": "Birth date",
+    "calculate": "Calculate My Numbers",
+    "calculating": "Calculating…",
+    "lifePath": "Life Path Number",
+    "destiny": "Destiny Number",
+    "soulUrge": "Soul Urge Number",
+    "personality": "Personality Number",
+    "birthday": "Birthday Number",
+    "startOver": "Start over"
+  },
+  "palmReading": {
+    "title": "Palm Reading",
+    "subtitle": "Take or upload a clear photo of your open palm for a traditional hast rekha reading, grounded in your actual photo.",
+    "captureHint": "Hold your hand flat, fingers slightly spread, in good light.",
+    "takePhoto": "Take Photo",
+    "uploadPhoto": "Upload Photo",
+    "detecting": "Locating your hand…",
+    "getReading": "Get My Reading",
+    "reading": "Reading your palm…",
+    "retake": "Try another photo",
+    "summary": "Summary"
   },
   "help": {
     "title": "Help & Safety",
