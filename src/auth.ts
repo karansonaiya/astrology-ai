@@ -69,8 +69,24 @@ const providers = [
 
   // Optional — only registered if credentials are present so the login
   // screen doesn't advertise a broken provider in dev.
+  //
+  // allowDangerousEmailAccountLinking: true — without this, "Google login
+  // sometimes doesn't work" is the actual symptom of a well-known Auth.js
+  // default: this app's OTP flow already lets anyone sign up with just an
+  // email (no Google involved), so a real, easy-to-hit case is "sign up via
+  // email OTP first, try Continue with Google (same email) later" — Auth.js
+  // by default REFUSES to link a new OAuth sign-in to an existing account
+  // with the same email unless this flag is set, throwing
+  // OAuthAccountNotLinked and sending the user to a generic error page,
+  // which looks exactly like "Google login is broken" from the outside.
+  // Despite the name, this is the safe case the flag exists for: Google
+  // only ever hands back a verified email (it wouldn't issue an id_token
+  // for an address the user doesn't control), and this app's own email-OTP
+  // path independently verifies the same thing — there's no unverified
+  // third party email to spoof here, unlike the genuinely dangerous case
+  // (a provider that lets anyone claim any email unverified).
   ...(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
-    ? [Google({ clientId: process.env.AUTH_GOOGLE_ID, clientSecret: process.env.AUTH_GOOGLE_SECRET })]
+    ? [Google({ clientId: process.env.AUTH_GOOGLE_ID, clientSecret: process.env.AUTH_GOOGLE_SECRET, allowDangerousEmailAccountLinking: true })]
     : []),
 ];
 
