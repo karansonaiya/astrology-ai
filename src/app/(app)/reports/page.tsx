@@ -18,17 +18,9 @@ import { useToast } from "@/components/ui/toast";
 import { useCheckout } from "@/lib/payments/use-checkout";
 import { PALM_REPORT_CODES } from "@/lib/pricing/catalog";
 import { ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_BASE64_LENGTH } from "@/lib/validations/chat";
+import { compressImageFile } from "@/lib/image/compress-image";
 
 const MAX_IMAGE_BYTES = Math.floor((MAX_IMAGE_BASE64_LENGTH * 3) / 4);
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve((reader.result as string).slice((reader.result as string).indexOf(",") + 1));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 type Template = { id: string; code: string; name: string; description: string; priceInPaise: number };
 type Purchase = { id: string; status: string; createdAt: string; template: { name: string } };
@@ -67,12 +59,17 @@ export default function ReportsPage() {
       toast({ title: t("chat.invalidImageType"), variant: "danger" });
       return;
     }
-    if (file.size > MAX_IMAGE_BYTES) {
+
+    // See palm-reading/page.tsx's identical comment — a real phone camera
+    // photo is routinely 5-12MB at native resolution; compress before the
+    // size check instead of flatly rejecting it.
+    const { data, mimeType } = await compressImageFile(file);
+    const compressedBytes = Math.floor((data.length * 3) / 4);
+    if (compressedBytes > MAX_IMAGE_BYTES) {
       toast({ title: t("chat.imageTooLarge"), variant: "danger" });
       return;
     }
-    const data = await fileToBase64(file);
-    setPalmPhoto({ data, mimeType: file.type, previewUrl: URL.createObjectURL(file) });
+    setPalmPhoto({ data, mimeType, previewUrl: URL.createObjectURL(file) });
   };
 
   const { data: templates, isLoading: templatesLoading } = useQuery({

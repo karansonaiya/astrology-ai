@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_BASE64_LENGTH } from "@/lib/validations/chat";
+import { compressImageFile } from "@/lib/image/compress-image";
 import { AiMarkdown } from "@/components/ui/ai-markdown";
 import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
 import { getPersona } from "@/lib/personas/catalog";
@@ -43,18 +44,6 @@ function TypingDots() {
       <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted" />
     </span>
   );
-}
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.slice(result.indexOf(",") + 1)); // strip "data:<mime>;base64," prefix
-    };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
 }
 
 export default function ChatPage() {
@@ -94,12 +83,17 @@ export default function ChatPage() {
       toast({ title: t("chat.invalidImageType"), variant: "danger" });
       return;
     }
-    if (file.size > MAX_IMAGE_BYTES) {
+    // Found live (on the Palm Reading page, same underlying schema/cap as
+    // here): a real phone camera photo is routinely 5-12MB at native
+    // resolution — compress before the size check instead of flatly
+    // rejecting a normal "attach a photo right now".
+    const { data, mimeType } = await compressImageFile(file);
+    const compressedBytes = Math.floor((data.length * 3) / 4);
+    if (compressedBytes > MAX_IMAGE_BYTES) {
       toast({ title: t("chat.imageTooLarge"), variant: "danger" });
       return;
     }
-    const data = await fileToBase64(file);
-    setPendingImage({ data, mimeType: file.type, previewUrl: URL.createObjectURL(file) });
+    setPendingImage({ data, mimeType, previewUrl: URL.createObjectURL(file) });
   };
 
   const { data: chatList } = useQuery({ queryKey: ["chats"], queryFn: () => apiFetch<{ chats: ChatListItem[] }>("/api/chat") });

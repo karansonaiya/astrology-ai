@@ -13,20 +13,12 @@ import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
 import { useToast } from "@/components/ui/toast";
 import { ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_BASE64_LENGTH } from "@/lib/validations/chat";
 import { detectHandMounts, type HandMount } from "@/lib/hand-detection/detect-mounts";
+import { compressImageFile } from "@/lib/image/compress-image";
 
 const MAX_IMAGE_BYTES = Math.floor((MAX_IMAGE_BASE64_LENGTH * 3) / 4);
 
 type PalmLine = { name: string; observation: string; meaning: string };
 type PalmReading = { overview: string; handShape: string; lines: PalmLine[]; summary: string };
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve((reader.result as string).slice((reader.result as string).indexOf(",") + 1));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 export default function PalmReadingPage() {
   const t = useT();
@@ -46,14 +38,20 @@ export default function PalmReadingPage() {
       toast({ title: t("chat.invalidImageType"), variant: "danger" });
       return;
     }
-    if (file.size > MAX_IMAGE_BYTES) {
+
+    // Found live: a real phone camera photo (often 5-12MB at native
+    // resolution) was flatly rejected here before this fix — compress
+    // first (see compress-image.ts) so a real "take a photo right now"
+    // reliably fits; the size check below is now just a backstop.
+    const { data, mimeType } = await compressImageFile(file);
+    const compressedBytes = Math.floor((data.length * 3) / 4);
+    if (compressedBytes > MAX_IMAGE_BYTES) {
       toast({ title: t("chat.imageTooLarge"), variant: "danger" });
       return;
     }
 
-    const data = await fileToBase64(file);
     const previewUrl = URL.createObjectURL(file);
-    setImage({ data, mimeType: file.type, previewUrl });
+    setImage({ data, mimeType, previewUrl });
     setReading(null);
     setMounts(null);
 
