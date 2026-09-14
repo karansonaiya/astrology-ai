@@ -515,7 +515,14 @@
     "detailedReportTitle": "Want a deeper reading?",
     "detailedReportDesc": "Get a full, in-depth Palm Report focused on career, love, or a combined reading with your real birth chart.",
     "getDetailedReport": "Get Detailed Report",
-    "startingAt": "starting at {price}"
+    "startingAt": "starting at {price}",
+    "handGuidance": "In traditional palmistry, many practitioners read the left hand for women and the right hand for men — but you're welcome to use whichever hand you prefer.",
+    "referenceDiagramTitle": "Which line is which",
+    "lifeLineLabel": "Life Line",
+    "heartLineLabel": "Heart Line",
+    "headLineLabel": "Head Line",
+    "fateLineLabel": "Fate Line (if visible)",
+    "referenceDiagramNote": "A general reference diagram — your reading above is based on your own real photo, not this illustration."
   },
   "help": {
     "title": "Help & Safety",

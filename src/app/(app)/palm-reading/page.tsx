@@ -17,6 +17,7 @@ import { ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_BASE64_LENGTH } from "@/lib/validat
 import { detectHandMounts, type HandMount } from "@/lib/hand-detection/detect-mounts";
 import { compressImageFile } from "@/lib/image/compress-image";
 import { PALM_REPORT_CODES } from "@/lib/pricing/catalog";
+import { PalmReferenceDiagram } from "@/components/palm-reference-diagram";
 
 const MAX_IMAGE_BYTES = Math.floor((MAX_IMAGE_BASE64_LENGTH * 3) / 4);
 
@@ -118,6 +119,7 @@ export default function PalmReadingPage() {
         <Card className="mt-6">
           <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
             <p className="text-sm text-muted">{t("palmReading.captureHint")}</p>
+            <p className="max-w-sm text-xs text-muted">{t("palmReading.handGuidance")}</p>
             <div className="flex flex-wrap justify-center gap-3">
               <Button onClick={() => cameraInputRef.current?.click()}>
                 <Camera size={16} /> {t("palmReading.takePhoto")}
@@ -203,6 +205,15 @@ export default function PalmReadingPage() {
               </div>
               <p className="text-sm leading-relaxed">{reading.overview}</p>
               <p className="mt-2 text-sm font-medium text-foreground">{reading.handShape}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">{t("palmReading.referenceDiagramTitle")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PalmReferenceDiagram />
             </CardContent>
           </Card>
 

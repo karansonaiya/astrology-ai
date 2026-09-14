@@ -308,6 +308,7 @@ export default function ReportsPage() {
 
           {!palmPhoto ? (
             <div className="flex flex-col items-center gap-4 py-4">
+              <p className="max-w-sm text-center text-xs text-muted">{t("palmReading.handGuidance")}</p>
               <div className="flex flex-wrap justify-center gap-3">
                 <Button onClick={() => cameraInputRef.current?.click()}>
                   <Camera size={16} /> {t("palmReading.takePhoto")}
