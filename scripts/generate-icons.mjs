@@ -1,12 +1,29 @@
-// Generates PWA icon PNGs (192/512, regular + maskable) and the Apple touch
-// icon from an original inline SVG mark — no external image assets. Run
-// with `npm run generate:icons` after `npm install` (needs sharp, a dev
-// dependency already listed in package.json).
+// Generates PWA icon PNGs (192/512, regular + maskable), the Apple touch
+// icon, and the browser-tab favicon from the Prerna AI mark's master source
+// image — run with `npm run generate:icons` after `npm install` (needs
+// sharp, a dev dependency already listed in package.json).
+//
+// The mark used to be a plain inline SVG (a simple sparkle) generated
+// programmatically here. Replaced with a raster master asset
+// (scripts/assets/logo-mark-source.png — a moon/face/zodiac-wheel emblem,
+// background already made transparent) once the founder picked that design
+// over the old sparkle — mirrors src/components/layout/logo.tsx's mark
+// exactly (keep both pointed at the same source if this changes again).
+//
+// Found live: shipping the emblem on a fully transparent square looked
+// broken in real use — a browser tab and a header can each sit on almost
+// any background color/theme, and parts of the artwork (the dark hair, in
+// particular) disappeared against a dark background with nothing behind
+// it. The ORIGINAL sparkle mark already solved this correctly (see git
+// history): a fixed, non-theme-driven dark badge color behind the mark, so
+// it reads the same everywhere regardless of what's behind it. Restored
+// that same idea here for every icon variant, not just maskable.
 import sharp from "sharp";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const OUT_DIR = path.join(process.cwd(), "public", "icons");
+const SOURCE_PATH = path.join(process.cwd(), "scripts", "assets", "logo-mark-source.png");
 // Next.js App Router convention file — src/app/favicon.ico is served as the
 // browser-tab favicon with HIGHER priority than the metadata.icons config in
 // layout.tsx, so it has to be regenerated separately or the tab keeps
@@ -14,56 +31,46 @@ const OUT_DIR = path.join(process.cwd(), "public", "icons");
 // live: exactly this happened after the Jyoti AI → Prerna AI rebrand).
 const FAVICON_PATH = path.join(process.cwd(), "src", "app", "favicon.ico");
 
-// The Prerna AI mark: a two-tone sparkle (saffron/gold gradient primary
-// sparkle, warm-ivory companion sparkle) on a dark badge — "Prerna" means
-// inspiration, and the twinkle motif doubles as a star (astrology). Mirrors
-// src/components/layout/logo.tsx's mark exactly — keep both in sync if this
-// changes. No external assets, built entirely from SVG primitives.
-function markSvg({ size, padding = 0 }) {
-  const cx = size / 2;
-  const cy = size / 2;
-  const r = size / 2 - padding;
-  const s = (r * 2) / 32; // scale factor from the 32-unit design grid to this icon's radius
+// Same fixed badge color the original sparkle mark used — deliberately not
+// theme-driven, so the logo reads identically in a light header, a dark
+// header, and a browser tab of any color, exactly like every other real
+// brand mark (nobody's app icon changes color with the OS theme).
+const BADGE_BG = { r: 0x24, g: 0x1c, b: 0x15, alpha: 1 };
 
-  const primarySparkle = `M${cx} ${cy - 12 * s}
-    L${cx + 2.2 * s} ${cy - 2.2 * s}
-    L${cx + 11 * s} ${cy}
-    L${cx + 2.2 * s} ${cy + 2.2 * s}
-    L${cx} ${cy + 12 * s}
-    L${cx - 2.2 * s} ${cy + 2.2 * s}
-    L${cx - 11 * s} ${cy}
-    L${cx - 2.2 * s} ${cy - 2.2 * s} Z`;
-
-  const companionSparkle = `M${cx + 7 * s} ${cy - 11 * s}
-    L${cx + 7.8 * s} ${cy - 7.8 * s}
-    L${cx + 11 * s} ${cy - 7 * s}
-    L${cx + 7.8 * s} ${cy - 6.2 * s}
-    L${cx + 7 * s} ${cy - 3 * s}
-    L${cx + 6.2 * s} ${cy - 6.2 * s}
-    L${cx + 3 * s} ${cy - 7 * s}
-    L${cx + 6.2 * s} ${cy - 7.8 * s} Z`;
-
-  return `
-<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="sparkle" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#f6ce73" />
-      <stop offset="55%" stop-color="#f0b429" />
-      <stop offset="100%" stop-color="#e8600f" />
-    </linearGradient>
-  </defs>
-  <rect width="${size}" height="${size}" fill="#241c15" />
-  <path d="${primarySparkle}" fill="url(#sparkle)" />
-  <path d="${companionSparkle}" fill="#fbf3ea" opacity="0.92" />
-</svg>`;
+/** A solid circle of `background`, rasterized at `size`x`size` with fully transparent corners. */
+async function circleBuffer(size, background) {
+  const hex = `#${[background.r, background.g, background.b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+  const svg = `<svg width="${size}" height="${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="${hex}"/></svg>`;
+  return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
-async function pngBuffer(svg, size) {
-  return sharp(Buffer.from(svg)).resize(size, size).png().toBuffer();
+/**
+ * `shape: "circle"` (the default, used everywhere except maskable icons):
+ * emblem centered over a solid circular badge, transparent square corners —
+ * looks right inline in a header next to text, and right as a rounded/
+ * circular favicon, without a hard square edge either way.
+ *
+ * `shape: "square"` (maskable icons only): full-bleed solid square, no
+ * transparent corners at all — required by the maskable-icon spec, since
+ * Android's adaptive-icon system fills any transparent area of a maskable
+ * icon with its own default backdrop, which can clash badly.
+ */
+async function squareBuffer(sourceBuffer, size, { padding = 0, shape = "circle", background = BADGE_BG } = {}) {
+  const inner = Math.round(size - padding * 2);
+  const resized = await sharp(sourceBuffer)
+    .resize(inner, inner, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .toBuffer();
+
+  const base =
+    shape === "square"
+      ? sharp({ create: { width: size, height: size, channels: 4, background } })
+      : sharp(await circleBuffer(size, background));
+
+  return base.composite([{ input: resized, gravity: "center" }]).png().toBuffer();
 }
 
-async function render(svg, size, filename) {
-  const buffer = await pngBuffer(svg, size);
+async function render(sourceBuffer, size, filename, opts) {
+  const buffer = await squareBuffer(sourceBuffer, size, opts);
   await sharp(buffer).toFile(path.join(OUT_DIR, filename));
   console.log(`Wrote ${filename}`);
 }
@@ -102,20 +109,21 @@ function buildIco(pngs) {
 
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
+  const source = await readFile(SOURCE_PATH);
 
-  await render(markSvg({ size: 192 }), 192, "icon-192.png");
-  await render(markSvg({ size: 512 }), 512, "icon-512.png");
-  await render(markSvg({ size: 180 }), 180, "apple-touch-icon.png");
+  await render(source, 192, "icon-192.png");
+  await render(source, 512, "icon-512.png");
+  await render(source, 180, "apple-touch-icon.png");
 
-  // Maskable icons need a safe-zone padding (~18%) since platforms may crop to a circle/rounded-square.
-  await render(markSvg({ size: 192, padding: 192 * 0.18 }), 192, "icon-maskable-192.png");
-  await render(markSvg({ size: 512, padding: 512 * 0.18 }), 512, "icon-maskable-512.png");
+  // Maskable icons need a safe-zone padding (~18%) and NO transparent corners — see squareBuffer's doc comment.
+  await render(source, 192, "icon-maskable-192.png", { padding: 192 * 0.18, shape: "square" });
+  await render(source, 512, "icon-maskable-512.png", { padding: 512 * 0.18, shape: "square" });
 
-  await writeFile(path.join(OUT_DIR, "source.svg"), markSvg({ size: 512 }));
+  await writeFile(path.join(OUT_DIR, "source.png"), await squareBuffer(source, 512));
 
   const icoSizes = [16, 32, 48];
   const icoPngs = await Promise.all(
-    icoSizes.map(async (size) => ({ size, buffer: await pngBuffer(markSvg({ size }), size) }))
+    icoSizes.map(async (size) => ({ size, buffer: await squareBuffer(source, size) }))
   );
   await writeFile(FAVICON_PATH, buildIco(icoPngs));
   console.log(`Wrote ${FAVICON_PATH}`);

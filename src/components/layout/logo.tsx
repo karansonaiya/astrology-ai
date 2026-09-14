@@ -1,38 +1,27 @@
 import Link from "next/link";
+import Image from "next/image";
 
 /**
- * Prerna AI mark: a two-tone sparkle (saffron/gold gradient primary sparkle
- * with a small warm-ivory companion sparkle) on a fixed dark badge —
- * "Prerna" means inspiration, and the twinkle/sparkle motif reads as both
- * "a spark of inspiration" and "a star" (astrology), which a single flame
- * (this app's previous "Jyoti"/light-branded mark) didn't. The badge color
- * is fixed (not theme-driven) so the logo reads consistently in both light
- * and dark UI modes, like most brand marks. Pure SVG, no external image
- * assets — mirrors scripts/generate-icons.mjs's mark exactly (keep both in
- * sync if this changes).
+ * Prerna AI mark: a moon/face/zodiac-wheel emblem (replaced the previous
+ * plain two-tone sparkle mark — founder's choice after comparing both
+ * against a couple of AI-generated concepts). Raster, not inline SVG this
+ * time (the artwork itself is an illustration, not something reasonably
+ * redrawn as clean vector paths) — scripts/generate-icons.mjs derives
+ * every icon size (favicon, PWA icons, apple-touch-icon) from the same
+ * master source (scripts/assets/logo-mark-source.png) so this header mark
+ * and every icon stay visually identical; keep both pointed at that one
+ * source if the mark changes again.
+ *
+ * Found live: this emblem's fine detail (the zodiac-wheel ring, individual
+ * hair strands) reads clearly at 192px+ but gets genuinely muddy at a
+ * favicon's 16-32px — a real tradeoff, accepted deliberately here in favor
+ * of one consistent mark everywhere rather than juggling two different
+ * marks for "large" vs. "tiny" contexts.
  */
 export function Logo({ className }: { className?: string }) {
   return (
     <Link href="/" className={`focus-ring flex items-center gap-2 rounded-lg ${className ?? ""}`}>
-      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
-        <defs>
-          <linearGradient id="logo-sparkle" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#f6ce73" />
-            <stop offset="55%" stopColor="#f0b429" />
-            <stop offset="100%" stopColor="#e8600f" />
-          </linearGradient>
-        </defs>
-        <circle cx="16" cy="16" r="16" fill="#241c15" />
-        <path
-          d="M16 4 L18.2 13.8 L27 16 L18.2 18.2 L16 28 L13.8 18.2 L5 16 L13.8 13.8 Z"
-          fill="url(#logo-sparkle)"
-        />
-        <path
-          d="M23 5 L23.8 8.2 L27 9 L23.8 9.8 L23 13 L22.2 9.8 L19 9 L22.2 8.2 Z"
-          fill="#fbf3ea"
-          opacity="0.92"
-        />
-      </svg>
+      <Image src="/icons/icon-512.png" alt="" width={32} height={32} className="h-8 w-8" priority />
       <span className="font-heading text-base font-semibold tracking-tight text-foreground">Prerna AI</span>
     </Link>
   );
