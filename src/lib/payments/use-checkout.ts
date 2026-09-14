@@ -65,7 +65,16 @@ export function useCheckout() {
   };
 
   const checkout = async (
-    input: { type: "credit_pack" | "report" | "subscription"; code: string; birthProfileId?: string },
+    input: {
+      type: "credit_pack" | "report" | "subscription";
+      code: string;
+      birthProfileId?: string;
+      // Palm Report templates only — see pricing/catalog.ts's
+      // PALM_REPORT_CODES. reports/page.tsx captures this from the user
+      // before calling checkout(); create-order/route.ts rejects a palm
+      // code with no photo.
+      photo?: { data: string; mimeType: string };
+    },
     opts?: { onSuccess?: (orderId: string) => void; onError?: (message: string) => void }
   ) => {
     setLoading(true);

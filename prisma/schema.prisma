@@ -752,6 +752,16 @@ model ReportPurchase {
   generatedContent  Json?
   pdfUrl            String?
 
+  // Photo-driven report products only (Palm Reports) — the customer's real
+  // uploaded palm photo, persisted here at order-creation time (before
+  // payment) so the webhook's later fulfillOrder() call has something to
+  // read back; see entitlement.ts's generatePalmReportContent. Cashfree
+  // itself never sees this data (payments/provider.ts only ever sends it
+  // userId/type/code as `order_note` — verified, nothing photo-sized). Null
+  // for every non-photo report template.
+  photoData     Bytes?
+  photoMimeType String?
+
   createdAt   DateTime  @default(now())
   completedAt DateTime?
 

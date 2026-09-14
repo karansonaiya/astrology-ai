@@ -405,7 +405,9 @@
     "addBirthProfileLink": "अपनी जन्म प्रोफ़ाइल जोड़ें",
     "dataIncluded": "शामिल",
     "dataNotIncluded": "शामिल नहीं",
-    "downloadPdf": "PDF डाउनलोड करें"
+    "downloadPdf": "PDF डाउनलोड करें",
+    "palmPhotoRequiredDesc": "इस रिपोर्ट के लिए आपकी हथेली की एक असली फ़ोटो चाहिए। अभी फ़ोटो लें या गैलरी से अपलोड करें।",
+    "continueToPayment": "भुगतान जारी रखें"
   },
   "personas": {
     "pageTitle": "किससे बात करनी है चुनें",

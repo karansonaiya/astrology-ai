@@ -405,7 +405,9 @@
     "addBirthProfileLink": "Add your birth profile",
     "dataIncluded": "Included",
     "dataNotIncluded": "Not included",
-    "downloadPdf": "Download PDF"
+    "downloadPdf": "Download PDF",
+    "palmPhotoRequiredDesc": "This report needs a real photo of your palm. Take one now or upload one from your gallery.",
+    "continueToPayment": "Continue to payment"
   },
   "personas": {
     "pageTitle": "Choose who to chat with",

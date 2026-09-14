@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { grantCredits } from "@/lib/credits";
-import { CREDIT_PACKS } from "@/lib/pricing/catalog";
+import { CREDIT_PACKS, PALM_REPORT_CODES } from "@/lib/pricing/catalog";
 import { generateAstrologyReply } from "@/lib/ai";
 import { getOrComputeKundliCalculation, summarizeKundliForAi } from "@/lib/astrology/adapter";
 import type { AppLocale } from "@/lib/i18n/config";
@@ -28,7 +28,20 @@ export async function fulfillOrder(orderId: string) {
   if (order.type === "report") {
     const purchase = await prisma.reportPurchase.findUnique({ where: { orderId: order.id }, include: { template: true, birthProfile: true, user: true } });
     if (purchase) {
-      const content = await generateReportContent(purchase.userId, purchase.templateId, purchase.birthProfileId);
+      // Palm Report codes (a real uploaded photo, persisted at
+      // create-order time — see create-order/route.ts) need a different,
+      // vision-grounded generation path; every other template keeps using
+      // the existing birth-chart-only path unchanged.
+      const content =
+        purchase.template && PALM_REPORT_CODES.has(purchase.template.code) && purchase.photoData && purchase.photoMimeType
+          ? await generatePalmReportContent(
+              purchase.userId,
+              purchase.template.code,
+              purchase.template.name,
+              purchase.birthProfileId,
+              { data: purchase.photoData, mimeType: purchase.photoMimeType }
+            )
+          : await generateReportContent(purchase.userId, purchase.templateId, purchase.birthProfileId);
       await prisma.reportPurchase.update({
         where: { id: purchase.id },
         data: { status: "completed", generatedContent: content, completedAt: new Date() },
@@ -130,6 +143,95 @@ Ground every section in the real chart data provided below whenever it's availab
     templateName: template?.name,
     generatedAt: new Date().toISOString(),
     birthDataUsed: !!profile,
+    body: reply.text,
+  };
+}
+
+// Per-tier structure instructions for the 4 Palm Report codes (see
+// pricing/catalog.ts's PALM_REPORT_CODES). Each is deliberately specific
+// about which real, actually-visible palmistry features to ground the
+// reading in — not a generic "write about palms" prompt — same "must read
+// as substantial, not generic" standard as generateReportContent above.
+const PALM_TIER_STRUCTURE: Record<string, string> = {
+  palm_career_report: `Structure it as:
+1. An opening overview (4-6 sentences) of the hand shape/type you actually observe and what it traditionally suggests about temperament.
+2. A deep dive into career-relevant signs actually visible in the photo — the Head Line's length/depth/slope (decision-making and thinking style), the Fate Line if visible (career direction and stability), the Jupiter mount (leadership/ambition), the Saturn mount (discipline/responsibility), and the Sun/Apollo mount (recognition and success) — each its own section, 3-5 sentences of real, photo-specific reasoning naming the actual feature and what you observe about it.
+3. 5-7 concrete, actionable career/professional-growth suggestions.
+4. A closing reflection (3-4 sentences).`,
+  palm_love_marriage_report: `Structure it as:
+1. An opening overview (4-6 sentences) of the hand shape/type you actually observe.
+2. A deep dive into love/relationship-relevant signs actually visible — the Heart Line's length/curve/depth (emotional style), the Venus mount (warmth/affection), and any marriage lines (the small horizontal lines on the side of the palm just below the little finger) if actually visible, plus the Mount of Moon if relevant — each its own section, 3-5 sentences of real, photo-specific reasoning.
+3. 5-7 concrete, reflective suggestions for relationships/marriage.
+4. A closing reflection (3-4 sentences).`,
+  palm_full_report: `Structure it as:
+1. An opening overview (4-6 sentences) of the hand shape/type, size, and texture you actually observe.
+2. A comprehensive section-by-section reading of EVERY major line and mount actually visible — Life Line, Heart Line, Head Line, Fate Line (if visible), and the Jupiter/Saturn/Sun/Mercury/Venus/Moon mounts — each its own section, 3-5 sentences of real, photo-specific reasoning covering career, relationships, temperament, and general life themes together.
+3. 5-7 concrete, actionable suggestions across life areas.
+4. A closing reflection (3-4 sentences).`,
+  palm_kundli_combined_report: `Structure it as:
+1. An opening overview (4-6 sentences) of the hand shape/type you actually observe in the photo.
+2. A palm reading section covering the major lines and mounts actually visible (Life Line, Heart Line, Head Line, Fate Line if visible, key mounts).
+3. A section connecting the palm's real, photo-specific indications to the real birth chart placements given below whenever there is a natural overlap (e.g. a strong Jupiter mount alongside a well-placed Jupiter in the chart) — only draw a connection where one genuinely exists, don't force one.
+4. 5-7 concrete, actionable suggestions drawing on both the palm and the chart.
+5. A closing reflection (3-4 sentences) tying palm and chart together.
+
+Ground the chart-related parts in the real chart data provided below.`,
+};
+
+async function generatePalmReportContent(
+  userId: string,
+  templateCode: string,
+  templateName: string,
+  birthProfileId: string | null,
+  photo: { data: Uint8Array; mimeType: string }
+) {
+  const [profile, user] = await Promise.all([
+    // Only the "combined" tier actually uses birth data — see
+    // PALM_TIER_STRUCTURE — but this is read the same defense-in-depth way
+    // as generateReportContent above regardless of tier, for consistency.
+    birthProfileId ? prisma.birthProfile.findFirst({ where: { id: birthProfileId, userId } }) : Promise.resolve(null),
+    prisma.user.findUnique({ where: { id: userId } }),
+  ]);
+
+  const locale = (user?.locale ?? "en") as AppLocale;
+  const langName: Record<AppLocale, string> = { en: "English", hi: "Hindi", gu: "Gujarati" };
+
+  const isCombined = templateCode === "palm_kundli_combined_report";
+  let birthContext: string | undefined;
+  if (isCombined && profile) {
+    const dateContext = `Birth date: ${profile.birthDate.toISOString().slice(0, 10)}. Birth time: ${
+      profile.birthTimeKnown && profile.birthTime ? profile.birthTime : "unknown"
+    }. Birth place: ${profile.birthCity ?? "unknown"}.`;
+    let kundliSummary: string | undefined;
+    try {
+      const calc = await getOrComputeKundliCalculation(profile);
+      kundliSummary = summarizeKundliForAi(calc);
+    } catch {
+      // fall through — combined report still generates from the photo alone
+    }
+    birthContext = [dateContext, kundliSummary].filter(Boolean).join(" ") || undefined;
+  }
+
+  const reply = await generateAstrologyReply({
+    userId,
+    locale,
+    history: [],
+    userMessage: `You are given a real photo of the customer's palm (attached), for a PAID, in-depth "${templateName}" palmistry (hast rekha) report, written entirely in ${langName[locale]}.
+
+Analyze ONLY what is actually visible in the attached photo — never invent a line, mount, or mark you cannot see; if something (e.g. the fate line) is not clearly visible, explicitly say it is faint/not visible rather than inventing detail about it. Hard rule, no exceptions: never make any claim about physical wellbeing, longevity, or anything a person would need to see a doctor about — interpret the Life Line only as general vitality/energy, nothing else. Never claim certainty about the future. This is a paid product — it must read as substantial and genuinely valuable, grounded in specific real observations (name the actual feature and what you see: length, depth, curve, breaks, forks), never generic text that could describe any hand.
+
+${PALM_TIER_STRUCTURE[templateCode] ?? PALM_TIER_STRUCTURE.palm_full_report}`,
+    userImage: { data: Buffer.from(photo.data).toString("base64"), mimeType: photo.mimeType },
+    birthContext,
+    feature: "report",
+    maxTokens: isCombined || templateCode === "palm_full_report" ? 7000 : 5000,
+  });
+
+  return {
+    templateCode,
+    templateName,
+    generatedAt: new Date().toISOString(),
+    birthDataUsed: isCombined && !!profile,
     body: reply.text,
   };
 }

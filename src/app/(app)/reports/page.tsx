@@ -1,20 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { TriangleAlert } from "lucide-react";
+import { TriangleAlert, Camera, Upload } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useI18n, useT } from "@/lib/i18n/provider";
 import { apiFetch } from "@/lib/api-client";
 import { formatInr, formatDate } from "@/lib/utils";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { useCheckout } from "@/lib/payments/use-checkout";
+import { PALM_REPORT_CODES } from "@/lib/pricing/catalog";
+import { ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_BASE64_LENGTH } from "@/lib/validations/chat";
+
+const MAX_IMAGE_BYTES = Math.floor((MAX_IMAGE_BASE64_LENGTH * 3) / 4);
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).slice((reader.result as string).indexOf(",") + 1));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 type Template = { id: string; code: string; name: string; description: string; priceInPaise: number };
 type Purchase = { id: string; status: string; createdAt: string; template: { name: string } };
@@ -37,6 +51,29 @@ export default function ReportsPage() {
   // the report detail page's back button can deep-link straight to "My
   // Reports" instead of always landing back on the store.
   const [tab, setTab] = useState(() => (searchParams.get("tab") === "mine" ? "mine" : "store"));
+
+  // Palm Report templates (see pricing/catalog.ts's PALM_REPORT_CODES) need
+  // a real photo captured BEFORE checkout starts — create-order/route.ts
+  // rejects a palm code with no photo, and the webhook has no other chance
+  // to ask the customer for one. This dialog is that capture step.
+  const [pendingPalmTemplate, setPendingPalmTemplate] = useState<Template | null>(null);
+  const [palmPhoto, setPalmPhoto] = useState<{ data: string; mimeType: string; previewUrl: string } | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePalmFile = async (file: File | undefined) => {
+    if (!file) return;
+    if (!(ALLOWED_IMAGE_MIME_TYPES as readonly string[]).includes(file.type)) {
+      toast({ title: t("chat.invalidImageType"), variant: "danger" });
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast({ title: t("chat.imageTooLarge"), variant: "danger" });
+      return;
+    }
+    const data = await fileToBase64(file);
+    setPalmPhoto({ data, mimeType: file.type, previewUrl: URL.createObjectURL(file) });
+  };
 
   const { data: templates, isLoading: templatesLoading } = useQuery({
     queryKey: ["report-templates"],
@@ -63,9 +100,9 @@ export default function ReportsPage() {
     refetchInterval: (query) => (query.state.data?.purchases.some((p) => p.status === "pending") ? 2000 : false),
   });
 
-  const buy = (code: string) => {
+  const buy = (code: string, photo?: { data: string; mimeType: string }) => {
     checkout(
-      { type: "report", code, birthProfileId },
+      { type: "report", code, birthProfileId, photo },
       {
         onSuccess: () => {
           toast({ title: t("payments.paymentSuccessTitle"), variant: "success" });
@@ -76,6 +113,24 @@ export default function ReportsPage() {
         onError: (msg) => toast({ title: t("payments.paymentFailedTitle"), description: msg, variant: "danger" }),
       }
     );
+  };
+
+  // Palm templates open the photo-capture dialog first; every other
+  // template checks out immediately, unchanged from before.
+  const startBuy = (tpl: Template) => {
+    if (PALM_REPORT_CODES.has(tpl.code)) {
+      setPalmPhoto(null);
+      setPendingPalmTemplate(tpl);
+    } else {
+      buy(tpl.code);
+    }
+  };
+
+  const confirmPalmPurchase = () => {
+    if (!pendingPalmTemplate || !palmPhoto) return;
+    buy(pendingPalmTemplate.code, { data: palmPhoto.data, mimeType: palmPhoto.mimeType });
+    setPendingPalmTemplate(null);
+    setPalmPhoto(null);
   };
 
   return (
@@ -108,7 +163,7 @@ export default function ReportsPage() {
                   </CardHeader>
                   <CardFooter className="justify-between">
                     <span className="font-semibold text-gold">{formatInr(tpl.priceInPaise, `${locale}-IN`)}</span>
-                    <Button size="sm" disabled={loading} onClick={() => buy(tpl.code)}>{t("reports.buyNow")}</Button>
+                    <Button size="sm" disabled={loading} onClick={() => startBuy(tpl)}>{t("reports.buyNow")}</Button>
                   </CardFooter>
                 </Card>
               ))}
@@ -143,6 +198,70 @@ export default function ReportsPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog
+        open={!!pendingPalmTemplate}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingPalmTemplate(null);
+            setPalmPhoto(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{pendingPalmTemplate?.name}</DialogTitle>
+            <DialogDescription>{t("reports.palmPhotoRequiredDesc")}</DialogDescription>
+          </DialogHeader>
+
+          {!palmPhoto ? (
+            <div className="flex flex-col items-center gap-4 py-4">
+              <div className="flex flex-wrap justify-center gap-3">
+                <Button onClick={() => cameraInputRef.current?.click()}>
+                  <Camera size={16} /> {t("palmReading.takePhoto")}
+                </Button>
+                <Button variant="outline" onClick={() => galleryInputRef.current?.click()}>
+                  <Upload size={16} /> {t("palmReading.uploadPhoto")}
+                </Button>
+              </div>
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept={ALLOWED_IMAGE_MIME_TYPES.join(",")}
+                capture="environment"
+                className="hidden"
+                onChange={(e) => {
+                  handlePalmFile(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+              <input
+                ref={galleryInputRef}
+                type="file"
+                accept={ALLOWED_IMAGE_MIME_TYPES.join(",")}
+                className="hidden"
+                onChange={(e) => {
+                  handlePalmFile(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-4 py-4">
+              {/* eslint-disable-next-line @next/next/no-img-element -- a locally-picked File's object URL, not a static/remote asset next/image can optimize */}
+              <img src={palmPhoto.previewUrl} alt="" className="max-h-72 max-w-full rounded-xl" />
+              <div className="flex flex-wrap justify-center gap-3">
+                <Button onClick={confirmPalmPurchase} disabled={loading}>
+                  {loading ? t("common.loading") : t("reports.continueToPayment")}
+                </Button>
+                <Button variant="outline" onClick={() => setPalmPhoto(null)}>
+                  {t("palmReading.retake")}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

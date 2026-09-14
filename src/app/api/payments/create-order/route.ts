@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser, errorResponse } from "@/lib/auth/guard";
 import { createOrderSchema } from "@/lib/validations/payments";
 import { getPaymentProvider } from "@/lib/payments/provider";
-import { CREDIT_PACKS } from "@/lib/pricing/catalog";
+import { CREDIT_PACKS, PALM_REPORT_CODES } from "@/lib/pricing/catalog";
 import { rateLimit } from "@/lib/rate-limit";
 
 async function resolvePrice(type: string, code: string) {
@@ -67,6 +67,18 @@ export async function POST(req: NextRequest) {
         if (!owned) return NextResponse.json({ error: "invalid_birth_profile" }, { status: 403 });
       }
 
+      // Palm Report templates require a real photo, persisted here BEFORE
+      // payment so it's already in the row by the time the webhook calls
+      // fulfillOrder() (see entitlement.ts) — nothing else after this point
+      // ever asks the client for more data. Rejecting a missing photo here
+      // (rather than silently generating a generic/wrong report later) is
+      // deliberate — same standard as this project's other paid-report
+      // grounding checks.
+      const isPalmReport = PALM_REPORT_CODES.has(parsed.data.code);
+      if (isPalmReport && !parsed.data.photo) {
+        return NextResponse.json({ error: "photo_required" }, { status: 400 });
+      }
+
       await prisma.reportPurchase.create({
         data: {
           userId: user.id,
@@ -74,6 +86,9 @@ export async function POST(req: NextRequest) {
           birthProfileId: parsed.data.birthProfileId,
           orderId: order.id,
           status: "pending",
+          ...(isPalmReport && parsed.data.photo
+            ? { photoData: Buffer.from(parsed.data.photo.data, "base64"), photoMimeType: parsed.data.photo.mimeType }
+            : {}),
         },
       });
     }

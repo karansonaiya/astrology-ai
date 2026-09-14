@@ -41,7 +41,49 @@ export const REPORT_TEMPLATES = [
     description: "A broader reflective outlook across career, relationships, and wellbeing for the year ahead.",
     priceInPaise: 24900,
   },
+  // Palm (hast rekha) photo-driven reports — the only REPORT_TEMPLATES that
+  // require an uploaded photo instead of (or, for the combined one, in
+  // addition to) a birth profile. See create-order/route.ts (requires a
+  // photo for these codes) and entitlement.ts's generatePalmReportContent
+  // (the actual vision-grounded generation, branched off these codes).
+  // Prices are the founder-approved figure minus ₹10 off each originally
+  // proposed tier.
+  {
+    code: "palm_career_report",
+    name: "Career Palm Report",
+    description: "An in-depth palmistry reading focused on career direction, decision-making style, and professional strengths visible in your real palm photo.",
+    priceInPaise: 8900,
+  },
+  {
+    code: "palm_love_marriage_report",
+    name: "Love & Marriage Palm Report",
+    description: "A detailed palmistry reading on love, relationships, and marriage indicators visible in your real palm photo.",
+    priceInPaise: 13900,
+  },
+  {
+    code: "palm_full_report",
+    name: "Full Palm Report",
+    description: "A comprehensive palmistry reading covering every major line and mount visible in your real palm photo.",
+    priceInPaise: 23900,
+  },
+  {
+    code: "palm_kundli_combined_report",
+    name: "Palm + Kundli Combined Report",
+    description: "Your real palm photo and your real birth chart, read together for a single combined reflection.",
+    priceInPaise: 38900,
+  },
 ];
+
+// Report template codes whose fulfillment requires a real uploaded photo
+// (create-order/route.ts enforces this at purchase time; entitlement.ts's
+// fulfillOrder branches on it to call generatePalmReportContent instead of
+// the generic birth-chart-only generateReportContent).
+export const PALM_REPORT_CODES = new Set([
+  "palm_career_report",
+  "palm_love_marriage_report",
+  "palm_full_report",
+  "palm_kundli_combined_report",
+]);
 
 export const PLANS = [
   {
