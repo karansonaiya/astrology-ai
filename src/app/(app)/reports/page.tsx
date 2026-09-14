@@ -152,18 +152,26 @@ export default function ReportsPage() {
   // unchanged from before.
   const startBuy = (tpl: Template) => {
     if (PALM_REPORT_CODES.has(tpl.code)) {
+      // Read-only here — deliberately NOT deleted from sessionStorage until
+      // the purchase is actually confirmed (confirmPalmPurchase below).
+      // Found live: deleting it at read time made this non-idempotent, so
+      // if this ran twice for any reason (a background query refetch
+      // re-triggering the auto-open effect below, React StrictMode's
+      // double-invoke in dev, the user backing out and reopening the
+      // dialog) the second read silently came back empty — the handoff
+      // data looked like it had "gotten cleared" even though nothing was
+      // actually wrong with what the free page saved.
       const handoff = readSessionJson<{ data: string; mimeType: string }>(PALM_HANDOFF_KEY);
       if (handoff) {
-        sessionStorage.removeItem(PALM_HANDOFF_KEY);
         setPalmPhoto({ data: handoff.data, mimeType: handoff.mimeType, previewUrl: `data:${handoff.mimeType};base64,${handoff.data}` });
       } else {
         setPalmPhoto(null);
       }
       setPendingPalmTemplate(tpl);
     } else if (NUMEROLOGY_REPORT_CODES.has(tpl.code)) {
+      // Same read-only reasoning as the palm branch above.
       const handoff = readSessionJson<{ name: string; birthDate: string }>(NUMEROLOGY_HANDOFF_KEY);
       if (handoff) {
-        sessionStorage.removeItem(NUMEROLOGY_HANDOFF_KEY);
         setNumerologyName(handoff.name ?? "");
         setNumerologyBirthDate(handoff.birthDate ?? "");
       } else {
@@ -179,6 +187,7 @@ export default function ReportsPage() {
   const confirmPalmPurchase = () => {
     if (!pendingPalmTemplate || !palmPhoto) return;
     buy(pendingPalmTemplate.code, { data: palmPhoto.data, mimeType: palmPhoto.mimeType });
+    sessionStorage.removeItem(PALM_HANDOFF_KEY);
     setPendingPalmTemplate(null);
     setPalmPhoto(null);
   };
@@ -186,6 +195,7 @@ export default function ReportsPage() {
   const confirmNumerologyPurchase = () => {
     if (!pendingNumerologyTemplate || !numerologyName.trim() || !numerologyBirthDate) return;
     buy(pendingNumerologyTemplate.code, undefined, { name: numerologyName.trim(), birthDate: numerologyBirthDate });
+    sessionStorage.removeItem(NUMEROLOGY_HANDOFF_KEY);
     setPendingNumerologyTemplate(null);
     setNumerologyName("");
     setNumerologyBirthDate("");
@@ -195,7 +205,10 @@ export default function ReportsPage() {
   // (?upsell=numerology) — auto-opens the one numerology paid tier's dialog
   // once the store's templates have loaded (there's only one tier, unlike
   // palm's 4, so there's no ambiguous choice to make the user pick from
-  // first).
+  // first). handledUpsellRef still guards this from re-opening the dialog
+  // a second time (e.g. after the user closes it) even though the
+  // read-only sessionStorage fix above means a second read is no longer
+  // destructive either way.
   useEffect(() => {
     if (handledUpsellRef.current) return;
     if (searchParams.get("upsell") !== "numerology") return;
