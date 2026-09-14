@@ -407,7 +407,8 @@
     "dataNotIncluded": "સામેલ નથી",
     "downloadPdf": "PDF ડાઉનલોડ કરો",
     "palmPhotoRequiredDesc": "આ રિપોર્ટ માટે તમારી હથેળીનો એક સાચો ફોટો જોઈએ. અત્યારે ફોટો પાડો અથવા ગેલેરીમાંથી અપલોડ કરો.",
-    "continueToPayment": "પેમેન્ટ સાથે આગળ વધો"
+    "continueToPayment": "પેમેન્ટ સાથે આગળ વધો",
+    "numerologyDetailsRequiredDesc": "આ રિપોર્ટ માટે તમારું પૂરું નામ અને જન્મ તારીખ જોઈએ, જેથી તમારા સાચા નંબર કાઢી શકાય."
   },
   "personas": {
     "pageTitle": "કોની સાથે વાત કરવી છે પસંદ કરો",
@@ -495,7 +496,10 @@
     "soulUrge": "સોલ અર્જ નંબર",
     "personality": "પર્સનાલિટી નંબર",
     "birthday": "બર્થડે નંબર",
-    "startOver": "ફરીથી શરૂ કરો"
+    "startOver": "ફરીથી શરૂ કરો",
+    "detailedReportTitle": "વધુ ઊંડાણથી જાણવું છે?",
+    "detailedReportDesc": "તમારો Maturity, Personal Year, અને Karmic Debt નંબર મેળવો, સાથે ઘણું વધારે વિગતવાર અર્થઘટન.",
+    "getDetailedReport": "વિગતવાર રિપોર્ટ મેળવો"
   },
   "palmReading": {
     "title": "હસ્ત રેખા",
@@ -507,7 +511,11 @@
     "getReading": "મારું રીડિંગ મેળવો",
     "reading": "તમારી હથેળી વાંચાઈ રહી છે…",
     "retake": "બીજો ફોટો અજમાવો",
-    "summary": "સારાંશ"
+    "summary": "સારાંશ",
+    "detailedReportTitle": "વધુ ઊંડાણથી જાણવું છે?",
+    "detailedReportDesc": "કરિયર, પ્રેમ, અથવા તમારી સાચી કુંડળી સાથે જોડાયેલ રીડિંગ પર કેન્દ્રિત સંપૂર્ણ, વિગતવાર પામ રિપોર્ટ મેળવો.",
+    "getDetailedReport": "વિગતવાર રિપોર્ટ મેળવો",
+    "startingAt": "{price} થી શરૂ"
   },
   "help": {
     "title": "મદદ અને સલામતી",

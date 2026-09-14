@@ -72,6 +72,20 @@ export const REPORT_TEMPLATES = [
     description: "Your real palm photo and your real birth chart, read together for a single combined reflection.",
     priceInPaise: 38900,
   },
+  // Numerology paid upsell — same real, deterministic numbers as the free
+  // Numerology page, plus Maturity, Personal Year, and Karmic Debt numbers,
+  // with a much deeper interpretation. Market check (2026-09-14): Prokerala
+  // sells a comparable numerology report at Rs.499+18% GST (~Rs.589);
+  // priced well below that on purpose, since the real cost to generate this
+  // is a single AI text call (no paid third-party data API involved at all,
+  // unlike a kundli report which needs real Prokerala credits) — margin is
+  // healthy even at this price.
+  {
+    code: "numerology_full_report",
+    name: "Full Numerology Report",
+    description: "Your Maturity Number, Personal Year Number, and Karmic Debt numbers, plus a much deeper interpretation of your core numbers.",
+    priceInPaise: 9900,
+  },
 ];
 
 // Report template codes whose fulfillment requires a real uploaded photo
@@ -84,6 +98,11 @@ export const PALM_REPORT_CODES = new Set([
   "palm_full_report",
   "palm_kundli_combined_report",
 ]);
+
+// Same idea as PALM_REPORT_CODES, for the numerology paid upsell — needs a
+// real name + birth date captured at purchase time (see create-order/
+// route.ts) instead of a photo.
+export const NUMEROLOGY_REPORT_CODES = new Set(["numerology_full_report"]);
 
 export const PLANS = [
   {

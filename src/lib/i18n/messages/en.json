@@ -407,7 +407,8 @@
     "dataNotIncluded": "Not included",
     "downloadPdf": "Download PDF",
     "palmPhotoRequiredDesc": "This report needs a real photo of your palm. Take one now or upload one from your gallery.",
-    "continueToPayment": "Continue to payment"
+    "continueToPayment": "Continue to payment",
+    "numerologyDetailsRequiredDesc": "This report needs your full name and birth date to calculate your real numbers."
   },
   "personas": {
     "pageTitle": "Choose who to chat with",
@@ -495,7 +496,10 @@
     "soulUrge": "Soul Urge Number",
     "personality": "Personality Number",
     "birthday": "Birthday Number",
-    "startOver": "Start over"
+    "startOver": "Start over",
+    "detailedReportTitle": "Want a deeper reading?",
+    "detailedReportDesc": "Get your Maturity, Personal Year, and Karmic Debt numbers with a much more detailed interpretation.",
+    "getDetailedReport": "Get Detailed Report"
   },
   "palmReading": {
     "title": "Palm Reading",
@@ -507,7 +511,11 @@
     "getReading": "Get My Reading",
     "reading": "Reading your palm…",
     "retake": "Try another photo",
-    "summary": "Summary"
+    "summary": "Summary",
+    "detailedReportTitle": "Want a deeper reading?",
+    "detailedReportDesc": "Get a full, in-depth Palm Report focused on career, love, or a combined reading with your real birth chart.",
+    "getDetailedReport": "Get Detailed Report",
+    "startingAt": "starting at {price}"
   },
   "help": {
     "title": "Help & Safety",

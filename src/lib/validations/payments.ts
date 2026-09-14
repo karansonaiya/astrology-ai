@@ -10,6 +10,10 @@ export const createOrderSchema = z.object({
   // chat image attachments. create-order/route.ts requires this to be
   // present for those specific codes and rejects it for every other type.
   photo: chatImageSchema.optional(),
+  // Full Numerology Report only (NUMEROLOGY_REPORT_CODES) — required the
+  // same way `photo` is required for palm codes.
+  numerologyName: z.string().trim().min(1).max(120).optional(),
+  numerologyBirthDate: z.string().date().optional(),
 });
 
 export const verifyPaymentSchema = z.object({

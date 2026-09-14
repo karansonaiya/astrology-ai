@@ -76,3 +76,56 @@ export function calculateNumerology(name: string, birthDate: Date): NumerologyNu
 
   return { lifePath, destiny, soulUrge, personality, birthday };
 }
+
+// Traditionally treated as significant "before" being reduced to a final
+// single digit — flagged (not reduced away silently) rather than invented;
+// this is a real, well-established extension of the same Pythagorean
+// system, still 100% deterministic arithmetic.
+const KARMIC_DEBT_NUMBERS = new Set([13, 14, 16, 19]);
+
+export type DetailedNumerologyNumbers = NumerologyNumbers & {
+  /** reduce(lifePath + destiny) — the traditional "Maturity" number. */
+  maturity: number;
+  /** Changes every calendar year by design — computed against referenceDate (defaults to now), not birthDate. */
+  personalYear: number;
+  /** Empty if none of the core calculations' pre-reduction sums hit a karmic debt number. */
+  karmicDebtNumbers: number[];
+};
+
+/**
+ * The paid-tier depth layer on top of calculateNumerology's free 5 numbers —
+ * still 100% deterministic arithmetic, zero AI/guesswork, same as the free
+ * calculation. Kept as a separate function (rather than changing
+ * calculateNumerology itself) so the already-verified free path is never
+ * touched by this paid-tier work.
+ */
+export function calculateDetailedNumerology(
+  name: string,
+  birthDate: Date,
+  referenceDate: Date = new Date()
+): DetailedNumerologyNumbers {
+  const base = calculateNumerology(name, birthDate);
+
+  const day = birthDate.getUTCDate();
+  const month = birthDate.getUTCMonth() + 1;
+  const year = birthDate.getUTCFullYear();
+  const letters = name.toLowerCase().split("").filter((c) => LETTER_VALUES[c] != null);
+
+  const karmicDebtNumbers = new Set<number>();
+  const flagIfKarmicDebt = (rawSum: number) => {
+    if (KARMIC_DEBT_NUMBERS.has(rawSum)) karmicDebtNumbers.add(rawSum);
+  };
+  flagIfKarmicDebt(letters.reduce((sum, c) => sum + LETTER_VALUES[c], 0)); // destiny's raw sum
+  flagIfKarmicDebt(letters.filter((c) => VOWELS.has(c)).reduce((sum, c) => sum + LETTER_VALUES[c], 0)); // soul urge's raw sum
+  flagIfKarmicDebt(letters.filter((c) => !VOWELS.has(c)).reduce((sum, c) => sum + LETTER_VALUES[c], 0)); // personality's raw sum
+  flagIfKarmicDebt(reduceToDigitOrMaster(day) + reduceToDigitOrMaster(month) + reduceToDigitOrMaster(sumDigits(year))); // life path's pre-final-reduce sum
+
+  const maturity = reduceToDigitOrMaster(base.lifePath + base.destiny);
+
+  const refYear = referenceDate.getUTCFullYear();
+  const personalYear = reduceToDigitOrMaster(
+    reduceToDigitOrMaster(day) + reduceToDigitOrMaster(month) + reduceToDigitOrMaster(sumDigits(refYear))
+  );
+
+  return { ...base, maturity, personalYear, karmicDebtNumbers: [...karmicDebtNumbers] };
+}

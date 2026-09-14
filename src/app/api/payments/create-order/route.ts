@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser, errorResponse } from "@/lib/auth/guard";
 import { createOrderSchema } from "@/lib/validations/payments";
 import { getPaymentProvider } from "@/lib/payments/provider";
-import { CREDIT_PACKS, PALM_REPORT_CODES } from "@/lib/pricing/catalog";
+import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES } from "@/lib/pricing/catalog";
 import { rateLimit } from "@/lib/rate-limit";
 
 async function resolvePrice(type: string, code: string) {
@@ -79,6 +79,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "photo_required" }, { status: 400 });
       }
 
+      const isNumerologyReport = NUMEROLOGY_REPORT_CODES.has(parsed.data.code);
+      if (isNumerologyReport && (!parsed.data.numerologyName || !parsed.data.numerologyBirthDate)) {
+        return NextResponse.json({ error: "numerology_details_required" }, { status: 400 });
+      }
+
       await prisma.reportPurchase.create({
         data: {
           userId: user.id,
@@ -88,6 +93,9 @@ export async function POST(req: NextRequest) {
           status: "pending",
           ...(isPalmReport && parsed.data.photo
             ? { photoData: Buffer.from(parsed.data.photo.data, "base64"), photoMimeType: parsed.data.photo.mimeType }
+            : {}),
+          ...(isNumerologyReport && parsed.data.numerologyName && parsed.data.numerologyBirthDate
+            ? { numerologyName: parsed.data.numerologyName, numerologyBirthDate: new Date(parsed.data.numerologyBirthDate) }
             : {}),
         },
       });

@@ -1,10 +1,12 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { Camera, Upload, Sparkles, Hand } from "lucide-react";
-import { useT } from "@/lib/i18n/provider";
+import { useRouter } from "next/navigation";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Camera, Upload, Sparkles, Hand, FileText } from "lucide-react";
+import { useI18n, useT } from "@/lib/i18n/provider";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { formatInr } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,14 +16,18 @@ import { useToast } from "@/components/ui/toast";
 import { ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_BASE64_LENGTH } from "@/lib/validations/chat";
 import { detectHandMounts, type HandMount } from "@/lib/hand-detection/detect-mounts";
 import { compressImageFile } from "@/lib/image/compress-image";
+import { PALM_REPORT_CODES } from "@/lib/pricing/catalog";
 
 const MAX_IMAGE_BYTES = Math.floor((MAX_IMAGE_BASE64_LENGTH * 3) / 4);
 
 type PalmLine = { name: string; observation: string; meaning: string };
 type PalmReading = { overview: string; handShape: string; lines: PalmLine[]; summary: string };
+type ReportTemplate = { code: string; priceInPaise: number };
 
 export default function PalmReadingPage() {
   const t = useT();
+  const { locale } = useI18n();
+  const router = useRouter();
   const { toast } = useToast();
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -77,6 +83,29 @@ export default function PalmReadingPage() {
       else toast({ title: t("errors.generic"), variant: "danger" });
     },
   });
+
+  // Just for the "Get Detailed Report" button's price label — the actual
+  // price is re-validated server-side at checkout regardless.
+  const { data: templatesData } = useQuery({
+    queryKey: ["report-templates"],
+    queryFn: () => apiFetch<{ templates: ReportTemplate[] }>("/api/reports/templates"),
+  });
+  const palmPrices = templatesData?.templates.filter((tp) => PALM_REPORT_CODES.has(tp.code)).map((tp) => tp.priceInPaise) ?? [];
+  const cheapestPalmReportPrice = palmPrices.length ? Math.min(...palmPrices) : undefined;
+
+  const goToDetailedReport = () => {
+    // Hands the ALREADY-compressed photo forward so the Report Store's
+    // photo-capture dialog can skip asking the customer to retake it.
+    if (image) {
+      try {
+        sessionStorage.setItem("prerna:palm-photo-handoff", JSON.stringify({ data: image.data, mimeType: image.mimeType }));
+      } catch {
+        // sessionStorage unavailable — the paid flow's own capture dialog
+        // still works, it just asks for a fresh photo.
+      }
+    }
+    router.push("/reports?tab=store");
+  };
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
@@ -195,6 +224,22 @@ export default function PalmReadingPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm leading-relaxed">{reading.summary}</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-gold/30 bg-gold/5">
+            <CardContent className="flex flex-col items-start gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium">{t("palmReading.detailedReportTitle")}</p>
+                <p className="text-xs text-muted">{t("palmReading.detailedReportDesc")}</p>
+              </div>
+              <Button onClick={goToDetailedReport} className="shrink-0">
+                <FileText size={16} />
+                {t("palmReading.getDetailedReport")}
+                {cheapestPalmReportPrice != null && (
+                  <span className="ml-1">— {t("palmReading.startingAt", { price: formatInr(cheapestPalmReportPrice, `${locale}-IN`) })}</span>
+                )}
+              </Button>
             </CardContent>
           </Card>
 

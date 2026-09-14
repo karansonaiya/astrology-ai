@@ -74,6 +74,10 @@ export function useCheckout() {
       // before calling checkout(); create-order/route.ts rejects a palm
       // code with no photo.
       photo?: { data: string; mimeType: string };
+      // Full Numerology Report only (NUMEROLOGY_REPORT_CODES) — same idea
+      // as `photo` above, required by create-order/route.ts for that code.
+      numerologyName?: string;
+      numerologyBirthDate?: string;
     },
     opts?: { onSuccess?: (orderId: string) => void; onError?: (message: string) => void }
   ) => {

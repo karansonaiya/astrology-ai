@@ -762,6 +762,13 @@ model ReportPurchase {
   photoData     Bytes?
   photoMimeType String?
 
+  // Numerology Report upsell only — a real name + birth date captured at
+  // order-creation time (create-order/route.ts), read back by
+  // fulfillOrder's generateDetailedNumerologyReportContent (entitlement.ts).
+  // Null for every other report template.
+  numerologyName      String?
+  numerologyBirthDate DateTime?
+
   createdAt   DateTime  @default(now())
   completedAt DateTime?
 

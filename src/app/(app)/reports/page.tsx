@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { TriangleAlert, Camera, Upload } from "lucide-react";
@@ -13,12 +13,29 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { useCheckout } from "@/lib/payments/use-checkout";
-import { PALM_REPORT_CODES } from "@/lib/pricing/catalog";
+import { PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES } from "@/lib/pricing/catalog";
 import { ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_BASE64_LENGTH } from "@/lib/validations/chat";
 import { compressImageFile } from "@/lib/image/compress-image";
+
+// sessionStorage keys the free Palm Reading / Numerology pages use to hand
+// off what they already collected (a photo, or a name+birth date), so the
+// paid-upsell dialogs here don't make the user re-enter/re-capture it.
+const PALM_HANDOFF_KEY = "prerna:palm-photo-handoff";
+const NUMEROLOGY_HANDOFF_KEY = "prerna:numerology-handoff";
+
+function readSessionJson<T>(key: string): T | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
 
 const MAX_IMAGE_BYTES = Math.floor((MAX_IMAGE_BASE64_LENGTH * 3) / 4);
 
@@ -52,6 +69,18 @@ export default function ReportsPage() {
   const [palmPhoto, setPalmPhoto] = useState<{ data: string; mimeType: string; previewUrl: string } | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  // Same idea for the Full Numerology Report — needs a real name + birth
+  // date captured before checkout (create-order/route.ts requires both for
+  // NUMEROLOGY_REPORT_CODES).
+  const [pendingNumerologyTemplate, setPendingNumerologyTemplate] = useState<Template | null>(null);
+  const [numerologyName, setNumerologyName] = useState("");
+  const [numerologyBirthDate, setNumerologyBirthDate] = useState("");
+  // Guards the ?upsell=numerology auto-open effect below so it only ever
+  // fires once — without this, a background react-query refetch of
+  // `templates` after the user has already started editing the dialog's
+  // fields would re-run the effect and silently wipe what they'd typed.
+  const handledUpsellRef = useRef(false);
 
   const handlePalmFile = async (file: File | undefined) => {
     if (!file) return;
@@ -97,9 +126,13 @@ export default function ReportsPage() {
     refetchInterval: (query) => (query.state.data?.purchases.some((p) => p.status === "pending") ? 2000 : false),
   });
 
-  const buy = (code: string, photo?: { data: string; mimeType: string }) => {
+  const buy = (
+    code: string,
+    photo?: { data: string; mimeType: string },
+    numerology?: { name: string; birthDate: string }
+  ) => {
     checkout(
-      { type: "report", code, birthProfileId, photo },
+      { type: "report", code, birthProfileId, photo, numerologyName: numerology?.name, numerologyBirthDate: numerology?.birthDate },
       {
         onSuccess: () => {
           toast({ title: t("payments.paymentSuccessTitle"), variant: "success" });
@@ -112,12 +145,32 @@ export default function ReportsPage() {
     );
   };
 
-  // Palm templates open the photo-capture dialog first; every other
-  // template checks out immediately, unchanged from before.
+  // Palm templates open the photo-capture dialog first (pre-filled from the
+  // free Palm Reading page's handoff photo when there is one, so the
+  // customer doesn't have to retake it); the numerology template opens the
+  // name+birth-date dialog; every other template checks out immediately,
+  // unchanged from before.
   const startBuy = (tpl: Template) => {
     if (PALM_REPORT_CODES.has(tpl.code)) {
-      setPalmPhoto(null);
+      const handoff = readSessionJson<{ data: string; mimeType: string }>(PALM_HANDOFF_KEY);
+      if (handoff) {
+        sessionStorage.removeItem(PALM_HANDOFF_KEY);
+        setPalmPhoto({ data: handoff.data, mimeType: handoff.mimeType, previewUrl: `data:${handoff.mimeType};base64,${handoff.data}` });
+      } else {
+        setPalmPhoto(null);
+      }
       setPendingPalmTemplate(tpl);
+    } else if (NUMEROLOGY_REPORT_CODES.has(tpl.code)) {
+      const handoff = readSessionJson<{ name: string; birthDate: string }>(NUMEROLOGY_HANDOFF_KEY);
+      if (handoff) {
+        sessionStorage.removeItem(NUMEROLOGY_HANDOFF_KEY);
+        setNumerologyName(handoff.name ?? "");
+        setNumerologyBirthDate(handoff.birthDate ?? "");
+      } else {
+        setNumerologyName("");
+        setNumerologyBirthDate("");
+      }
+      setPendingNumerologyTemplate(tpl);
     } else {
       buy(tpl.code);
     }
@@ -129,6 +182,32 @@ export default function ReportsPage() {
     setPendingPalmTemplate(null);
     setPalmPhoto(null);
   };
+
+  const confirmNumerologyPurchase = () => {
+    if (!pendingNumerologyTemplate || !numerologyName.trim() || !numerologyBirthDate) return;
+    buy(pendingNumerologyTemplate.code, undefined, { name: numerologyName.trim(), birthDate: numerologyBirthDate });
+    setPendingNumerologyTemplate(null);
+    setNumerologyName("");
+    setNumerologyBirthDate("");
+  };
+
+  // Deep-link from the free Numerology page's "Get Detailed Report" button
+  // (?upsell=numerology) — auto-opens the one numerology paid tier's dialog
+  // once the store's templates have loaded (there's only one tier, unlike
+  // palm's 4, so there's no ambiguous choice to make the user pick from
+  // first).
+  useEffect(() => {
+    if (handledUpsellRef.current) return;
+    if (searchParams.get("upsell") !== "numerology") return;
+    const tpl = templates?.templates.find((tp) => NUMEROLOGY_REPORT_CODES.has(tp.code));
+    if (!tpl) return;
+    handledUpsellRef.current = true;
+    // Deferred out of the effect body itself (not just to satisfy the
+    // set-state-in-effect lint rule) — startBuy calls setState synchronously,
+    // which React warns against doing directly inside an effect.
+    queueMicrotask(() => startBuy(tpl));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- startBuy is stable in practice (closes over state setters + refs only); including it would need useCallback ceremony for no behavioral benefit here.
+  }, [templates, searchParams]);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 md:px-6">
@@ -207,7 +286,10 @@ export default function ReportsPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{pendingPalmTemplate?.name}</DialogTitle>
+            <DialogTitle>
+              {pendingPalmTemplate?.name}
+              {pendingPalmTemplate && <span className="ml-2 text-gold">{formatInr(pendingPalmTemplate.priceInPaise, `${locale}-IN`)}</span>}
+            </DialogTitle>
             <DialogDescription>{t("reports.palmPhotoRequiredDesc")}</DialogDescription>
           </DialogHeader>
 
@@ -257,6 +339,50 @@ export default function ReportsPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!pendingNumerologyTemplate}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingNumerologyTemplate(null);
+            setNumerologyName("");
+            setNumerologyBirthDate("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {pendingNumerologyTemplate?.name}
+              {pendingNumerologyTemplate && <span className="ml-2 text-gold">{formatInr(pendingNumerologyTemplate.priceInPaise, `${locale}-IN`)}</span>}
+            </DialogTitle>
+            <DialogDescription>{t("reports.numerologyDetailsRequiredDesc")}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div>
+              <Label htmlFor="report-num-name">{t("numerology.fullName")}</Label>
+              <Input id="report-num-name" value={numerologyName} onChange={(e) => setNumerologyName(e.target.value)} className="mt-1.5" />
+            </div>
+            <div>
+              <Label htmlFor="report-num-dob">{t("numerology.birthDate")}</Label>
+              <Input
+                id="report-num-dob"
+                type="date"
+                value={numerologyBirthDate}
+                onChange={(e) => setNumerologyBirthDate(e.target.value)}
+                className="mt-1.5"
+              />
+            </div>
+            <Button
+              className="mt-2"
+              disabled={!numerologyName.trim() || !numerologyBirthDate || loading}
+              onClick={confirmNumerologyPurchase}
+            >
+              {loading ? t("common.loading") : t("reports.continueToPayment")}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

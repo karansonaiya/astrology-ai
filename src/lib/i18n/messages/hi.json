@@ -407,7 +407,8 @@
     "dataNotIncluded": "शामिल नहीं",
     "downloadPdf": "PDF डाउनलोड करें",
     "palmPhotoRequiredDesc": "इस रिपोर्ट के लिए आपकी हथेली की एक असली फ़ोटो चाहिए। अभी फ़ोटो लें या गैलरी से अपलोड करें।",
-    "continueToPayment": "भुगतान जारी रखें"
+    "continueToPayment": "भुगतान जारी रखें",
+    "numerologyDetailsRequiredDesc": "इस रिपोर्ट के लिए आपका पूरा नाम और जन्म तिथि चाहिए, ताकि आपके असली नंबर निकाले जा सकें।"
   },
   "personas": {
     "pageTitle": "किससे बात करनी है चुनें",
@@ -495,7 +496,10 @@
     "soulUrge": "सोल अर्ज नंबर",
     "personality": "पर्सनैलिटी नंबर",
     "birthday": "बर्थडे नंबर",
-    "startOver": "फिर से शुरू करें"
+    "startOver": "फिर से शुरू करें",
+    "detailedReportTitle": "और गहराई से जानना चाहते हैं?",
+    "detailedReportDesc": "अपना Maturity, Personal Year, और Karmic Debt नंबर पाएं, साथ में बहुत ज़्यादा विस्तृत व्याख्या।",
+    "getDetailedReport": "विस्तृत रिपोर्ट पाएं"
   },
   "palmReading": {
     "title": "हस्त रेखा",
@@ -507,7 +511,11 @@
     "getReading": "मेरी रीडिंग पाएं",
     "reading": "आपकी हथेली पढ़ी जा रही है…",
     "retake": "दूसरी फोटो आज़माएं",
-    "summary": "सारांश"
+    "summary": "सारांश",
+    "detailedReportTitle": "और गहराई से जानना चाहते हैं?",
+    "detailedReportDesc": "करियर, प्रेम, या आपकी असली कुंडली के साथ संयुक्त रीडिंग पर केंद्रित पूरी, विस्तृत पाम रिपोर्ट पाएं।",
+    "getDetailedReport": "विस्तृत रिपोर्ट पाएं",
+    "startingAt": "{price} से शुरू"
   },
   "help": {
     "title": "सहायता और सुरक्षा",

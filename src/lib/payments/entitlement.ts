@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { grantCredits } from "@/lib/credits";
-import { CREDIT_PACKS, PALM_REPORT_CODES } from "@/lib/pricing/catalog";
+import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES } from "@/lib/pricing/catalog";
 import { generateAstrologyReply } from "@/lib/ai";
 import { getOrComputeKundliCalculation, summarizeKundliForAi } from "@/lib/astrology/adapter";
+import { calculateDetailedNumerology } from "@/lib/numerology/calculate";
 import type { AppLocale } from "@/lib/i18n/config";
 import { maybeRewardReferral } from "@/lib/referral";
 
@@ -30,18 +31,33 @@ export async function fulfillOrder(orderId: string) {
     if (purchase) {
       // Palm Report codes (a real uploaded photo, persisted at
       // create-order time — see create-order/route.ts) need a different,
-      // vision-grounded generation path; every other template keeps using
-      // the existing birth-chart-only path unchanged.
-      const content =
-        purchase.template && PALM_REPORT_CODES.has(purchase.template.code) && purchase.photoData && purchase.photoMimeType
-          ? await generatePalmReportContent(
-              purchase.userId,
-              purchase.template.code,
-              purchase.template.name,
-              purchase.birthProfileId,
-              { data: purchase.photoData, mimeType: purchase.photoMimeType }
-            )
-          : await generateReportContent(purchase.userId, purchase.templateId, purchase.birthProfileId);
+      // vision-grounded generation path; the Numerology Report code needs a
+      // real name+birthDate captured the same way. Every other template
+      // keeps using the existing birth-chart-only path unchanged.
+      let content;
+      if (purchase.template && PALM_REPORT_CODES.has(purchase.template.code) && purchase.photoData && purchase.photoMimeType) {
+        content = await generatePalmReportContent(
+          purchase.userId,
+          purchase.template.code,
+          purchase.template.name,
+          purchase.birthProfileId,
+          { data: purchase.photoData, mimeType: purchase.photoMimeType }
+        );
+      } else if (
+        purchase.template &&
+        NUMEROLOGY_REPORT_CODES.has(purchase.template.code) &&
+        purchase.numerologyName &&
+        purchase.numerologyBirthDate
+      ) {
+        content = await generateDetailedNumerologyReportContent(
+          purchase.userId,
+          purchase.template.name,
+          purchase.numerologyName,
+          purchase.numerologyBirthDate
+        );
+      } else {
+        content = await generateReportContent(purchase.userId, purchase.templateId, purchase.birthProfileId);
+      }
       await prisma.reportPurchase.update({
         where: { id: purchase.id },
         data: { status: "completed", generatedContent: content, completedAt: new Date() },
@@ -232,6 +248,62 @@ ${PALM_TIER_STRUCTURE[templateCode] ?? PALM_TIER_STRUCTURE.palm_full_report}`,
     templateName,
     generatedAt: new Date().toISOString(),
     birthDataUsed: isCombined && !!profile,
+    body: reply.text,
+  };
+}
+
+/**
+ * The Full Numerology Report — same free calculateNumerology/reading
+ * pattern this app's free /numerology feature uses, taken one layer
+ * deeper: calculateDetailedNumerology (calculate.ts) adds 3 more real,
+ * deterministic numbers (Maturity, Personal Year, Karmic Debt) on top of
+ * the free 5, then a single deep generateAstrologyReply call interprets
+ * all 8 together — same markdown-body shape as every other Report Store
+ * item (reports/[id]/page.tsx renders it generically), unlike the free
+ * page's structured-JSON-per-card UI.
+ */
+async function generateDetailedNumerologyReportContent(userId: string, templateName: string, name: string, birthDate: Date) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const locale = (user?.locale ?? "en") as AppLocale;
+  const langName: Record<AppLocale, string> = { en: "English", hi: "Hindi", gu: "Gujarati" };
+
+  const numbers = calculateDetailedNumerology(name, birthDate);
+  const currentYear = new Date().getUTCFullYear();
+
+  const numbersBlock = `Life Path Number: ${numbers.lifePath}
+Destiny (Expression) Number: ${numbers.destiny}
+Soul Urge Number: ${numbers.soulUrge}
+Personality Number: ${numbers.personality}
+Birthday Number: ${numbers.birthday}
+Maturity Number: ${numbers.maturity}
+Personal Year Number (for ${currentYear}): ${numbers.personalYear}
+Karmic Debt numbers present: ${numbers.karmicDebtNumbers.length ? numbers.karmicDebtNumbers.join(", ") : "none"}`;
+
+  const reply = await generateAstrologyReply({
+    userId,
+    locale,
+    history: [],
+    userMessage: `Here are the real, already-calculated Pythagorean numerology numbers for "${name}" (born ${birthDate.toISOString().slice(0, 10)}) — never recalculate, question, or change them, only interpret exactly these numbers. Write entirely in ${langName[locale]}.
+
+${numbersBlock}
+
+This is a PAID, in-depth "${templateName}" — it must read as substantial and genuinely valuable, not a short summary. Structure it as:
+1. An opening overview (4-6 sentences) tying the Life Path and Destiny numbers together as the core of this profile.
+2. A dedicated section for each of: Life Path, Destiny, Soul Urge, Personality, Birthday, Maturity, and Personal Year — 3-5 sentences each, naming the actual number and interpreting it specifically.
+3. If any Karmic Debt numbers are listed as present above, a dedicated section explaining what each one traditionally means and a constructive way to work with it; if none are present, skip this section entirely rather than inventing one.
+4. 5-7 concrete, actionable suggestions grounded in these specific numbers.
+5. A closing reflection (3-4 sentences).
+
+Never give medical, legal, or financial advice. Never claim certainty about the future.`,
+    feature: "report",
+    maxTokens: 6000,
+  });
+
+  return {
+    templateCode: "numerology_full_report",
+    templateName,
+    generatedAt: new Date().toISOString(),
+    birthDataUsed: true,
     body: reply.text,
   };
 }

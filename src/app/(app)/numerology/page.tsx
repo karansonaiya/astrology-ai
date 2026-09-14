@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { Sparkles, Hash } from "lucide-react";
-import { useT } from "@/lib/i18n/provider";
+import { useRouter } from "next/navigation";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Sparkles, Hash, FileText } from "lucide-react";
+import { useI18n, useT } from "@/lib/i18n/provider";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { formatInr } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +14,9 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
+import { NUMEROLOGY_REPORT_CODES } from "@/lib/pricing/catalog";
+
+type ReportTemplate = { code: string; priceInPaise: number };
 
 type NumerologyMeaning = { number: number; title: string; meaning: string };
 type NumerologyReading = {
@@ -25,6 +30,8 @@ type NumerologyReading = {
 
 export default function NumerologyPage() {
   const t = useT();
+  const { locale } = useI18n();
+  const router = useRouter();
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [reading, setReading] = useState<NumerologyReading | null>(null);
@@ -37,6 +44,24 @@ export default function NumerologyPage() {
       if (err instanceof ApiError && err.status === 402) setOutOfCreditsOpen(true);
     },
   });
+
+  // Just for the "Get Detailed Report" button's price label — the actual
+  // price is re-validated server-side at checkout regardless.
+  const { data: templatesData } = useQuery({
+    queryKey: ["report-templates"],
+    queryFn: () => apiFetch<{ templates: ReportTemplate[] }>("/api/reports/templates"),
+  });
+  const detailedReportPrice = templatesData?.templates.find((tp) => NUMEROLOGY_REPORT_CODES.has(tp.code))?.priceInPaise;
+
+  const goToDetailedReport = () => {
+    try {
+      sessionStorage.setItem("prerna:numerology-handoff", JSON.stringify({ name, birthDate }));
+    } catch {
+      // sessionStorage unavailable (private mode etc.) — the paid flow's
+      // own name/date dialog still works, it just won't be pre-filled.
+    }
+    router.push("/reports?upsell=numerology");
+  };
 
   const rows = reading
     ? [
@@ -106,6 +131,20 @@ export default function NumerologyPage() {
               </CardContent>
             </Card>
           ))}
+
+          <Card className="border-gold/30 bg-gold/5">
+            <CardContent className="flex flex-col items-start gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium">{t("numerology.detailedReportTitle")}</p>
+                <p className="text-xs text-muted">{t("numerology.detailedReportDesc")}</p>
+              </div>
+              <Button onClick={goToDetailedReport} className="shrink-0">
+                <FileText size={16} />
+                {t("numerology.getDetailedReport")}
+                {detailedReportPrice != null && <span className="ml-1">— {formatInr(detailedReportPrice, `${locale}-IN`)}</span>}
+              </Button>
+            </CardContent>
+          </Card>
 
           <Button variant="outline" className="w-fit" onClick={() => setReading(null)}>
             {t("numerology.startOver")}
