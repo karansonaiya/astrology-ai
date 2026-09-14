@@ -7,6 +7,7 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { MaintenanceBanner } from "@/components/layout/maintenance-banner";
 import { PresenceHeartbeat } from "@/components/layout/presence-heartbeat";
 import { BfcacheGuard } from "@/components/layout/bfcache-guard";
+import { NotificationPermissionPrompt } from "@/components/pwa/notification-permission-prompt";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -32,6 +33,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="flex min-w-0 flex-1 flex-col">
         <AppHeader />
         <MaintenanceBanner />
+        <NotificationPermissionPrompt />
         <main className="min-w-0 flex-1 pb-20 md:pb-0">{children}</main>
       </div>
       <BottomNav />

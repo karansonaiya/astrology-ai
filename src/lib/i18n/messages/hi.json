@@ -474,6 +474,11 @@
     "themeDark": "डार्क (celestial)",
     "themeLight": "लाइट"
   },
+  "notifications": {
+    "promptTitle": "अपना दैनिक चिंतन कभी न चूकें",
+    "promptDesc": "अपना राशिफल देखने की एक सौम्य दैनिक याद के लिए नोटिफिकेशन चालू करें।",
+    "promptEnable": "चालू करें"
+  },
   "help": {
     "title": "सहायता और सुरक्षा",
     "contactSupport": "सहायता से संपर्क करें",

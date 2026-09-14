@@ -474,6 +474,11 @@
     "themeDark": "Dark (celestial)",
     "themeLight": "Light"
   },
+  "notifications": {
+    "promptTitle": "Never miss your daily reflection",
+    "promptDesc": "Turn on notifications for a gentle daily reminder to check your horoscope.",
+    "promptEnable": "Enable"
+  },
   "help": {
     "title": "Help & Safety",
     "contactSupport": "Contact support",

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, CreditCard, RotateCcw, Cpu, TriangleAlert,
-  FileText, DollarSign, Gift, LifeBuoy, ToggleLeft, BarChart3, ArrowLeft,
+  FileText, DollarSign, Gift, LifeBuoy, ToggleLeft, BarChart3, ArrowLeft, Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/layout/logo";
@@ -17,6 +17,7 @@ const NAV = [
   { href: "/admin/ai-usage", icon: Cpu, label: "AI Usage & Cost", roles: ["admin"] },
   { href: "/admin/flagged", icon: TriangleAlert, label: "Flagged", roles: ["admin", "support_agent"] },
   { href: "/admin/content", icon: FileText, label: "Content", roles: ["admin", "content_editor"] },
+  { href: "/admin/notifications", icon: Bell, label: "Notifications", roles: ["admin"] },
   { href: "/admin/pricing", icon: DollarSign, label: "Pricing", roles: ["admin"] },
   { href: "/admin/referrals", icon: Gift, label: "Referrals", roles: ["admin"] },
   { href: "/admin/support", icon: LifeBuoy, label: "Support", roles: ["admin", "support_agent"] },

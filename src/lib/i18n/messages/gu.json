@@ -474,6 +474,11 @@
     "themeDark": "ડાર્ક (celestial)",
     "themeLight": "લાઇટ"
   },
+  "notifications": {
+    "promptTitle": "તમારું રોજિંદુ ચિંતન ક્યારેય ના ચૂકો",
+    "promptDesc": "તમારું રાશિફળ જોવા માટે એક હળવો રોજિંદો રિમાઇન્ડર મેળવવા નોટિફિકેશન ચાલુ કરો.",
+    "promptEnable": "ચાલુ કરો"
+  },
   "help": {
     "title": "મદદ અને સલામતી",
     "contactSupport": "સપોર્ટનો સંપર્ક કરો",
