@@ -48,12 +48,16 @@ export type KundliExplanation = {
 };
 
 export type ExplainablePlanet = { planet: string; sign: string; house: number | null; retrograde: boolean };
+export type ExplainableYoga = { name: string; description: string };
+export type ExplainableAspect = { from: string; toHouse: number; toPlanets: string[] };
 export type ExplainableChart = {
   sunSign: string | null;
   moonSign: string | null;
   ascendant: string | null;
   nakshatra: string | null;
   planetaryPositions: ExplainablePlanet[] | null;
+  yogas?: ExplainableYoga[] | null;
+  aspects?: ExplainableAspect[] | null;
 };
 
 const LANG_NAME: Record<AppLocale, string> = { en: "English", hi: "Hindi", gu: "Gujarati" };
@@ -70,6 +74,17 @@ function describeChart(chart: ExplainableChart): string {
       .map((p) => `${p.planet} in ${p.sign}${p.house ? `, house ${p.house}` : ""}${p.retrograde ? " (retrograde)" : ""}`)
       .join("; ");
     parts.push(`Planetary positions: ${planets}`);
+  }
+  if (chart.yogas?.length) {
+    parts.push(`Yogas present: ${chart.yogas.map((y) => y.name).join(", ")}`);
+  }
+  if (chart.aspects?.length) {
+    const withTargets = chart.aspects.filter((a) => a.toPlanets.length);
+    if (withTargets.length) {
+      parts.push(
+        `Planetary aspects (drishti): ${withTargets.map((a) => `${a.from} aspects ${a.toPlanets.join("/")} (house ${a.toHouse})`).join("; ")}`
+      );
+    }
   }
   return parts.join("\n");
 }

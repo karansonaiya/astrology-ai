@@ -52,6 +52,8 @@ export async function POST(req: NextRequest) {
         ascendant: calc.ascendant,
         nakshatra: calc.nakshatra,
         planetaryPositions: (calc.planetaryPositions as ExplainableChart["planetaryPositions"]) ?? null,
+        yogas: (calc.yogas as ExplainableChart["yogas"]) ?? null,
+        aspects: (calc.aspects as ExplainableChart["aspects"]) ?? null,
       };
       const explanation = await generateKundliExplanation(chart, locale, user.id, profile.name ?? undefined);
 

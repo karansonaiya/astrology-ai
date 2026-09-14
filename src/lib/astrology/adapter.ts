@@ -1,4 +1,5 @@
 import type { ZodiacSign } from "@prisma/client";
+import { computeVedicAspects, type PlanetAspect } from "./aspects";
 
 /**
  * Astrology calculation adapter. This layer is deliberately kept separate
@@ -26,6 +27,8 @@ export type PlanetPosition = {
   retrograde: boolean;
 };
 
+export type Yoga = { name: string; description: string };
+
 export type KundliResult = {
   provider: string;
   isDemoData: boolean;
@@ -36,6 +39,8 @@ export type KundliResult = {
   planetaryPositions: PlanetPosition[] | null;
   houses: Array<{ house: number; sign: ZodiacSign }> | null;
   dasha: Array<{ period: string; from: string; to: string }> | null;
+  yogas: Yoga[] | null;
+  aspects: PlanetAspect[] | null;
   configRequired: boolean;
 };
 
@@ -57,6 +62,13 @@ class MockAstrologyProvider implements AstrologyProvider {
     const ascendant = input.birthTimeKnown ? ZODIAC_ORDER[(seed + 7) % 12] : null;
 
     const planetNames = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Rahu", "Ketu"];
+    const planetaryPositions = planetNames.map((planet, i) => ({
+      planet,
+      sign: ZODIAC_ORDER[(seed + i * 2) % 12],
+      degree: (seed * (i + 1)) % 30,
+      house: input.birthTimeKnown ? ((seed + i) % 12) + 1 : null,
+      retrograde: i % 5 === 0,
+    }));
 
     return {
       provider: "mock",
@@ -65,13 +77,7 @@ class MockAstrologyProvider implements AstrologyProvider {
       moonSign,
       ascendant,
       nakshatra: input.birthTimeKnown ? "Ashwini (demo)" : null,
-      planetaryPositions: planetNames.map((planet, i) => ({
-        planet,
-        sign: ZODIAC_ORDER[(seed + i * 2) % 12],
-        degree: (seed * (i + 1)) % 30,
-        house: input.birthTimeKnown ? ((seed + i) % 12) + 1 : null,
-        retrograde: i % 5 === 0,
-      })),
+      planetaryPositions,
       houses: input.birthTimeKnown
         ? Array.from({ length: 12 }, (_, i) => ({ house: i + 1, sign: ZODIAC_ORDER[(seed + i) % 12] }))
         : null,
@@ -81,6 +87,12 @@ class MockAstrologyProvider implements AstrologyProvider {
             { period: "Sun Mahadasha (demo)", from: "2041-01-01", to: "2047-01-01" },
           ]
         : null,
+      yogas: input.birthTimeKnown ? [{ name: "Gajakesari Yoga (demo)", description: "Demo/placeholder yoga — not a real calculation." }] : null,
+      // Aspects are pure deterministic math over house positions, not
+      // provider-specific data — same computation runs on real Prokerala
+      // positions below, so the mock chart's aspects are internally
+      // consistent with its own (demo) houses rather than separately faked.
+      aspects: computeVedicAspects(planetaryPositions),
       configRequired: false,
     };
   }
@@ -105,6 +117,8 @@ class RealAstrologyProvider implements AstrologyProvider {
       planetaryPositions: null,
       houses: null,
       dasha: null,
+      yogas: null,
+      aspects: null,
       configRequired: true,
     };
   }
@@ -250,6 +264,8 @@ class ProkeralaAstrologyProvider implements AstrologyProvider {
         planetaryPositions: null,
         houses: null,
         dasha: null,
+        yogas: null,
+        aspects: null,
         configRequired: true,
       };
     }
@@ -260,8 +276,16 @@ class ProkeralaAstrologyProvider implements AstrologyProvider {
     const qs = new URLSearchParams({ ayanamsa: "1", coordinates, datetime, la: "en" }).toString();
     const authHeaders = { Authorization: `Bearer ${token}` };
 
+    // /kundli/advanced (not the plain /kundli) — verified live: it's a
+    // strict superset of the plain endpoint's response (same
+    // nakshatra_details/mangal_dosha shape) plus a fully expanded
+    // yoga_details[].yoga_list, each real named yoga (Gajakesari, Kedara,
+    // Kahala...) with has_yoga true/false and a real descriptive sentence.
+    // The plain /kundli only returns yoga category counts ("3 major
+    // yogas"), not which ones — not useful enough to build a real feature
+    // on, so this replaces that call rather than adding a third one.
     const [kundliRes, planetRes] = await Promise.all([
-      fetchProkeralaWithRetry(`https://api.prokerala.com/v2/astrology/kundli?${qs}`, { headers: authHeaders }),
+      fetchProkeralaWithRetry(`https://api.prokerala.com/v2/astrology/kundli/advanced?${qs}`, { headers: authHeaders }),
       fetchProkeralaWithRetry(`https://api.prokerala.com/v2/astrology/planet-position?${qs}`, { headers: authHeaders }),
     ]);
 
@@ -281,6 +305,19 @@ class ProkeralaAstrologyProvider implements AstrologyProvider {
     const sunSign = rasiIdToZodiacSign(nakshatraDetails?.soorya_rasi?.id);
     const moonSign = rasiIdToZodiacSign(nakshatraDetails?.chandra_rasi?.id);
     const nakshatra: string | null = nakshatraDetails?.nakshatra?.name ?? null;
+
+    // yoga_details is an array of CATEGORIES ("Major Yogas", "Chandra
+    // Yogas", ...), each with its own yoga_list of individually named
+    // yogas — only the ones with has_yoga: true are real for this chart,
+    // the rest are "checked, not present" (e.g. "Kedara Yoga... false").
+    type ApiYogaCategory = { yoga_list?: Array<{ name?: string; has_yoga?: boolean; description?: string }> };
+    const yogaCategories: ApiYogaCategory[] = kundliData?.data?.yoga_details ?? [];
+    const yogas: KundliResult["yogas"] = yogaCategories.length
+      ? yogaCategories
+          .flatMap((cat) => cat.yoga_list ?? [])
+          .filter((y) => y.has_yoga && y.name)
+          .map((y) => ({ name: y.name!, description: y.description ?? "" }))
+      : null;
 
     type ApiPlanet = {
       name: string;
@@ -323,6 +360,10 @@ class ProkeralaAstrologyProvider implements AstrologyProvider {
         ? Array.from({ length: 12 }, (_, i) => ({ house: i + 1, sign: ZODIAC_ORDER[(ascendantIndex + i) % 12] }))
         : null;
 
+    // Computed here, not fetched — see aspects.ts's header comment for why
+    // (Prokerala has no drishti/aspects endpoint at all).
+    const aspects = computeVedicAspects(planetaryPositions);
+
     let dasha: KundliResult["dasha"] = null;
     if (input.birthTimeKnown) {
       const dashaRes = await fetchProkeralaWithRetry(`https://api.prokerala.com/v2/astrology/dasha-periods?${qs}`, {
@@ -349,6 +390,8 @@ class ProkeralaAstrologyProvider implements AstrologyProvider {
       planetaryPositions,
       houses,
       dasha,
+      yogas,
+      aspects,
       configRequired: false,
     };
   }
@@ -501,6 +544,8 @@ export async function getOrComputeKundliCalculation(profile: {
       planetaryPositions: result.planetaryPositions,
       houses: result.houses,
       dasha: result.dasha,
+      yogas: result.yogas,
+      aspects: result.aspects,
       explanation: null,
       explanationLocale: null,
       calculatedAt: new Date(),
@@ -529,6 +574,8 @@ export async function getOrComputeKundliCalculation(profile: {
     planetaryPositions: result.planetaryPositions ?? undefined,
     houses: result.houses ?? undefined,
     dasha: result.dasha ?? undefined,
+    yogas: result.yogas ?? undefined,
+    aspects: result.aspects ?? undefined,
   };
   return prisma.kundliCalculation.upsert({
     where: { birthProfileId: profile.id },
@@ -602,6 +649,8 @@ export function summarizeKundliForAi(calc: {
   ascendant: string | null;
   nakshatra: string | null;
   planetaryPositions: unknown;
+  yogas?: unknown;
+  aspects?: unknown;
 } | null | undefined): string | undefined {
   if (!calc || !calc.sunSign) return undefined;
 
@@ -621,6 +670,20 @@ export function summarizeKundliForAi(calc: {
       .map((p) => `${p.planet} in ${p.sign}${p.house ? ` (house ${p.house})` : ""}${p.retrograde ? " retrograde" : ""}`)
       .join(", ");
     parts.push(`Planetary positions: ${planetStr}.`);
+  }
+
+  const yogas = calc.yogas as Array<{ name: string; description: string }> | null | undefined;
+  if (Array.isArray(yogas) && yogas.length) {
+    parts.push(`Yogas present in this chart: ${yogas.map((y) => y.name).join(", ")}.`);
+  }
+
+  const aspects = calc.aspects as Array<{ from: string; toHouse: number; toPlanets: string[] }> | null | undefined;
+  if (Array.isArray(aspects) && aspects.length) {
+    const withTargets = aspects.filter((a) => a.toPlanets.length);
+    if (withTargets.length) {
+      const aspectStr = withTargets.map((a) => `${a.from} aspects ${a.toPlanets.join("/")} (house ${a.toHouse})`).join(", ");
+      parts.push(`Planetary aspects (drishti): ${aspectStr}.`);
+    }
   }
 
   return parts.join(" ");

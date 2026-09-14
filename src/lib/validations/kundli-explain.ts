@@ -7,6 +7,9 @@ const planetSchema = z.object({
   retrograde: z.boolean(),
 });
 
+const yogaSchema = z.object({ name: z.string(), description: z.string() });
+const aspectSchema = z.object({ from: z.string(), toHouse: z.number(), toPlanets: z.array(z.string()) });
+
 export const kundliExplainSchema = z.object({
   // true = "my own kundli" — server re-fetches the authoritative cached
   // calculation itself (ignores `calculation` below) and caches the result.
@@ -23,6 +26,8 @@ export const kundliExplainSchema = z.object({
       ascendant: z.string().nullable(),
       nakshatra: z.string().nullable(),
       planetaryPositions: z.array(planetSchema).nullable(),
+      yogas: z.array(yogaSchema).nullable().optional(),
+      aspects: z.array(aspectSchema).nullable().optional(),
     })
     .optional(), // required when own === false; validated in the route
 });

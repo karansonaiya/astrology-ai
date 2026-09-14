@@ -31,6 +31,8 @@ type Calculation = {
   planetaryPositions: { planet: string; sign: ZodiacSign; degree: number; house: number | null; retrograde: boolean }[] | null;
   houses: { house: number; sign: ZodiacSign }[] | null;
   dasha: { period: string; from: string; to: string }[] | null;
+  yogas: { name: string; description: string }[] | null;
+  aspects: { from: string; toHouse: number; toPlanets: string[] }[] | null;
   configRequired?: boolean;
 };
 type KundliResponse = { hasProfile: false } | { hasProfile: true; calculation: Calculation; completeness: number; configRequired: boolean };
@@ -241,6 +243,46 @@ function KundliDisplay({ calc, own, name }: { calc: Calculation; own: boolean; n
         </Card>
       )}
 
+      {calc.yogas && calc.yogas.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-base">{t("kundli.yogas")}</CardTitle>
+            <CardDescription>{t("kundli.yogasDesc")}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {calc.yogas.map((y) => (
+              <div key={y.name} className="border-t border-border pt-3 first:border-t-0 first:pt-0">
+                <p className="text-sm font-semibold text-foreground">{y.name}</p>
+                {y.description && <p className="mt-1 text-sm leading-relaxed text-muted">{y.description}</p>}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {calc.aspects && calc.aspects.some((a) => a.toPlanets.length > 0) && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-base">{t("kundli.aspects")}</CardTitle>
+            <CardDescription>{t("kundli.aspectsDesc")}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            {calc.aspects
+              .filter((a) => a.toPlanets.length > 0)
+              .map((a, i) => (
+                <div key={`${a.from}-${a.toHouse}-${i}`} className="flex flex-wrap items-baseline justify-between gap-x-2 text-sm">
+                  <span>
+                    <span className="font-medium text-foreground">{PLANET_LABELS[a.from]?.[locale] ?? a.from}</span>
+                    {" → "}
+                    {a.toPlanets.map((p) => PLANET_LABELS[p]?.[locale] ?? p).join(", ")}
+                  </span>
+                  <span className="text-muted">{t("kundli.house")} {a.toHouse}</span>
+                </div>
+              ))}
+          </CardContent>
+        </Card>
+      )}
+
       {calc.sunSign && <KundliExplanationSection own={own} name={name} calc={calc} />}
     </>
   );
@@ -273,6 +315,8 @@ function KundliExplanationSection({ own, name, calc }: { own: boolean; name?: st
             ascendant: calc.ascendant,
             nakshatra: calc.nakshatra,
             planetaryPositions: calc.planetaryPositions,
+            yogas: calc.yogas,
+            aspects: calc.aspects,
           },
         }),
       }),

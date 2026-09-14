@@ -407,6 +407,8 @@ model KundliCalculation {
   planetaryPositions Json? // structured, provider-agnostic shape
   houses             Json?
   dasha              Json?
+  yogas              Json? // Array<{name, description}> — see adapter.ts's Yoga type
+  aspects            Json? // Array<PlanetAspect> — see src/lib/astrology/aspects.ts
 
   // Cached full AI-generated "explain my kundli" reading (see
   // /api/kundli/explain) — generated once per locale, reused on repeat
