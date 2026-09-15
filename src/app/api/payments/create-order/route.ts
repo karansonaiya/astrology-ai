@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser, errorResponse } from "@/lib/auth/guard";
 import { createOrderSchema } from "@/lib/validations/payments";
 import { getPaymentProvider } from "@/lib/payments/provider";
-import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, MUHURAT_REPORT_CODES } from "@/lib/pricing/catalog";
+import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, MUHURAT_REPORT_CODES, FACE_REPORT_CODES } from "@/lib/pricing/catalog";
 import { rateLimit } from "@/lib/rate-limit";
 
 async function resolvePrice(type: string, code: string) {
@@ -79,6 +79,14 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "photo_required" }, { status: 400 });
       }
 
+      // Face Reading reuses the exact same photo capture (and the same
+      // photoData/photoMimeType columns) as Palm — just a different real
+      // photo (face, not palm) and its own template codes.
+      const isFaceReport = FACE_REPORT_CODES.has(parsed.data.code);
+      if (isFaceReport && !parsed.data.photo) {
+        return NextResponse.json({ error: "photo_required" }, { status: 400 });
+      }
+
       const isNumerologyReport = NUMEROLOGY_REPORT_CODES.has(parsed.data.code);
       if (isNumerologyReport && (!parsed.data.numerologyName || !parsed.data.numerologyBirthDate)) {
         return NextResponse.json({ error: "numerology_details_required" }, { status: 400 });
@@ -101,7 +109,7 @@ export async function POST(req: NextRequest) {
           birthProfileId: parsed.data.birthProfileId,
           orderId: order.id,
           status: "pending",
-          ...(isPalmReport && parsed.data.photo
+          ...((isPalmReport || isFaceReport) && parsed.data.photo
             ? { photoData: Buffer.from(parsed.data.photo.data, "base64"), photoMimeType: parsed.data.photo.mimeType }
             : {}),
           ...(isNumerologyReport && parsed.data.numerologyName && parsed.data.numerologyBirthDate

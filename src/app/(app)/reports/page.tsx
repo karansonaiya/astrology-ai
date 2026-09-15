@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { useCheckout } from "@/lib/payments/use-checkout";
-import { PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, MUHURAT_REPORT_CODES } from "@/lib/pricing/catalog";
+import { PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, MUHURAT_REPORT_CODES, FACE_REPORT_CODES } from "@/lib/pricing/catalog";
 import { ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_BASE64_LENGTH } from "@/lib/validations/chat";
 import { compressImageFile } from "@/lib/image/compress-image";
 import { CityAutocomplete } from "@/components/ui/city-autocomplete";
@@ -31,6 +31,7 @@ const PALM_HANDOFF_KEY = "prerna:palm-photo-handoff";
 const NUMEROLOGY_HANDOFF_KEY = "prerna:numerology-handoff";
 const BABY_NAME_HANDOFF_KEY = "prerna:baby-name-handoff";
 const MUHURAT_HANDOFF_KEY = "prerna:muhurat-handoff";
+const FACE_HANDOFF_KEY = "prerna:face-photo-handoff";
 
 // Found live: a handoff photo/name+date saved once from the free page
 // never expired, so if the user saved one, never actually bought a report,
@@ -123,6 +124,14 @@ export default function ReportsPage() {
   });
   const [muhuratCoords, setMuhuratCoords] = useState<{ latitude: number; longitude: number } | null>(null);
 
+  // Same idea as the Palm dialog above, for the Full Face Reading Report —
+  // a real face photo (own capture inputs, since a face photo uses the
+  // front/"user" camera, unlike palm's rear/"environment" one).
+  const [pendingFaceTemplate, setPendingFaceTemplate] = useState<Template | null>(null);
+  const [facePhoto, setFacePhoto] = useState<{ data: string; mimeType: string; previewUrl: string } | null>(null);
+  const faceCameraInputRef = useRef<HTMLInputElement>(null);
+  const faceGalleryInputRef = useRef<HTMLInputElement>(null);
+
   // Guards the ?upsell=<x> auto-open effects below so they only ever fire
   // once — without this, a background react-query refetch of `templates`
   // after the user has already started editing a dialog's fields would
@@ -146,6 +155,21 @@ export default function ReportsPage() {
       return;
     }
     setPalmPhoto({ data, mimeType, previewUrl: URL.createObjectURL(file) });
+  };
+
+  const handleFaceFile = async (file: File | undefined) => {
+    if (!file) return;
+    if (!(ALLOWED_IMAGE_MIME_TYPES as readonly string[]).includes(file.type)) {
+      toast({ title: t("chat.invalidImageType"), variant: "danger" });
+      return;
+    }
+    const { data, mimeType } = await compressImageFile(file);
+    const compressedBytes = Math.floor((data.length * 3) / 4);
+    if (compressedBytes > MAX_IMAGE_BYTES) {
+      toast({ title: t("chat.imageTooLarge"), variant: "danger" });
+      return;
+    }
+    setFacePhoto({ data, mimeType, previewUrl: URL.createObjectURL(file) });
   };
 
   const { data: templates, isLoading: templatesLoading } = useQuery({
@@ -288,6 +312,15 @@ export default function ReportsPage() {
         setMuhuratCoords(null);
       }
       setPendingMuhuratTemplate(tpl);
+    } else if (FACE_REPORT_CODES.has(tpl.code)) {
+      // Same read-only reasoning as the Palm branch above.
+      const handoff = readSessionJson<{ data: string; mimeType: string }>(FACE_HANDOFF_KEY);
+      if (handoff) {
+        setFacePhoto({ data: handoff.data, mimeType: handoff.mimeType, previewUrl: `data:${handoff.mimeType};base64,${handoff.data}` });
+      } else {
+        setFacePhoto(null);
+      }
+      setPendingFaceTemplate(tpl);
     } else {
       buy(tpl.code);
     }
@@ -338,6 +371,14 @@ export default function ReportsPage() {
     setPendingMuhuratTemplate(null);
   };
 
+  const confirmFacePurchase = () => {
+    if (!pendingFaceTemplate || !facePhoto) return;
+    buy(pendingFaceTemplate.code, { data: facePhoto.data, mimeType: facePhoto.mimeType });
+    sessionStorage.removeItem(FACE_HANDOFF_KEY);
+    setPendingFaceTemplate(null);
+    setFacePhoto(null);
+  };
+
   // Deep-link from the free Numerology page's "Get Detailed Report" button
   // (?upsell=numerology) — auto-opens the one numerology paid tier's dialog
   // once the store's templates have loaded (there's only one tier, unlike
@@ -353,6 +394,7 @@ export default function ReportsPage() {
       numerology: NUMEROLOGY_REPORT_CODES,
       "baby-names": BABY_NAME_REPORT_CODES,
       muhurat: MUHURAT_REPORT_CODES,
+      "face-reading": FACE_REPORT_CODES,
     };
     const codes = upsell ? UPSELL_CODES[upsell] : undefined;
     if (!codes) return;
@@ -692,6 +734,74 @@ export default function ReportsPage() {
               {loading ? t("common.loading") : t("reports.continueToPayment")}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!pendingFaceTemplate}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingFaceTemplate(null);
+            setFacePhoto(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {pendingFaceTemplate?.name}
+              {pendingFaceTemplate && <span className="ml-2 text-gold">{formatInr(pendingFaceTemplate.priceInPaise, `${locale}-IN`)}</span>}
+            </DialogTitle>
+            <DialogDescription>{t("reports.facePhotoRequiredDesc")}</DialogDescription>
+          </DialogHeader>
+
+          {!facePhoto ? (
+            <div className="flex flex-col items-center gap-4 py-4">
+              <p className="max-w-sm text-center text-xs text-muted">{t("faceReading.faceGuidance")}</p>
+              <div className="flex flex-wrap justify-center gap-3">
+                <Button onClick={() => faceCameraInputRef.current?.click()}>
+                  <Camera size={16} /> {t("faceReading.takePhoto")}
+                </Button>
+                <Button variant="outline" onClick={() => faceGalleryInputRef.current?.click()}>
+                  <Upload size={16} /> {t("faceReading.uploadPhoto")}
+                </Button>
+              </div>
+              <input
+                ref={faceCameraInputRef}
+                type="file"
+                accept={ALLOWED_IMAGE_MIME_TYPES.join(",")}
+                capture="user"
+                className="hidden"
+                onChange={(e) => {
+                  handleFaceFile(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+              <input
+                ref={faceGalleryInputRef}
+                type="file"
+                accept={ALLOWED_IMAGE_MIME_TYPES.join(",")}
+                className="hidden"
+                onChange={(e) => {
+                  handleFaceFile(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-4 py-4">
+              {/* eslint-disable-next-line @next/next/no-img-element -- a locally-picked File's object URL, not a static/remote asset next/image can optimize */}
+              <img src={facePhoto.previewUrl} alt="" className="max-h-72 max-w-full rounded-xl" />
+              <div className="flex flex-wrap justify-center gap-3">
+                <Button onClick={confirmFacePurchase} disabled={loading}>
+                  {loading ? t("common.loading") : t("reports.continueToPayment")}
+                </Button>
+                <Button variant="outline" onClick={() => setFacePhoto(null)}>
+                  {t("faceReading.retake")}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

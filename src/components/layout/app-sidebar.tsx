@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, MessageCircle, Users, User, Sun, Sparkles, GitCompareArrows, Briefcase, Heart,
-  FileText, Wallet, CreditCard, Gift, Settings, LifeBuoy, Hand, Hash, Baby, Gem, CalendarClock,
+  FileText, Wallet, CreditCard, Gift, Settings, LifeBuoy, Hand, Hash, Baby, Gem, CalendarClock, ScanFace,
 } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
@@ -33,6 +33,7 @@ export function AppSidebar() {
         { href: "/horoscope", icon: Sun, label: t("nav.dailyHoroscope") },
         { href: "/kundli", icon: Sparkles, label: t("nav.kundli") },
         { href: "/palm-reading", icon: Hand, label: t("nav.palmReading") },
+        { href: "/face-reading", icon: ScanFace, label: t("nav.faceReading") },
         { href: "/numerology", icon: Hash, label: t("nav.numerology") },
         { href: "/baby-names", icon: Baby, label: t("nav.babyNames") },
         { href: "/gemstone-suggestion", icon: Gem, label: t("nav.gemstone") },

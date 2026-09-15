@@ -69,6 +69,7 @@
     "profile": "Birth Profile",
     "kundli": "Kundli",
     "palmReading": "Palm Reading",
+    "faceReading": "Face Reading",
     "numerology": "Numerology",
     "babyNames": "Baby Names",
     "gemstone": "Gemstone & Rudraksha",
@@ -415,7 +416,8 @@
     "continueToPayment": "Continue to payment",
     "numerologyDetailsRequiredDesc": "This report needs your full name and birth date to calculate your real numbers.",
     "babyNameDetailsRequiredDesc": "This report needs the baby's real birth date, time, and place to calculate the real Nakshatra.",
-    "muhuratDetailsRequiredDesc": "This report needs your event type, start date, and city to check 5 real days of Panchang data."
+    "muhuratDetailsRequiredDesc": "This report needs your event type, start date, and city to check 5 real days of Panchang data.",
+    "facePhotoRequiredDesc": "This report needs a real photo of your face. Take one now or upload one from your gallery."
   },
   "personas": {
     "pageTitle": "Choose who to chat with",
@@ -529,6 +531,29 @@
     "heartLineLabel": "Heart Line",
     "headLineLabel": "Head Line",
     "fateLineLabel": "Fate Line (if visible)",
+    "referenceDiagramNote": "A general reference diagram — your reading above is based on your own real photo, not this illustration."
+  },
+  "faceReading": {
+    "title": "Face Reading",
+    "subtitle": "Take or upload a clear photo of your face for a traditional Samudrik Shastra reading, grounded in your actual photo.",
+    "captureHint": "Look directly at the camera, in good light, with your face fully visible.",
+    "faceGuidance": "Traditional Samudrik Shastra interprets the shape and proportion of your features warmly and constructively — never a judgment of how you look.",
+    "takePhoto": "Take Photo",
+    "uploadPhoto": "Upload Photo",
+    "detecting": "Locating your face…",
+    "getReading": "Get My Reading",
+    "reading": "Reading your face…",
+    "retake": "Try another photo",
+    "summary": "Summary",
+    "detailedReportTitle": "Want a deeper reading?",
+    "detailedReportDesc": "Get a Full Face Reading Report — every traditional feature reviewed in depth, from your real photo.",
+    "getDetailedReport": "Get Detailed Report",
+    "referenceDiagramTitle": "Which feature is which",
+    "foreheadLabel": "Forehead",
+    "eyesLabel": "Eyes",
+    "noseLabel": "Nose",
+    "lipsLabel": "Lips",
+    "chinLabel": "Chin",
     "referenceDiagramNote": "A general reference diagram — your reading above is based on your own real photo, not this illustration."
   },
   "babyNames": {

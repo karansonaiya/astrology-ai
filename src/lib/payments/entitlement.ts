@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { grantCredits } from "@/lib/credits";
-import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, GEMSTONE_REPORT_CODES, MUHURAT_REPORT_CODES } from "@/lib/pricing/catalog";
+import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, GEMSTONE_REPORT_CODES, MUHURAT_REPORT_CODES, FACE_REPORT_CODES } from "@/lib/pricing/catalog";
 import { generateAstrologyReply } from "@/lib/ai";
 import { getOrComputeKundliCalculation, summarizeKundliForAi, getCachedKundliByBirthDetails } from "@/lib/astrology/adapter";
 import { calculateDetailedNumerology, calculateNumerologyRawComponents, calculateNumerology } from "@/lib/numerology/calculate";
@@ -88,6 +88,8 @@ export async function fulfillOrder(orderId: string) {
         content = await generateGemstoneReportContent(purchase.userId, purchase.template.name, purchase.birthProfileId);
       } else if (purchase.template && MUHURAT_REPORT_CODES.has(purchase.template.code) && purchase.muhuratInput) {
         content = await generateMuhuratReportContent(purchase.userId, purchase.template.name, purchase.muhuratInput as MuhuratInput);
+      } else if (purchase.template && FACE_REPORT_CODES.has(purchase.template.code) && purchase.photoData && purchase.photoMimeType) {
+        content = await generateFaceReportContent(purchase.userId, purchase.template.name, { data: purchase.photoData, mimeType: purchase.photoMimeType });
       } else {
         content = await generateReportContent(purchase.userId, purchase.templateId, purchase.birthProfileId);
       }
@@ -671,6 +673,48 @@ Hard rules: never claim a time window guarantees any outcome — frame everythin
     templateName,
     generatedAt: new Date().toISOString(),
     birthDataUsed: true,
+    body: reply.text,
+  };
+}
+
+/**
+ * The Full Face Reading Report — same real-photo, vision-grounded pattern
+ * as the free /face-reading feature (see face-reading.ts), taken deeper:
+ * 7 traditional features (forehead, eyebrows, eyes, nose, lips, chin, ears)
+ * instead of 5, same warm/constructive safety framing throughout (see
+ * face-reading.ts's header comment for why this needs extra care beyond
+ * palm-reading.ts's safety rules — this is about a person's actual face).
+ */
+async function generateFaceReportContent(userId: string, templateName: string, photo: { data: Uint8Array; mimeType: string }) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const locale = (user?.locale ?? "en") as AppLocale;
+  const langName: Record<AppLocale, string> = { en: "English", hi: "Hindi", gu: "Gujarati" };
+
+  const reply = await generateAstrologyReply({
+    userId,
+    locale,
+    history: [],
+    userMessage: `You are given a real photo of the customer's face (attached), for a PAID, in-depth "${templateName}" traditional Samudrik Shastra (Vedic face reading) report, written entirely in ${langName[locale]}.
+
+Describe ONLY what is actually visible in the attached photo — never invent a feature you cannot see; if a feature is not clearly visible (obscured by hair, angle, etc.), say so rather than inventing detail about it. This is a paid product — it must read as substantial and genuinely valuable, grounded in specific real observations, never generic text that could describe any face.
+
+Hard rules, no exceptions: interpret ONLY the traditional SHAPE/PROPORTION of each feature — never make any claim, comparison, or judgment based on race, ethnicity, skin tone, caste, religion, gender, age, disability, body weight, or physical attractiveness. Never comment on skin condition, blemishes, marks, or complexion. Never assign a negative or insulting character trait to any feature — frame every traditional association warmly and constructively ("traditionally associated with...", never "you are..."); if a feature's traditional meaning in some texts reads negatively, either omit that feature or reframe it constructively. Never give a health, medical, or disability-related claim. Never claim certainty about the future. Never give legal or financial advice. This is traditional interpretation for reflection and self-understanding, never a judgment of a person's looks or worth.
+
+Structure it as:
+1. An opening overview (5-7 sentences) of the face shape/proportions you actually observe and what it traditionally suggests.
+2. A deep dive into each traditional feature actually visible — Forehead, Eyebrows, Eyes, Nose, Lips, Chin, and Ears (only include Eyebrows/Ears if actually clearly visible) — each its own section, at least 6-8 sentences of real, photo-specific reasoning naming the actual feature and what you observe about its shape/proportion, then a warm traditional interpretation.
+3. 5-7 concrete, reflective, constructive suggestions grounded in these observations.
+4. A closing reflection (4-5 sentences).`,
+    userImage: { data: Buffer.from(photo.data).toString("base64"), mimeType: photo.mimeType },
+    feature: "report",
+    maxTokens: 8000,
+  });
+
+  return {
+    templateCode: "face_reading_report",
+    templateName,
+    generatedAt: new Date().toISOString(),
+    birthDataUsed: false,
     body: reply.text,
   };
 }

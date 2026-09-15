@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
-import { MessageCircle, Sun, Sparkles, GitCompareArrows, Briefcase, Heart, FileText, Hand, Hash, Baby, Gem, CalendarClock } from "lucide-react";
+import { MessageCircle, Sun, Sparkles, GitCompareArrows, Briefcase, Heart, FileText, Hand, Hash, Baby, Gem, CalendarClock, ScanFace } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { apiFetch } from "@/lib/api-client";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -28,6 +28,7 @@ export default function DashboardPage() {
     { href: "/horoscope", icon: Sun, label: t("nav.dailyHoroscope") },
     { href: "/kundli", icon: Sparkles, label: t("nav.kundli") },
     { href: "/palm-reading", icon: Hand, label: t("nav.palmReading") },
+    { href: "/face-reading", icon: ScanFace, label: t("nav.faceReading") },
     { href: "/numerology", icon: Hash, label: t("nav.numerology") },
     { href: "/baby-names", icon: Baby, label: t("nav.babyNames") },
     { href: "/gemstone-suggestion", icon: Gem, label: t("nav.gemstone") },

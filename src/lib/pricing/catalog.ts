@@ -126,6 +126,22 @@ export const REPORT_TEMPLATES = [
     description: "Real favorable and avoid time windows across 5 real days, for your chosen purpose — travel, starting a business, or a general auspicious beginning.",
     priceInPaise: 9900,
   },
+  // Face Reading (Samudrik Shastra) upsell — same real, uploaded-photo
+  // vision grounding as the free /face-reading page (see
+  // src/lib/ai/face-reading.ts), taken deeper: every traditional feature
+  // (forehead, eyebrows, eyes, nose, lips, chin, ears) reviewed instead of
+  // just 5, same warm/constructive safety framing throughout. Market check
+  // (2026-09-15): no direct per-report pricing found for this specific
+  // niche online, but general astrology consultations (which commonly
+  // bundle face reading) run Rs.300-800 entry-level, Rs.500-3000+ typical;
+  // priced consistently with this session's other new features and well
+  // below that range, since the real cost here is a single AI vision call.
+  {
+    code: "face_reading_report",
+    name: "Full Face Reading Report",
+    description: "Every traditional Samudrik Shastra feature in your real photo reviewed in depth — forehead, eyebrows, eyes, nose, lips, chin, and ears.",
+    priceInPaise: 9900,
+  },
 ];
 
 // Report template codes whose fulfillment requires a real uploaded photo
@@ -157,6 +173,10 @@ export const GEMSTONE_REPORT_CODES = new Set(["gemstone_rudraksha_report"]);
 // start date captured at purchase time (no birth profile involved at all;
 // this feature is location+date based, not birth-profile based).
 export const MUHURAT_REPORT_CODES = new Set(["muhurat_finder_report"]);
+
+// Same idea as PALM_REPORT_CODES — needs a real uploaded photo (a face
+// photo, not a palm one) captured at order-creation time.
+export const FACE_REPORT_CODES = new Set(["face_reading_report"]);
 
 export const PLANS = [
   {
