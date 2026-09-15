@@ -3,7 +3,7 @@ import { grantCredits } from "@/lib/credits";
 import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES } from "@/lib/pricing/catalog";
 import { generateAstrologyReply } from "@/lib/ai";
 import { getOrComputeKundliCalculation, summarizeKundliForAi } from "@/lib/astrology/adapter";
-import { calculateDetailedNumerology } from "@/lib/numerology/calculate";
+import { calculateDetailedNumerology, calculateNumerologyRawComponents } from "@/lib/numerology/calculate";
 import type { AppLocale } from "@/lib/i18n/config";
 import { maybeRewardReferral } from "@/lib/referral";
 
@@ -168,28 +168,34 @@ Ground every section in the real chart data provided below whenever it's availab
 // about which real, actually-visible palmistry features to ground the
 // reading in — not a generic "write about palms" prompt — same "must read
 // as substantial, not generic" standard as generateReportContent above.
+// Found live 2026-09-16: same "read short/generic" feedback the founder
+// gave about the free readings (compared against Gemini's own much deeper
+// answers) applies here too - and a PAID report must read as clearly
+// deeper than the free one, not the same or less (each section here was
+// only 3-5 sentences, no more than the free reading's per-line depth after
+// that fix). Bumped to 6-8 sentences per section.
 const PALM_TIER_STRUCTURE: Record<string, string> = {
   palm_career_report: `Structure it as:
-1. An opening overview (4-6 sentences) of the hand shape/type you actually observe and what it traditionally suggests about temperament.
-2. A deep dive into career-relevant signs actually visible in the photo — the Head Line's length/depth/slope (decision-making and thinking style), the Fate Line if visible (career direction and stability), the Jupiter mount (leadership/ambition), the Saturn mount (discipline/responsibility), and the Sun/Apollo mount (recognition and success) — each its own section, 3-5 sentences of real, photo-specific reasoning naming the actual feature and what you observe about it.
+1. An opening overview (5-7 sentences) of the hand shape/type you actually observe and what it traditionally suggests about temperament.
+2. A deep dive into career-relevant signs actually visible in the photo — the Head Line's length/depth/slope (decision-making and thinking style), the Fate Line if visible (career direction and stability), the Jupiter mount (leadership/ambition), the Saturn mount (discipline/responsibility), and the Sun/Apollo mount (recognition and success) — each its own section, at least 6-8 sentences of real, photo-specific reasoning naming the actual feature and what you observe about it.
 3. 5-7 concrete, actionable career/professional-growth suggestions.
-4. A closing reflection (3-4 sentences).`,
+4. A closing reflection (4-5 sentences).`,
   palm_love_marriage_report: `Structure it as:
-1. An opening overview (4-6 sentences) of the hand shape/type you actually observe.
-2. A deep dive into love/relationship-relevant signs actually visible — the Heart Line's length/curve/depth (emotional style), the Venus mount (warmth/affection), and any marriage lines (the small horizontal lines on the side of the palm just below the little finger) if actually visible, plus the Mount of Moon if relevant — each its own section, 3-5 sentences of real, photo-specific reasoning.
+1. An opening overview (5-7 sentences) of the hand shape/type you actually observe.
+2. A deep dive into love/relationship-relevant signs actually visible — the Heart Line's length/curve/depth (emotional style), the Venus mount (warmth/affection), and any marriage lines (the small horizontal lines on the side of the palm just below the little finger) if actually visible, plus the Mount of Moon if relevant — each its own section, at least 6-8 sentences of real, photo-specific reasoning.
 3. 5-7 concrete, reflective suggestions for relationships/marriage.
-4. A closing reflection (3-4 sentences).`,
+4. A closing reflection (4-5 sentences).`,
   palm_full_report: `Structure it as:
-1. An opening overview (4-6 sentences) of the hand shape/type, size, and texture you actually observe.
-2. A comprehensive section-by-section reading of EVERY major line and mount actually visible — Life Line, Heart Line, Head Line, Fate Line (if visible), and the Jupiter/Saturn/Sun/Mercury/Venus/Moon mounts — each its own section, 3-5 sentences of real, photo-specific reasoning covering career, relationships, temperament, and general life themes together.
+1. An opening overview (5-7 sentences) of the hand shape/type, size, and texture you actually observe.
+2. A comprehensive section-by-section reading of EVERY major line and mount actually visible — Life Line, Heart Line, Head Line, Fate Line (if visible), and the Jupiter/Saturn/Sun/Mercury/Venus/Moon mounts — each its own section, at least 6-8 sentences of real, photo-specific reasoning covering career, relationships, temperament, and general life themes together.
 3. 5-7 concrete, actionable suggestions across life areas.
-4. A closing reflection (3-4 sentences).`,
+4. A closing reflection (4-5 sentences).`,
   palm_kundli_combined_report: `Structure it as:
-1. An opening overview (4-6 sentences) of the hand shape/type you actually observe in the photo.
-2. A palm reading section covering the major lines and mounts actually visible (Life Line, Heart Line, Head Line, Fate Line if visible, key mounts).
+1. An opening overview (5-7 sentences) of the hand shape/type you actually observe in the photo.
+2. A palm reading section covering the major lines and mounts actually visible (Life Line, Heart Line, Head Line, Fate Line if visible, key mounts), each its own sub-section of at least 6-8 sentences.
 3. A section connecting the palm's real, photo-specific indications to the real birth chart placements given below whenever there is a natural overlap (e.g. a strong Jupiter mount alongside a well-placed Jupiter in the chart) — only draw a connection where one genuinely exists, don't force one.
 4. 5-7 concrete, actionable suggestions drawing on both the palm and the chart.
-5. A closing reflection (3-4 sentences) tying palm and chart together.
+5. A closing reflection (4-5 sentences) tying palm and chart together.
 
 Ground the chart-related parts in the real chart data provided below.`,
 };
@@ -240,7 +246,8 @@ ${PALM_TIER_STRUCTURE[templateCode] ?? PALM_TIER_STRUCTURE.palm_full_report}`,
     userImage: { data: Buffer.from(photo.data).toString("base64"), mimeType: photo.mimeType },
     birthContext,
     feature: "report",
-    maxTokens: isCombined || templateCode === "palm_full_report" ? 7000 : 5000,
+    // Raised alongside PALM_TIER_STRUCTURE's deeper per-section requirement above.
+    maxTokens: isCombined || templateCode === "palm_full_report" ? 9000 : 7000,
   });
 
   return {
@@ -268,35 +275,53 @@ async function generateDetailedNumerologyReportContent(userId: string, templateN
   const langName: Record<AppLocale, string> = { en: "English", hi: "Hindi", gu: "Gujarati" };
 
   const numbers = calculateDetailedNumerology(name, birthDate);
+  const raw = calculateNumerologyRawComponents(name, birthDate);
   const currentYear = new Date().getUTCFullYear();
+  const currentYearDigitSum = String(currentYear).split("").reduce((sum, d) => sum + Number(d), 0);
+  let currentYearReduced = currentYearDigitSum;
+  while (currentYearReduced > 9 && currentYearReduced !== 11 && currentYearReduced !== 22 && currentYearReduced !== 33) {
+    currentYearReduced = String(currentYearReduced).split("").reduce((sum, d) => sum + Number(d), 0);
+  }
 
+  // Same reasoning as numerology-reading.ts (the free reading): hand the
+  // model the exact real arithmetic as GIVEN FACTS to narrate, rather than
+  // leaving it to reconstruct/guess the calculation from just the final
+  // number — an LLM is not reliably correct at that and would risk
+  // narrating a plausible-looking but wrong calculation.
   const numbersBlock = `Life Path Number: ${numbers.lifePath}
+  Real calculation: birth day ${raw.day} reduces to ${raw.dayReduced}; birth month ${raw.month} reduces to ${raw.monthReduced}; birth year ${raw.year} (digit sum ${raw.yearDigitSum}) reduces to ${raw.yearReduced}; ${raw.dayReduced}+${raw.monthReduced}+${raw.yearReduced} reduces to ${numbers.lifePath}.
 Destiny (Expression) Number: ${numbers.destiny}
+  Real calculation: every letter in "${name}" summed to ${raw.destinyRawSum}, reduces to ${numbers.destiny}.
 Soul Urge Number: ${numbers.soulUrge}
+  Real calculation: only the vowels in "${name}" summed to ${raw.soulUrgeRawSum}, reduces to ${numbers.soulUrge}.
 Personality Number: ${numbers.personality}
+  Real calculation: only the consonants in "${name}" summed to ${raw.personalityRawSum}, reduces to ${numbers.personality}.
 Birthday Number: ${numbers.birthday}
+  Real calculation: birth day ${raw.day} reduces to ${numbers.birthday}.
 Maturity Number: ${numbers.maturity}
+  Real calculation: Life Path ${numbers.lifePath} + Destiny ${numbers.destiny} reduces to ${numbers.maturity}.
 Personal Year Number (for ${currentYear}): ${numbers.personalYear}
+  Real calculation: birth day ${raw.day} reduces to ${raw.dayReduced}; birth month ${raw.month} reduces to ${raw.monthReduced}; current year ${currentYear} (digit sum ${currentYearDigitSum}) reduces to ${currentYearReduced}; ${raw.dayReduced}+${raw.monthReduced}+${currentYearReduced} reduces to ${numbers.personalYear}.
 Karmic Debt numbers present: ${numbers.karmicDebtNumbers.length ? numbers.karmicDebtNumbers.join(", ") : "none"}`;
 
   const reply = await generateAstrologyReply({
     userId,
     locale,
     history: [],
-    userMessage: `Here are the real, already-calculated Pythagorean numerology numbers for "${name}" (born ${birthDate.toISOString().slice(0, 10)}) — never recalculate, question, or change them, only interpret exactly these numbers. Write entirely in ${langName[locale]}.
+    userMessage: `Here are the real, already-calculated Pythagorean numerology numbers for "${name}" (born ${birthDate.toISOString().slice(0, 10)}), with the exact real arithmetic behind each one — use these exact facts when narrating each calculation, never alter or re-derive them. Write entirely in ${langName[locale]}.
 
 ${numbersBlock}
 
-This is a PAID, in-depth "${templateName}" — it must read as substantial and genuinely valuable, not a short summary. Structure it as:
-1. An opening overview (4-6 sentences) tying the Life Path and Destiny numbers together as the core of this profile.
-2. A dedicated section for each of: Life Path, Destiny, Soul Urge, Personality, Birthday, Maturity, and Personal Year — 3-5 sentences each, naming the actual number and interpreting it specifically.
-3. If any Karmic Debt numbers are listed as present above, a dedicated section explaining what each one traditionally means and a constructive way to work with it; if none are present, skip this section entirely rather than inventing one.
+This is a PAID, in-depth "${templateName}" — it must read as substantial and genuinely valuable, clearly deeper than a free reading, not a short summary. Structure it as:
+1. An opening overview (5-7 sentences) tying the Life Path and Destiny numbers together as the core of this profile.
+2. A dedicated section for each of: Life Path, Destiny, Soul Urge, Personality, Birthday, Maturity, and Personal Year — at least 6-8 sentences each: first accurately state the real calculation given above in plain language, then a rich, specific, in-depth interpretation.
+3. If any Karmic Debt numbers are listed as present above, a dedicated section (at least 6-8 sentences) explaining what each one traditionally means and a constructive way to work with it; if none are present, skip this section entirely rather than inventing one.
 4. 5-7 concrete, actionable suggestions grounded in these specific numbers.
-5. A closing reflection (3-4 sentences).
+5. A closing reflection (4-5 sentences).
 
 Never give medical, legal, or financial advice. Never claim certainty about the future.`,
     feature: "report",
-    maxTokens: 6000,
+    maxTokens: 9000,
   });
 
   return {

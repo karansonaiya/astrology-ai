@@ -28,10 +28,25 @@ import { compressImageFile } from "@/lib/image/compress-image";
 const PALM_HANDOFF_KEY = "prerna:palm-photo-handoff";
 const NUMEROLOGY_HANDOFF_KEY = "prerna:numerology-handoff";
 
+// Found live: a handoff photo/name+date saved once from the free page
+// never expired, so if the user saved one, never actually bought a report,
+// then came back much later in the same tab and did a completely
+// different free reading, the OLD handoff would silently resurface and
+// pre-fill the wrong photo/details instead of the new ones. 10 minutes is
+// long enough to survive a normal "check the store, come back" pause,
+// short enough that a stale session from earlier never quietly reappears.
+const HANDOFF_MAX_AGE_MS = 10 * 60 * 1000;
+
 function readSessionJson<T>(key: string): T | null {
   try {
     const raw = sessionStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as T & { savedAt?: number };
+    if (typeof parsed.savedAt !== "number" || Date.now() - parsed.savedAt > HANDOFF_MAX_AGE_MS) {
+      sessionStorage.removeItem(key);
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }

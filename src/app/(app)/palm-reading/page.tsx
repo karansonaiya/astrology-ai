@@ -99,7 +99,7 @@ export default function PalmReadingPage() {
     // photo-capture dialog can skip asking the customer to retake it.
     if (image) {
       try {
-        sessionStorage.setItem("prerna:palm-photo-handoff", JSON.stringify({ data: image.data, mimeType: image.mimeType }));
+        sessionStorage.setItem("prerna:palm-photo-handoff", JSON.stringify({ data: image.data, mimeType: image.mimeType, savedAt: Date.now() }));
       } catch {
         // sessionStorage unavailable — the paid flow's own capture dialog
         // still works, it just asks for a fresh photo.

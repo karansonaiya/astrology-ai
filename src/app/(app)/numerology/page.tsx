@@ -56,7 +56,7 @@ export default function NumerologyPage() {
 
   const goToDetailedReport = () => {
     try {
-      sessionStorage.setItem("prerna:numerology-handoff", JSON.stringify({ name, birthDate }));
+      sessionStorage.setItem("prerna:numerology-handoff", JSON.stringify({ name, birthDate, savedAt: Date.now() }));
     } catch {
       // sessionStorage unavailable (private mode etc.) — the paid flow's
       // own name/date dialog still works, it just won't be pre-filled.
