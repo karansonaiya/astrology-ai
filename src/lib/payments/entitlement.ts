@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { grantCredits } from "@/lib/credits";
-import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES } from "@/lib/pricing/catalog";
+import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, GEMSTONE_REPORT_CODES } from "@/lib/pricing/catalog";
 import { generateAstrologyReply } from "@/lib/ai";
 import { getOrComputeKundliCalculation, summarizeKundliForAi, getCachedKundliByBirthDetails } from "@/lib/astrology/adapter";
 import { calculateDetailedNumerology, calculateNumerologyRawComponents, calculateNumerology } from "@/lib/numerology/calculate";
 import { getRealNamingSyllable } from "@/lib/naming/nakshatra-names";
 import { generateBabyNameSuggestions } from "@/lib/ai/baby-name-suggestion";
+import { getRealGemstoneRecommendation, getPlanetDignity } from "@/lib/astrology/gemstones";
 import { geocodeBirthPlace, resolveTimezone } from "@/lib/geo";
 import type { AppLocale } from "@/lib/i18n/config";
 import { maybeRewardReferral } from "@/lib/referral";
@@ -14,15 +15,33 @@ import { maybeRewardReferral } from "@/lib/referral";
  * Grants whatever the order paid for. Idempotent: safe to call from both
  * the client-verification route and the webhook, since it checks the
  * order's current status before granting anything twice.
+ *
+ * Found live 2026-09-16 (a real transient Prokerala rate-limit during
+ * testing, not a code bug): the OLD version marked the order "paid" up
+ * front, then generated report content — if generation threw for ANY
+ * reason (a real AI/provider hiccup, not just this rate-limit case), the
+ * order was already "paid" in the DB, so every later retry (the client's
+ * own retry, or the webhook firing afterward) hit the early-return guard
+ * and silently no-op'd forever. A real customer would have paid, gotten a
+ * generic 500, and been left with a permanently "pending" report with NO
+ * path to ever regenerate it — worse than a failed payment, since money
+ * was actually taken. Fixed by separating "was this order already paid"
+ * (still guards credit-granting/subscription-creation against a double
+ * grant) from "does the report still need generating" (its own,
+ * independent retry condition — purchase.status, not order.status) so a
+ * transient generation failure stays retriable even after the order is
+ * marked paid.
  */
 export async function fulfillOrder(orderId: string) {
   const order = await prisma.order.findUnique({ where: { id: orderId } });
   if (!order) return;
-  if (order.status === "paid") return; // already fulfilled — idempotent no-op
 
-  await prisma.order.update({ where: { id: orderId }, data: { status: "paid" } });
+  const alreadyPaid = order.status === "paid";
+  if (!alreadyPaid) {
+    await prisma.order.update({ where: { id: orderId }, data: { status: "paid" } });
+  }
 
-  if (order.type === "credit_pack") {
+  if (order.type === "credit_pack" && !alreadyPaid) {
     const pack = CREDIT_PACKS.find((p) => p.code === order.relatedId);
     if (pack) {
       await grantCredits(order.userId, pack.credits, "purchase", `Purchased ${pack.name}`, `order:${order.id}`);
@@ -31,7 +50,10 @@ export async function fulfillOrder(orderId: string) {
 
   if (order.type === "report") {
     const purchase = await prisma.reportPurchase.findUnique({ where: { orderId: order.id }, include: { template: true, birthProfile: true, user: true } });
-    if (purchase) {
+    // purchase.status is the real completion marker here, independent of
+    // order.status — this is what lets a retry after a transient
+    // generation failure actually regenerate instead of silently no-op'ing.
+    if (purchase && purchase.status !== "completed") {
       // Palm Report codes (a real uploaded photo, persisted at
       // create-order time — see create-order/route.ts) need a different,
       // vision-grounded generation path; the Numerology Report code needs a
@@ -60,6 +82,8 @@ export async function fulfillOrder(orderId: string) {
         );
       } else if (purchase.template && BABY_NAME_REPORT_CODES.has(purchase.template.code) && purchase.babyNameInput) {
         content = await generateBabyNameReportContent(purchase.userId, purchase.template.name, purchase.babyNameInput as BabyNameInput);
+      } else if (purchase.template && GEMSTONE_REPORT_CODES.has(purchase.template.code)) {
+        content = await generateGemstoneReportContent(purchase.userId, purchase.template.name, purchase.birthProfileId);
       } else {
         content = await generateReportContent(purchase.userId, purchase.templateId, purchase.birthProfileId);
       }
@@ -70,7 +94,7 @@ export async function fulfillOrder(orderId: string) {
     }
   }
 
-  if (order.type === "subscription") {
+  if (order.type === "subscription" && !alreadyPaid) {
     const plan = await prisma.plan.findFirst({ where: { code: order.relatedId ?? undefined } });
     if (plan) {
       const periodEnd = new Date();
@@ -425,6 +449,88 @@ Never invent any name beyond the 30 given above. Never alter the meanings or num
 
   return {
     templateCode: "baby_name_full_report",
+    templateName,
+    generatedAt: new Date().toISOString(),
+    birthDataUsed: true,
+    body: reply.text,
+  };
+}
+
+/**
+ * The Full Gemstone & Rudraksha Report — same real Moon-sign-lord grounding
+ * as the free /gemstone-suggestion feature (see gemstones.ts), taken
+ * deeper: instead of just the primary Rashi Ratna recommendation, this
+ * checks EVERY one of the person's real 7 classical planets for real
+ * exaltation/debilitation (getPlanetDignity, same fixed classical tables,
+ * zero AI involvement in the astrology itself), and hands the AI the full
+ * real picture to explain — no special purchase-time input needed, reuses
+ * the standard birthProfileId every basic report already accepts.
+ */
+async function generateGemstoneReportContent(userId: string, templateName: string, birthProfileId: string | null) {
+  const [profile, user] = await Promise.all([
+    birthProfileId ? prisma.birthProfile.findFirst({ where: { id: birthProfileId, userId } }) : Promise.resolve(null),
+    prisma.user.findUnique({ where: { id: userId } }),
+  ]);
+  const locale = (user?.locale ?? "en") as AppLocale;
+  const langName: Record<AppLocale, string> = { en: "English", hi: "Hindi", gu: "Gujarati" };
+
+  if (!profile) {
+    return {
+      templateCode: "gemstone_rudraksha_report",
+      templateName,
+      generatedAt: new Date().toISOString(),
+      birthDataUsed: false,
+      body: "This report needs your birth profile to determine your real chart. Please add your birth details and contact support — you will not be charged for a report that didn't generate.",
+    };
+  }
+
+  const calc = await getOrComputeKundliCalculation(profile);
+  if (!calc.moonSign || !calc.planetaryPositions) {
+    return {
+      templateCode: "gemstone_rudraksha_report",
+      templateName,
+      generatedAt: new Date().toISOString(),
+      birthDataUsed: false,
+      body: "We could not determine your real chart for this report. Please contact support — you will not be charged for a report that didn't generate.",
+    };
+  }
+
+  // calc.planetaryPositions is a Prisma Json column, typed loosely by
+  // default — cast back to the real shape adapter.ts always writes there.
+  const planetaryPositions = calc.planetaryPositions as unknown as { planet: string; sign: import("@prisma/client").ZodiacSign }[];
+  const recommendation = getRealGemstoneRecommendation(calc.moonSign, planetaryPositions);
+
+  const classicalPlanets = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"];
+  const dignityLines = planetaryPositions
+    .filter((p) => classicalPlanets.includes(p.planet))
+    .map((p) => `${p.planet} in ${p.sign} (${getPlanetDignity(p.planet, p.sign)})`)
+    .join("; ");
+
+  const reply = await generateAstrologyReply({
+    userId,
+    locale,
+    history: [],
+    userMessage: `Here are the real facts for this person's real chart — never question, recalculate, or change any of them, only explain and give guidance around them. Write entirely in ${langName[locale]}.
+
+Moon sign (Rashi): ${recommendation.moonSign}
+Ruling planet of the Moon sign: ${recommendation.rulingPlanet}
+Traditional primary gemstone for this planet: ${recommendation.gemstone[locale]}
+Traditional primary Rudraksha mukhi for this planet: ${recommendation.rudrakshaMukhi}-mukhi
+Real dignity of each of this person's 7 classical planets: ${dignityLines}
+
+This is a PAID, in-depth "${templateName}" — it must read as substantial and genuinely valuable, clearly deeper than a free reading. Structure it as:
+1. An opening overview (5-6 sentences) on the primary recommendation: the real Moon sign, its ruling planet, and the traditional gemstone/Rudraksha for it.
+2. A section reviewing each of the 7 classical planets' real dignity given above — for any that are debilitated, name a traditional supportive gemstone/Rudraksha for that planet too (use standard classical associations: Sun-Ruby/1-mukhi, Moon-Pearl/2-mukhi, Mars-Red Coral/3-mukhi, Mercury-Emerald/4-mukhi, Jupiter-Yellow Sapphire/5-mukhi, Venus-Diamond/6-mukhi, Saturn-Blue Sapphire/7-mukhi) and 2-3 sentences of real, dignity-specific reasoning; for exalted or neutral planets, 1-2 sentences noting they don't need a supportive remedy.
+3. Practical guidance (5-6 sentences): how these are traditionally worn/used, that a Rudraksha bead is a real, much cheaper alternative to a gemstone for the same planet, and a clear recommendation to consult a real, reputable jeweler/gemologist before buying any gemstone (real risk of low-quality or synthetic stones sold as genuine).
+4. A closing reflection (3-4 sentences).
+
+Hard rules: never claim a gemstone or Rudraksha guarantees any outcome — frame everything as traditional association, not a guaranteed effect. Never give financial advice about gemstone investment value. Never give medical advice.`,
+    feature: "report",
+    maxTokens: 7000,
+  });
+
+  return {
+    templateCode: "gemstone_rudraksha_report",
     templateName,
     generatedAt: new Date().toISOString(),
     birthDataUsed: true,

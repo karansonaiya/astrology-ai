@@ -99,6 +99,20 @@ export const REPORT_TEMPLATES = [
     description: "30 real names starting with your baby's traditional Nakshatra syllable, each cross-checked against real numerology.",
     priceInPaise: 9900,
   },
+  // Gemstone/Rudraksha upsell — real chart grounding (Moon sign's real
+  // ruling planet + real exaltation/debilitation checks, see
+  // src/lib/astrology/gemstones.ts), no special purchase-time input needed
+  // (uses the same birthProfileId every other basic report already does).
+  // Market check (2026-09-16): gemstone consultation services in India run
+  // Rs.101-699 just for the CONSULTATION (before any actual gemstone
+  // purchase); priced far below that since the real cost here is one AI
+  // text call plus a birth-chart lookup this app already makes elsewhere.
+  {
+    code: "gemstone_rudraksha_report",
+    name: "Full Gemstone & Rudraksha Report",
+    description: "A deeper look at your real chart's planetary strengths, with traditional gemstone and Rudraksha guidance for each.",
+    priceInPaise: 9900,
+  },
 ];
 
 // Report template codes whose fulfillment requires a real uploaded photo
@@ -120,6 +134,11 @@ export const NUMEROLOGY_REPORT_CODES = new Set(["numerology_full_report"]);
 // Same idea again — needs real birth date/time/place (for the real
 // Nakshatra+pada lookup) captured at purchase time.
 export const BABY_NAME_REPORT_CODES = new Set(["baby_name_full_report"]);
+
+// Unlike the above, needs NO special purchase-time input at all — it uses
+// the same birthProfileId every basic report template already accepts, so
+// it doesn't need its own entry in create-order/route.ts's validation.
+export const GEMSTONE_REPORT_CODES = new Set(["gemstone_rudraksha_report"]);
 
 export const PLANS = [
   {
