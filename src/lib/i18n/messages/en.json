@@ -75,6 +75,7 @@
     "gemstone": "Gemstone & Rudraksha",
     "muhurat": "Muhurat Finder",
     "mangalDosha": "Mangal Dosha Check",
+    "kaalSarpSadeSati": "Kaal Sarp & Sade Sati",
     "compatibility": "Compatibility",
     "career": "Career & Business",
     "relationship": "Relationship",
@@ -634,6 +635,30 @@
     "remedyTitle": "Traditional remedies (optional reference)",
     "detailedReportTitle": "Want a deeper analysis?",
     "detailedReportDesc": "Get a Detailed Mangal Dosha & Marriage Readiness Report — real exceptions and remedies explained in depth, plus what it means for marriage compatibility.",
+    "getDetailedReport": "Get Detailed Report",
+    "startOver": "Start over"
+  },
+  "kaalSarpSadeSati": {
+    "title": "Kaal Sarp Dosha & Sade Sati",
+    "subtitle": "Real checks from your actual chart and the real current planetary transit — for reflection, calmly explained.",
+    "hint": "This uses your saved birth profile to check your real chart and real current Saturn transit.",
+    "noProfileNotice": "Add your birth details first to check your real chart.",
+    "generate": "Check My Chart",
+    "generating": "Reading your real chart…",
+    "kaalSarpTitle": "Kaal Sarp Dosha",
+    "kaalSarpFound": "Real result: Present ({type})",
+    "kaalSarpNotFound": "Real result: Not present in your chart",
+    "sadeSatiTitle": "Sade Sati",
+    "sadeSatiActive": "Real result: Currently active ({phase} phase)",
+    "sadeSatiNotActive": "Real result: Not currently active",
+    "phase": {
+      "rising": "rising",
+      "peak": "peak",
+      "setting": "setting"
+    },
+    "remedyTitle": "Traditional remedies (optional reference)",
+    "detailedReportTitle": "Want a deeper analysis?",
+    "detailedReportDesc": "Get a Detailed Kaal Sarp Dosha & Sade Sati Report — real classical details and traditional remedies explained in depth.",
     "getDetailedReport": "Get Detailed Report",
     "startOver": "Start over"
   },

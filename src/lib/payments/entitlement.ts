@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { grantCredits } from "@/lib/credits";
-import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, GEMSTONE_REPORT_CODES, MUHURAT_REPORT_CODES, FACE_REPORT_CODES, MANGAL_DOSHA_REPORT_CODES } from "@/lib/pricing/catalog";
+import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, GEMSTONE_REPORT_CODES, MUHURAT_REPORT_CODES, FACE_REPORT_CODES, MANGAL_DOSHA_REPORT_CODES, KAAL_SARP_SADE_SATI_REPORT_CODES } from "@/lib/pricing/catalog";
 import type { MangalDosha } from "@/lib/astrology/adapter";
+import { getRealKaalSarpDosha, KAAL_SARP_REMEDIES } from "@/lib/astrology/kaal-sarp";
+import { getRealSadeSatiStatus, SADE_SATI_REMEDIES } from "@/lib/astrology/sade-sati";
+import type { ZodiacSign } from "@prisma/client";
 import { generateAstrologyReply } from "@/lib/ai";
 import { getOrComputeKundliCalculation, summarizeKundliForAi, getCachedKundliByBirthDetails } from "@/lib/astrology/adapter";
 import { calculateDetailedNumerology, calculateNumerologyRawComponents, calculateNumerology } from "@/lib/numerology/calculate";
@@ -93,6 +96,8 @@ export async function fulfillOrder(orderId: string) {
         content = await generateFaceReportContent(purchase.userId, purchase.template.name, { data: purchase.photoData, mimeType: purchase.photoMimeType });
       } else if (purchase.template && MANGAL_DOSHA_REPORT_CODES.has(purchase.template.code)) {
         content = await generateMangalDoshaReportContent(purchase.userId, purchase.template.name, purchase.birthProfileId);
+      } else if (purchase.template && KAAL_SARP_SADE_SATI_REPORT_CODES.has(purchase.template.code)) {
+        content = await generateKaalSarpSadeSatiReportContent(purchase.userId, purchase.template.name, purchase.birthProfileId);
       } else {
         content = await generateReportContent(purchase.userId, purchase.templateId, purchase.birthProfileId);
       }
@@ -783,6 +788,80 @@ Hard rules: never use fear tactics or present this as a certain misfortune. Neve
 
   return {
     templateCode: "mangal_dosha_report",
+    templateName,
+    generatedAt: new Date().toISOString(),
+    birthDataUsed: true,
+    body: reply.text,
+  };
+}
+
+/**
+ * The Detailed Kaal Sarp Dosha & Sade Sati Report — same real, computed-
+ * not-fetched data as the free /kaal-sarp-sade-sati feature (see
+ * src/lib/astrology/kaal-sarp.ts and sade-sati.ts), no special purchase-
+ * time input (reuses birthProfileId like mangal-dosha/gemstone).
+ */
+async function generateKaalSarpSadeSatiReportContent(userId: string, templateName: string, birthProfileId: string | null) {
+  const [profile, user] = await Promise.all([
+    birthProfileId ? prisma.birthProfile.findFirst({ where: { id: birthProfileId, userId } }) : Promise.resolve(null),
+    prisma.user.findUnique({ where: { id: userId } }),
+  ]);
+  const locale = (user?.locale ?? "en") as AppLocale;
+  const langName: Record<AppLocale, string> = { en: "English", hi: "Hindi", gu: "Gujarati" };
+
+  const failed = (reason: string) => ({
+    templateCode: "kaal_sarp_sade_sati_report",
+    templateName,
+    generatedAt: new Date().toISOString(),
+    birthDataUsed: false,
+    body: reason,
+  });
+
+  if (!profile || profile.latitude == null || profile.longitude == null) {
+    return failed("This report needs your real birth profile with a known birth place to determine your real chart. Please contact support — you will not be charged for a report that didn't generate.");
+  }
+
+  const calc = await getOrComputeKundliCalculation(profile);
+  if (!calc.moonSign || !calc.planetaryPositions) {
+    return failed("We could not determine your real chart for this report. Please contact support — you will not be charged for a report that didn't generate.");
+  }
+
+  const planetaryPositions = calc.planetaryPositions as unknown as { planet: string; sign: ZodiacSign; degree: number; house: number | null }[];
+  const kaalSarp = getRealKaalSarpDosha(planetaryPositions);
+  const sadeSati = await getRealSadeSatiStatus(calc.moonSign, profile.latitude, profile.longitude);
+  const remedies = [...KAAL_SARP_REMEDIES, ...SADE_SATI_REMEDIES];
+
+  const kaalSarpText = kaalSarp.hasDosha
+    ? `Present, type ${kaalSarp.type}${kaalSarp.namedType ? ` (${kaalSarp.namedType} Kaal Sarp Dosha)` : ""}.`
+    : "Not present in this chart.";
+  const sadeSatiText = sadeSati.isActive
+    ? `Currently active, phase: ${sadeSati.phase} (Saturn is transiting the real sign ${sadeSati.saturnTransitSign}, relative to the real natal Moon sign ${sadeSati.moonSign}).`
+    : `Not currently active (Saturn is transiting ${sadeSati.saturnTransitSign ?? "an undetermined sign"}, relative to the real natal Moon sign ${sadeSati.moonSign}).`;
+
+  const reply = await generateAstrologyReply({
+    userId,
+    locale,
+    history: [],
+    userMessage: `Here are the real, already-determined facts for this person's real chart — never question, recalculate, or change any of them, only explain and give calm context around them. Write entirely in ${langName[locale]}.
+
+Kaal Sarp Dosha: ${kaalSarpText}
+Sade Sati: ${sadeSatiText}
+Real traditional remedies (for both, general reference): ${remedies.join(" ")}
+
+This is a PAID, in-depth "${templateName}" — it must read as substantial and genuinely valuable, clearly deeper than a free reading. Structure it as:
+1. An opening overview (5-6 sentences) on both real results above, calm and without alarm.
+2. A section (5-7 sentences) on the real Kaal Sarp Dosha result, what it traditionally means, and what its real type/named form (if present) traditionally represents.
+3. A section (5-7 sentences) on the real Sade Sati result — if active, frame its current real phase as a period of discipline and growth, not disaster; if not active, reassuringly say so.
+4. A section (5-7 sentences) introducing the real remedies given above as optional reference information for both — explicitly note they are not a requirement, and that a knowledgeable priest/astrologer should be consulted before undertaking any of them.
+5. A closing reflection (4-5 sentences).
+
+Hard rules: never use fear tactics or present either result as certain misfortune. Never instruct spending money on any remedy. Never give medical, legal, or financial advice.`,
+    feature: "report",
+    maxTokens: 7000,
+  });
+
+  return {
+    templateCode: "kaal_sarp_sade_sati_report",
     templateName,
     generatedAt: new Date().toISOString(),
     birthDataUsed: true,

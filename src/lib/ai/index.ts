@@ -106,7 +106,23 @@ export type GenerateReplyResult = {
  * redirected or passed through to the model.
  */
 export async function generateAstrologyReply(params: GenerateReplyParams): Promise<GenerateReplyResult> {
-  const classification = classifyInput(params.userMessage);
+  // Found live 2026-09-15: safety.ts's keyword classifier's "medical"
+  // pattern matches bare `cancer` (case-insensitive) to catch real disease
+  // mentions in genuine user-typed text — but every `feature: "report"`
+  // caller (entitlement.ts's generate*ReportContent functions) builds
+  // userMessage itself, a server-authored template narrating real chart
+  // facts, never raw user input — and "Cancer" is one of the 12 real
+  // zodiac signs, so any report whose real data happens to mention a
+  // Cancer moon/sun/ascendant/transit sign got silently swapped for the
+  // generic "see a doctor" redirect instead of its real content (found via
+  // a real Sade Sati transit landing in Cancer during live testing).
+  // scanOutputForRedFlags below still runs regardless of feature, and each
+  // report's own prompt already carries its own hard safety rules — this
+  // classifier's actual job (catching risky free-typed user messages in
+  // chat/career/relationship/compatibility) never applies to report
+  // generation's own template text, so it's skipped there rather than
+  // patched with a fragile "not preceded by a zodiac word" regex.
+  const classification = params.feature === "report" ? null : classifyInput(params.userMessage);
   const redirectKey = classification ? toRedirectKey(classification.category) : null;
 
   if (redirectKey) {

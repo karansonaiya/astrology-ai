@@ -158,6 +158,20 @@ export const REPORT_TEMPLATES = [
     description: "A deeper look at your real chart's Mangal Dosha result — real classical exceptions, traditional remedies explained, and what it means for marriage compatibility.",
     priceInPaise: 9900,
   },
+  // Kaal Sarp Dosha + Sade Sati upsell — both computed here (see
+  // src/lib/astrology/kaal-sarp.ts and sade-sati.ts), not fetched: no
+  // dedicated Prokerala endpoint exists for either (confirmed live, 404 on
+  // every plausible endpoint name), so both are real classical calculations
+  // over already-fetched real planetary/transit positions. No special
+  // purchase-time input, reuses birthProfileId like gemstone/mangal-dosha.
+  // Market check (2026-09-15): same general astrology consultation range as
+  // Mangal Dosha (Rs.300-800 entry-level); priced the same for consistency.
+  {
+    code: "kaal_sarp_sade_sati_report",
+    name: "Detailed Kaal Sarp Dosha & Sade Sati Report",
+    description: "A deeper look at your real chart's Kaal Sarp Dosha and current Sade Sati status — real classical details and traditional remedies explained.",
+    priceInPaise: 9900,
+  },
 ];
 
 // Report template codes whose fulfillment requires a real uploaded photo
@@ -197,6 +211,9 @@ export const FACE_REPORT_CODES = new Set(["face_reading_report"]);
 // Same idea as GEMSTONE_REPORT_CODES — no special purchase-time input,
 // reuses the standard birthProfileId every basic report already accepts.
 export const MANGAL_DOSHA_REPORT_CODES = new Set(["mangal_dosha_report"]);
+
+// Same idea again.
+export const KAAL_SARP_SADE_SATI_REPORT_CODES = new Set(["kaal_sarp_sade_sati_report"]);
 
 export const PLANS = [
   {

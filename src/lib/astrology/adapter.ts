@@ -75,7 +75,10 @@ export interface AstrologyProvider {
   calculateKundli(input: BirthInput): Promise<KundliResult>;
 }
 
-const ZODIAC_ORDER: ZodiacSign[] = [
+// Exported for reuse by kaal-sarp.ts (needs each sign's zodiacal order to
+// compute absolute longitude for the Rahu/Ketu-hemming check) and anywhere
+// else that needs the canonical Aries-first sign order.
+export const ZODIAC_ORDER: ZodiacSign[] = [
   "aries", "taurus", "gemini", "cancer", "leo", "virgo",
   "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces",
 ];
