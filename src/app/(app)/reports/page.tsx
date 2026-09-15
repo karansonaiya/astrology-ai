@@ -18,15 +18,18 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { useCheckout } from "@/lib/payments/use-checkout";
-import { PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES } from "@/lib/pricing/catalog";
+import { PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES } from "@/lib/pricing/catalog";
 import { ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_BASE64_LENGTH } from "@/lib/validations/chat";
 import { compressImageFile } from "@/lib/image/compress-image";
+import { CityAutocomplete } from "@/components/ui/city-autocomplete";
+import { cn } from "@/lib/utils";
 
-// sessionStorage keys the free Palm Reading / Numerology pages use to hand
-// off what they already collected (a photo, or a name+birth date), so the
-// paid-upsell dialogs here don't make the user re-enter/re-capture it.
+// sessionStorage keys the free Palm Reading / Numerology / Baby Names pages
+// use to hand off what they already collected (a photo, or birth details),
+// so the paid-upsell dialogs here don't make the user re-enter/re-capture it.
 const PALM_HANDOFF_KEY = "prerna:palm-photo-handoff";
 const NUMEROLOGY_HANDOFF_KEY = "prerna:numerology-handoff";
+const BABY_NAME_HANDOFF_KEY = "prerna:baby-name-handoff";
 
 // Found live: a handoff photo/name+date saved once from the free page
 // never expired, so if the user saved one, never actually bought a report,
@@ -92,10 +95,25 @@ export default function ReportsPage() {
   const [pendingNumerologyTemplate, setPendingNumerologyTemplate] = useState<Template | null>(null);
   const [numerologyName, setNumerologyName] = useState("");
   const [numerologyBirthDate, setNumerologyBirthDate] = useState("");
-  // Guards the ?upsell=numerology auto-open effect below so it only ever
-  // fires once — without this, a background react-query refetch of
-  // `templates` after the user has already started editing the dialog's
-  // fields would re-run the effect and silently wipe what they'd typed.
+
+  // Same idea for the Full Baby Name Report — needs real birth date/time/
+  // place + gender preference (create-order/route.ts requires all for
+  // BABY_NAME_REPORT_CODES).
+  const [pendingBabyNameTemplate, setPendingBabyNameTemplate] = useState<Template | null>(null);
+  const [babyNameForm, setBabyNameForm] = useState({
+    birthDate: "",
+    birthTimeKnown: true,
+    birthTime: "",
+    birthCity: "",
+    birthCountry: "India",
+    genderPreference: "any" as "boy" | "girl" | "any",
+  });
+  const [babyNameCoords, setBabyNameCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  // Guards the ?upsell=<x> auto-open effects below so they only ever fire
+  // once — without this, a background react-query refetch of `templates`
+  // after the user has already started editing a dialog's fields would
+  // re-run the effect and silently wipe what they'd typed.
   const handledUpsellRef = useRef(false);
 
   const handlePalmFile = async (file: File | undefined) => {
@@ -145,10 +163,28 @@ export default function ReportsPage() {
   const buy = (
     code: string,
     photo?: { data: string; mimeType: string },
-    numerology?: { name: string; birthDate: string }
+    numerology?: { name: string; birthDate: string },
+    babyNameInput?: {
+      birthDate: string;
+      birthTimeKnown: boolean;
+      birthTime?: string;
+      birthCity: string;
+      birthCountry?: string;
+      latitude?: number;
+      longitude?: number;
+      genderPreference: "boy" | "girl" | "any";
+    }
   ) => {
     checkout(
-      { type: "report", code, birthProfileId, photo, numerologyName: numerology?.name, numerologyBirthDate: numerology?.birthDate },
+      {
+        type: "report",
+        code,
+        birthProfileId,
+        photo,
+        numerologyName: numerology?.name,
+        numerologyBirthDate: numerology?.birthDate,
+        babyNameInput,
+      },
       {
         // Found live: this used to just switch to the "My Reports" tab,
         // leaving the customer to spot their new purchase in a list and
@@ -201,6 +237,24 @@ export default function ReportsPage() {
         setNumerologyBirthDate("");
       }
       setPendingNumerologyTemplate(tpl);
+    } else if (BABY_NAME_REPORT_CODES.has(tpl.code)) {
+      // Same read-only reasoning as the other branches above.
+      const handoff = readSessionJson<typeof babyNameForm & { latitude?: number; longitude?: number }>(BABY_NAME_HANDOFF_KEY);
+      if (handoff) {
+        setBabyNameForm({
+          birthDate: handoff.birthDate,
+          birthTimeKnown: handoff.birthTimeKnown,
+          birthTime: handoff.birthTime,
+          birthCity: handoff.birthCity,
+          birthCountry: handoff.birthCountry,
+          genderPreference: handoff.genderPreference,
+        });
+        setBabyNameCoords(handoff.latitude != null && handoff.longitude != null ? { latitude: handoff.latitude, longitude: handoff.longitude } : null);
+      } else {
+        setBabyNameForm({ birthDate: "", birthTimeKnown: true, birthTime: "", birthCity: "", birthCountry: "India", genderPreference: "any" });
+        setBabyNameCoords(null);
+      }
+      setPendingBabyNameTemplate(tpl);
     } else {
       buy(tpl.code);
     }
@@ -223,6 +277,21 @@ export default function ReportsPage() {
     setNumerologyBirthDate("");
   };
 
+  const babyNameCanSubmit =
+    babyNameForm.birthDate && babyNameForm.birthCity.trim() && (!babyNameForm.birthTimeKnown || babyNameForm.birthTime);
+
+  const confirmBabyNamePurchase = () => {
+    if (!pendingBabyNameTemplate || !babyNameCanSubmit) return;
+    buy(pendingBabyNameTemplate.code, undefined, undefined, {
+      ...babyNameForm,
+      birthTime: babyNameForm.birthTimeKnown ? babyNameForm.birthTime : undefined,
+      latitude: babyNameCoords?.latitude,
+      longitude: babyNameCoords?.longitude,
+    });
+    sessionStorage.removeItem(BABY_NAME_HANDOFF_KEY);
+    setPendingBabyNameTemplate(null);
+  };
+
   // Deep-link from the free Numerology page's "Get Detailed Report" button
   // (?upsell=numerology) — auto-opens the one numerology paid tier's dialog
   // once the store's templates have loaded (there's only one tier, unlike
@@ -233,8 +302,10 @@ export default function ReportsPage() {
   // destructive either way.
   useEffect(() => {
     if (handledUpsellRef.current) return;
-    if (searchParams.get("upsell") !== "numerology") return;
-    const tpl = templates?.templates.find((tp) => NUMEROLOGY_REPORT_CODES.has(tp.code));
+    const upsell = searchParams.get("upsell");
+    if (upsell !== "numerology" && upsell !== "baby-names") return;
+    const codes = upsell === "numerology" ? NUMEROLOGY_REPORT_CODES : BABY_NAME_REPORT_CODES;
+    const tpl = templates?.templates.find((tp) => codes.has(tp.code));
     if (!tpl) return;
     handledUpsellRef.current = true;
     // Deferred out of the effect body itself (not just to satisfy the
@@ -416,6 +487,91 @@ export default function ReportsPage() {
               disabled={!numerologyName.trim() || !numerologyBirthDate || loading}
               onClick={confirmNumerologyPurchase}
             >
+              {loading ? t("common.loading") : t("reports.continueToPayment")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!pendingBabyNameTemplate}
+        onOpenChange={(open) => {
+          if (!open) setPendingBabyNameTemplate(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {pendingBabyNameTemplate?.name}
+              {pendingBabyNameTemplate && <span className="ml-2 text-gold">{formatInr(pendingBabyNameTemplate.priceInPaise, `${locale}-IN`)}</span>}
+            </DialogTitle>
+            <DialogDescription>{t("reports.babyNameDetailsRequiredDesc")}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div>
+              <Label htmlFor="report-bn-date">{t("babyNames.birthDateLabel")}</Label>
+              <Input
+                id="report-bn-date"
+                type="date"
+                value={babyNameForm.birthDate}
+                onChange={(e) => setBabyNameForm((f) => ({ ...f, birthDate: e.target.value }))}
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <Label htmlFor="report-bn-time">{t("babyNames.birthTimeLabel")}</Label>
+              <Input
+                id="report-bn-time"
+                type="time"
+                value={babyNameForm.birthTime}
+                disabled={!babyNameForm.birthTimeKnown}
+                onChange={(e) => setBabyNameForm((f) => ({ ...f, birthTime: e.target.value }))}
+                className="mt-1.5"
+              />
+              <label className="mt-1.5 flex items-center gap-2 text-xs text-muted">
+                <input
+                  type="checkbox"
+                  checked={babyNameForm.birthTimeKnown}
+                  onChange={(e) => setBabyNameForm((f) => ({ ...f, birthTimeKnown: e.target.checked }))}
+                />
+                {t("babyNames.timeKnownLabel")}
+              </label>
+            </div>
+            <div>
+              <Label>{t("babyNames.cityLabel")}</Label>
+              <div className="mt-1.5">
+                <CityAutocomplete
+                  value={babyNameForm.birthCity}
+                  onChange={(text) => {
+                    setBabyNameForm((f) => ({ ...f, birthCity: text }));
+                    setBabyNameCoords(null);
+                  }}
+                  onSelect={(place) => {
+                    setBabyNameForm((f) => ({ ...f, birthCountry: place.country }));
+                    setBabyNameCoords({ latitude: place.latitude, longitude: place.longitude });
+                  }}
+                />
+              </div>
+            </div>
+            <div>
+              <Label>{t("babyNames.genderLabel")}</Label>
+              <div className="mt-1.5 flex gap-2">
+                {(["any", "boy", "girl"] as const).map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setBabyNameForm((f) => ({ ...f, genderPreference: g }))}
+                    className={cn(
+                      "focus-ring rounded-lg border px-3 py-1.5 text-sm transition-colors",
+                      babyNameForm.genderPreference === g ? "border-gold bg-gold/10 text-gold" : "border-border text-muted hover:text-foreground"
+                    )}
+                  >
+                    {t(`babyNames.gender.${g}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Button className="mt-2" disabled={!babyNameCanSubmit || loading} onClick={confirmBabyNamePurchase}>
               {loading ? t("common.loading") : t("reports.continueToPayment")}
             </Button>
           </div>

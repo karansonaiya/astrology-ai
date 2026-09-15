@@ -1,9 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { grantCredits } from "@/lib/credits";
-import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES } from "@/lib/pricing/catalog";
+import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES } from "@/lib/pricing/catalog";
 import { generateAstrologyReply } from "@/lib/ai";
-import { getOrComputeKundliCalculation, summarizeKundliForAi } from "@/lib/astrology/adapter";
-import { calculateDetailedNumerology, calculateNumerologyRawComponents } from "@/lib/numerology/calculate";
+import { getOrComputeKundliCalculation, summarizeKundliForAi, getCachedKundliByBirthDetails } from "@/lib/astrology/adapter";
+import { calculateDetailedNumerology, calculateNumerologyRawComponents, calculateNumerology } from "@/lib/numerology/calculate";
+import { getRealNamingSyllable } from "@/lib/naming/nakshatra-names";
+import { generateBabyNameSuggestions } from "@/lib/ai/baby-name-suggestion";
+import { geocodeBirthPlace, resolveTimezone } from "@/lib/geo";
 import type { AppLocale } from "@/lib/i18n/config";
 import { maybeRewardReferral } from "@/lib/referral";
 
@@ -55,6 +58,8 @@ export async function fulfillOrder(orderId: string) {
           purchase.numerologyName,
           purchase.numerologyBirthDate
         );
+      } else if (purchase.template && BABY_NAME_REPORT_CODES.has(purchase.template.code) && purchase.babyNameInput) {
+        content = await generateBabyNameReportContent(purchase.userId, purchase.template.name, purchase.babyNameInput as BabyNameInput);
       } else {
         content = await generateReportContent(purchase.userId, purchase.templateId, purchase.birthProfileId);
       }
@@ -326,6 +331,100 @@ Never give medical, legal, or financial advice. Never claim certainty about the 
 
   return {
     templateCode: "numerology_full_report",
+    templateName,
+    generatedAt: new Date().toISOString(),
+    birthDataUsed: true,
+    body: reply.text,
+  };
+}
+
+/**
+ * The Full Baby Name Report — same real Nakshatra+pada+syllable grounding
+ * as the free /baby-names feature (see nakshatra-names.ts), taken deeper:
+ * 30 names instead of 8, each also cross-checked against real Pythagorean
+ * numerology (calculateNumerology run against the name + the child's real
+ * birth date — same 100%-deterministic math the free /numerology feature
+ * uses, zero AI involvement in computing the numbers themselves). Two AI
+ * calls, not one: generateBabyNameSuggestions produces the real, honest
+ * name+meaning list; this function's own generateAstrologyReply call only
+ * formats that already-real content (plus the real numerology numbers)
+ * into a well-organized report in the customer's own locale — never
+ * inventing new names or altering a number.
+ */
+export type BabyNameInput = {
+  birthDate: string;
+  birthTimeKnown: boolean;
+  birthTime?: string;
+  birthCity: string;
+  birthCountry?: string;
+  latitude?: number;
+  longitude?: number;
+  genderPreference: "boy" | "girl" | "any";
+};
+
+async function generateBabyNameReportContent(userId: string, templateName: string, input: BabyNameInput) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const locale = (user?.locale ?? "en") as AppLocale;
+  const langName: Record<AppLocale, string> = { en: "English", hi: "Hindi", gu: "Gujarati" };
+
+  const failed = (reason: string) => ({
+    templateCode: "baby_name_full_report",
+    templateName,
+    generatedAt: new Date().toISOString(),
+    birthDataUsed: false,
+    body: reason,
+  });
+
+  const geo =
+    input.latitude != null && input.longitude != null
+      ? { latitude: input.latitude, longitude: input.longitude, timezone: resolveTimezone(input.latitude, input.longitude) }
+      : await geocodeBirthPlace(input.birthCity, input.birthCountry).catch(() => null);
+  if (!geo || !geo.timezone) {
+    return failed("We could not determine the birth place's coordinates, so this report could not be generated. Please contact support — you will not be charged for a report that didn't generate.");
+  }
+
+  const birthDateObj = new Date(`${input.birthDate}T00:00:00.000Z`);
+  const calc = await getCachedKundliByBirthDetails({
+    birthDate: birthDateObj,
+    birthTimeKnown: input.birthTimeKnown,
+    birthTime: input.birthTimeKnown ? input.birthTime ?? null : null,
+    latitude: geo.latitude,
+    longitude: geo.longitude,
+    timezone: geo.timezone,
+  });
+
+  const syllable = getRealNamingSyllable(calc.nakshatraSyllables, calc.nakshatraPada);
+  if (!calc.nakshatra || !syllable) {
+    return failed("We could not determine the real Nakshatra for these birth details, so this report could not be generated. Please contact support — you will not be charged for a report that didn't generate.");
+  }
+
+  const suggestions = await generateBabyNameSuggestions(syllable, calc.nakshatra, input.genderPreference, 30, locale);
+
+  const namesWithNumerology = suggestions.names.map((n) => {
+    const numbers = calculateNumerology(n.name, birthDateObj);
+    return `- ${n.name} (${n.gender}) — ${n.meaning} — Life Path ${numbers.lifePath}, Destiny ${numbers.destiny}`;
+  });
+
+  const reply = await generateAstrologyReply({
+    userId,
+    locale,
+    history: [],
+    userMessage: `Here are 30 real, already-selected baby names for a child whose traditional Nakshatra-based starting syllable is "${syllable}" (Nakshatra: ${calc.nakshatra}), each with its given meaning and its real numerology Life Path and Destiny numbers — these are 100% real, already-calculated deterministic numbers (computed from the name and the child's real birth date), never alter or re-derive any of them. Write entirely in ${langName[locale]}.
+
+${namesWithNumerology.join("\n")}
+
+Write this up as a well-organized, in-depth "${templateName}". Structure it as:
+1. An opening (3-4 sentences) about the real Nakshatra (${calc.nakshatra}) and starting syllable ("${syllable}") this report is grounded in, and briefly what the real Life Path/Destiny numbers given alongside each name represent.
+2. Organize the 30 names into clear sections by gender (Boy Names / Girl Names / Unisex Names — skip any section with no names in it), presenting each name with its given meaning and its real Life Path/Destiny numbers stated exactly as given above.
+3. A closing reflection (3-4 sentences) on choosing a name thoughtfully.
+
+Never invent any name beyond the 30 given above. Never alter the meanings or numbers given. Never claim a name guarantees any outcome for the child. Never give medical, legal, or financial advice.`,
+    feature: "report",
+    maxTokens: 6000,
+  });
+
+  return {
+    templateCode: "baby_name_full_report",
     templateName,
     generatedAt: new Date().toISOString(),
     birthDataUsed: true,

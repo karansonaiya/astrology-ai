@@ -86,6 +86,18 @@ export function useCheckout() {
       // as `photo` above, required by create-order/route.ts for that code.
       numerologyName?: string;
       numerologyBirthDate?: string;
+      // Full Baby Name Report only (BABY_NAME_REPORT_CODES) — same idea,
+      // more fields (the real Nakshatra+pada lookup needs birth place too).
+      babyNameInput?: {
+        birthDate: string;
+        birthTimeKnown: boolean;
+        birthTime?: string;
+        birthCity: string;
+        birthCountry?: string;
+        latitude?: number;
+        longitude?: number;
+        genderPreference: "boy" | "girl" | "any";
+      };
     },
     opts?: { onSuccess?: (result: VerifyResult) => void; onError?: (message: string) => void }
   ) => {

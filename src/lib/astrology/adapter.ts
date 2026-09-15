@@ -36,6 +36,13 @@ export type KundliResult = {
   moonSign: ZodiacSign | null;
   ascendant: ZodiacSign | null;
   nakshatra: string | null;
+  // Real, provider-sourced — see the baby-names feature (src/lib/naming/
+  // nakshatra-names.ts) for why these are needed alongside the nakshatra
+  // name itself: nakshatraSyllables is the raw comma-separated 4-syllable
+  // set for the whole nakshatra (one per pada, in traditional order),
+  // nakshatraPada (1-4) picks which one is this person's real one.
+  nakshatraPada: number | null;
+  nakshatraSyllables: string | null;
   planetaryPositions: PlanetPosition[] | null;
   houses: Array<{ house: number; sign: ZodiacSign }> | null;
   dasha: Array<{ period: string; from: string; to: string }> | null;
@@ -77,6 +84,8 @@ class MockAstrologyProvider implements AstrologyProvider {
       moonSign,
       ascendant,
       nakshatra: input.birthTimeKnown ? "Ashwini (demo)" : null,
+      nakshatraPada: input.birthTimeKnown ? ((seed % 4) + 1) : null,
+      nakshatraSyllables: input.birthTimeKnown ? "Chu, Che, Cho, La (demo)" : null,
       planetaryPositions,
       houses: input.birthTimeKnown
         ? Array.from({ length: 12 }, (_, i) => ({ house: i + 1, sign: ZODIAC_ORDER[(seed + i) % 12] }))
@@ -114,6 +123,8 @@ class RealAstrologyProvider implements AstrologyProvider {
       moonSign: null,
       ascendant: null,
       nakshatra: null,
+      nakshatraPada: null,
+      nakshatraSyllables: null,
       planetaryPositions: null,
       houses: null,
       dasha: null,
@@ -261,6 +272,8 @@ class ProkeralaAstrologyProvider implements AstrologyProvider {
         moonSign: null,
         ascendant: null,
         nakshatra: null,
+        nakshatraPada: null,
+        nakshatraSyllables: null,
         planetaryPositions: null,
         houses: null,
         dasha: null,
@@ -305,6 +318,13 @@ class ProkeralaAstrologyProvider implements AstrologyProvider {
     const sunSign = rasiIdToZodiacSign(nakshatraDetails?.soorya_rasi?.id);
     const moonSign = rasiIdToZodiacSign(nakshatraDetails?.chandra_rasi?.id);
     const nakshatra: string | null = nakshatraDetails?.nakshatra?.name ?? null;
+    // Verified live against a real Prokerala response, 2026-09-16:
+    // nakshatra.pada (1-4) and additional_info.syllables (a "De, Do, Cha,
+    // Chi"-style comma-separated 4-syllable set, one per pada in order)
+    // are both real fields already present on the same nakshatra_details
+    // object this route already fetches — no extra API call needed.
+    const nakshatraPada: number | null = typeof nakshatraDetails?.nakshatra?.pada === "number" ? nakshatraDetails.nakshatra.pada : null;
+    const nakshatraSyllables: string | null = nakshatraDetails?.additional_info?.syllables ?? null;
 
     // yoga_details is an array of CATEGORIES ("Major Yogas", "Chandra
     // Yogas", ...), each with its own yoga_list of individually named
@@ -387,6 +407,8 @@ class ProkeralaAstrologyProvider implements AstrologyProvider {
       moonSign,
       ascendant,
       nakshatra,
+      nakshatraPada,
+      nakshatraSyllables,
       planetaryPositions,
       houses,
       dasha,
@@ -524,7 +546,12 @@ export async function getOrComputeKundliCalculation(profile: {
   // dashboard would have made if this had never been cached, so the
   // refreshed row is consistent top to bottom, not a partial patch.
   const isStalePreMigrationRow = existing && existing.houses != null && existing.yogas == null && existing.aspects == null;
-  if (existing && !isStalePreMigrationRow) return existing;
+  // Same idea, one migration later: a row cached before nakshatraPada/
+  // nakshatraSyllables existed has them null even though houses (gated on
+  // the same birthTimeKnown flag) is not — recompute once to backfill,
+  // same reasoning as the yogas/aspects check above.
+  const isStalePreNakshatraPadaRow = existing && existing.houses != null && existing.nakshatraPada == null;
+  if (existing && !isStalePreMigrationRow && !isStalePreNakshatraPadaRow) return existing;
 
   const result = await getAstrologyProvider().calculateKundli({
     birthDate: profile.birthDate,
@@ -553,6 +580,8 @@ export async function getOrComputeKundliCalculation(profile: {
       moonSign: result.moonSign,
       ascendant: result.ascendant,
       nakshatra: result.nakshatra,
+      nakshatraPada: result.nakshatraPada,
+      nakshatraSyllables: result.nakshatraSyllables,
       planetaryPositions: result.planetaryPositions,
       houses: result.houses,
       dasha: result.dasha,
@@ -583,6 +612,8 @@ export async function getOrComputeKundliCalculation(profile: {
     moonSign: result.moonSign,
     ascendant: result.ascendant,
     nakshatra: result.nakshatra,
+    nakshatraPada: result.nakshatraPada,
+    nakshatraSyllables: result.nakshatraSyllables,
     planetaryPositions: result.planetaryPositions ?? undefined,
     houses: result.houses ?? undefined,
     dasha: result.dasha ?? undefined,
@@ -633,7 +664,16 @@ export async function getCachedKundliByBirthDetails(input: BirthInput): Promise<
   const where = { birthDate_birthTime_latitude_longitude: { birthDate, birthTime, latitude, longitude } };
 
   const existing = await prisma.kundliLookupCache.findUnique({ where });
-  if (existing) return existing.data as unknown as KundliResult;
+  if (existing) {
+    const cached = existing.data as unknown as KundliResult;
+    // Same self-healing idea as getOrComputeKundliCalculation's staleness
+    // checks: a row cached before nakshatraPada existed simply never had
+    // that key in its JSON at all (not even `null`) — recompute once
+    // rather than serving that forever. This cache has no schema
+    // migration to run (data is a plain JSON blob), so this check is the
+    // only fix needed.
+    if ("nakshatraPada" in cached) return cached;
+  }
 
   const result = await getAstrologyProvider().calculateKundli({ ...input, latitude, longitude });
 

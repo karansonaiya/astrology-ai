@@ -14,6 +14,21 @@ export const createOrderSchema = z.object({
   // same way `photo` is required for palm codes.
   numerologyName: z.string().trim().min(1).max(120).optional(),
   numerologyBirthDate: z.string().date().optional(),
+  // Full Baby Name Report only (BABY_NAME_REPORT_CODES) — required the
+  // same way, just more fields (the real Nakshatra+pada lookup needs
+  // birth place too, not just date).
+  babyNameInput: z
+    .object({
+      birthDate: z.string().date(),
+      birthTimeKnown: z.boolean(),
+      birthTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+      birthCity: z.string().min(1).max(120),
+      birthCountry: z.string().max(120).optional(),
+      latitude: z.number().min(-90).max(90).optional(),
+      longitude: z.number().min(-180).max(180).optional(),
+      genderPreference: z.enum(["boy", "girl", "any"]),
+    })
+    .optional(),
 });
 
 export const verifyPaymentSchema = z.object({

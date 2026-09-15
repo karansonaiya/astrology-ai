@@ -70,6 +70,7 @@
     "kundli": "Kundli",
     "palmReading": "Palm Reading",
     "numerology": "Numerology",
+    "babyNames": "Baby Names",
     "compatibility": "Compatibility",
     "career": "Career & Business",
     "relationship": "Relationship",
@@ -410,7 +411,8 @@
     "generationFailedBody": "Something went wrong generating this report. Please contact support — you will not be charged for a report that didn't generate.",
     "palmPhotoRequiredDesc": "This report needs a real photo of your palm. Take one now or upload one from your gallery.",
     "continueToPayment": "Continue to payment",
-    "numerologyDetailsRequiredDesc": "This report needs your full name and birth date to calculate your real numbers."
+    "numerologyDetailsRequiredDesc": "This report needs your full name and birth date to calculate your real numbers.",
+    "babyNameDetailsRequiredDesc": "This report needs the baby's real birth date, time, and place to calculate the real Nakshatra."
   },
   "personas": {
     "pageTitle": "Choose who to chat with",
@@ -525,6 +527,29 @@
     "headLineLabel": "Head Line",
     "fateLineLabel": "Fate Line (if visible)",
     "referenceDiagramNote": "A general reference diagram — your reading above is based on your own real photo, not this illustration."
+  },
+  "babyNames": {
+    "title": "Baby Names",
+    "subtitle": "Real Nakshatra-based naming — your baby's traditional starting syllable, calculated from the real birth details, with real name suggestions.",
+    "birthDateLabel": "Birth date",
+    "birthTimeLabel": "Birth time",
+    "timeKnownLabel": "I know the exact birth time",
+    "cityLabel": "Birth city",
+    "genderLabel": "Looking for",
+    "gender": {
+      "any": "Any",
+      "boy": "Boy",
+      "girl": "Girl",
+      "unisex": "Unisex"
+    },
+    "generate": "Get Name Suggestions",
+    "generating": "Finding your Nakshatra…",
+    "realDataLine": "Real Nakshatra: {nakshatra} — traditional starting syllable: \"{syllable}\"",
+    "approximateNotice": "Birth time wasn't given, so this is based on an approximate time — for full accuracy, add the exact birth time.",
+    "detailedReportTitle": "Want more names?",
+    "detailedReportDesc": "Get a Full Baby Name Report — 30 real names, each cross-checked against real numerology.",
+    "getDetailedReport": "Get Detailed Report",
+    "startOver": "Start over"
   },
   "help": {
     "title": "Help & Safety",

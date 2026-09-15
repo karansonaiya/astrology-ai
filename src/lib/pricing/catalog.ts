@@ -86,6 +86,19 @@ export const REPORT_TEMPLATES = [
     description: "Your Maturity Number, Personal Year Number, and Karmic Debt numbers, plus a much deeper interpretation of your core numbers.",
     priceInPaise: 9900,
   },
+  // Nakshatra-based baby naming upsell — real starting syllable (see
+  // src/lib/naming/nakshatra-names.ts), many more names than the free
+  // version, each cross-checked against real Pythagorean numerology.
+  // Market check (2026-09-16): professional Nakshatra-based baby-naming
+  // consultations in India run Rs.995-5000+; priced far below that on
+  // purpose since the real cost to generate this is a couple of AI text
+  // calls plus a birth-chart lookup this app is already making elsewhere.
+  {
+    code: "baby_name_full_report",
+    name: "Full Baby Name Report",
+    description: "30 real names starting with your baby's traditional Nakshatra syllable, each cross-checked against real numerology.",
+    priceInPaise: 9900,
+  },
 ];
 
 // Report template codes whose fulfillment requires a real uploaded photo
@@ -103,6 +116,10 @@ export const PALM_REPORT_CODES = new Set([
 // real name + birth date captured at purchase time (see create-order/
 // route.ts) instead of a photo.
 export const NUMEROLOGY_REPORT_CODES = new Set(["numerology_full_report"]);
+
+// Same idea again — needs real birth date/time/place (for the real
+// Nakshatra+pada lookup) captured at purchase time.
+export const BABY_NAME_REPORT_CODES = new Set(["baby_name_full_report"]);
 
 export const PLANS = [
   {
