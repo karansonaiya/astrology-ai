@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
-import { ZodiacWheel } from "@/components/astrology/zodiac-wheel";
+import { KundliChart } from "@/components/astrology/kundli-chart";
 import { CityAutocomplete } from "@/components/ui/city-autocomplete";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
@@ -165,8 +165,17 @@ function KundliDisplay({ calc, own, name }: { calc: Calculation; own: boolean; n
     <>
       <div className="mt-6 grid gap-6 md:grid-cols-2">
         <Card>
-          <CardContent className="flex flex-col items-center py-8">
-            <ZodiacWheel locale={locale} label={t("kundli.zodiacWheelLabel")} />
+          <CardContent className="py-6">
+            <KundliChart
+              chart={{
+                ascendant: calc.ascendant,
+                moonSign: calc.moonSign,
+                nakshatra: calc.nakshatra,
+                planetaryPositions: calc.planetaryPositions,
+                houses: calc.houses,
+              }}
+              locale={locale}
+            />
           </CardContent>
         </Card>
 
