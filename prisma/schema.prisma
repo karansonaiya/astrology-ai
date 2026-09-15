@@ -786,6 +786,14 @@ model ReportPurchase {
   //  latitude, longitude, genderPreference}. Null for every other template.
   babyNameInput Json?
 
+  // Muhurat Finder report upsell only — real event type + city + start date
+  // captured at order-creation time, needed for the real 5-day panchang
+  // scan (no birth profile involved at all; this feature is location+date
+  // based, not birth-profile based — same reasoning as panchang.ts itself).
+  // Shape: {eventType, startDate, city, country, latitude, longitude}.
+  // Null for every other report template.
+  muhuratInput Json?
+
   createdAt   DateTime  @default(now())
   completedAt DateTime?
 

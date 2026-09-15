@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser, errorResponse } from "@/lib/auth/guard";
 import { createOrderSchema } from "@/lib/validations/payments";
 import { getPaymentProvider } from "@/lib/payments/provider";
-import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES } from "@/lib/pricing/catalog";
+import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, MUHURAT_REPORT_CODES } from "@/lib/pricing/catalog";
 import { rateLimit } from "@/lib/rate-limit";
 
 async function resolvePrice(type: string, code: string) {
@@ -89,6 +89,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "baby_name_details_required" }, { status: 400 });
       }
 
+      const isMuhuratReport = MUHURAT_REPORT_CODES.has(parsed.data.code);
+      if (isMuhuratReport && !parsed.data.muhuratInput) {
+        return NextResponse.json({ error: "muhurat_details_required" }, { status: 400 });
+      }
+
       await prisma.reportPurchase.create({
         data: {
           userId: user.id,
@@ -103,6 +108,7 @@ export async function POST(req: NextRequest) {
             ? { numerologyName: parsed.data.numerologyName, numerologyBirthDate: new Date(parsed.data.numerologyBirthDate) }
             : {}),
           ...(isBabyNameReport && parsed.data.babyNameInput ? { babyNameInput: parsed.data.babyNameInput } : {}),
+          ...(isMuhuratReport && parsed.data.muhuratInput ? { muhuratInput: parsed.data.muhuratInput } : {}),
         },
       });
     }

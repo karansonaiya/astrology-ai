@@ -98,6 +98,16 @@ export function useCheckout() {
         longitude?: number;
         genderPreference: "boy" | "girl" | "any";
       };
+      // Muhurat Finder Report only (MUHURAT_REPORT_CODES) — same idea, no
+      // birth profile involved (location+date based).
+      muhuratInput?: {
+        eventType: "general" | "travel" | "business_start";
+        startDate: string;
+        city: string;
+        country?: string;
+        latitude?: number;
+        longitude?: number;
+      };
     },
     opts?: { onSuccess?: (result: VerifyResult) => void; onError?: (message: string) => void }
   ) => {

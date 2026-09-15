@@ -113,6 +113,19 @@ export const REPORT_TEMPLATES = [
     description: "A deeper look at your real chart's planetary strengths, with traditional gemstone and Rudraksha guidance for each.",
     priceInPaise: 9900,
   },
+  // Muhurat Finder upsell — real Choghadiya/Rahu Kaal/Abhijit data from
+  // Prokerala's panchang endpoints (see src/lib/astrology/muhurat.ts),
+  // scanned across 5 real days instead of the free page's single day.
+  // Market check (2026-09-15): personalized Shubh Muhurat consultations in
+  // India run Rs.299+; priced far below that since the real cost here is a
+  // handful of already-integrated Prokerala panchang calls plus one AI text
+  // call, not a human astrologer's time.
+  {
+    code: "muhurat_finder_report",
+    name: "5-Day Muhurat Window Report",
+    description: "Real favorable and avoid time windows across 5 real days, for your chosen purpose — travel, starting a business, or a general auspicious beginning.",
+    priceInPaise: 9900,
+  },
 ];
 
 // Report template codes whose fulfillment requires a real uploaded photo
@@ -139,6 +152,11 @@ export const BABY_NAME_REPORT_CODES = new Set(["baby_name_full_report"]);
 // the same birthProfileId every basic report template already accepts, so
 // it doesn't need its own entry in create-order/route.ts's validation.
 export const GEMSTONE_REPORT_CODES = new Set(["gemstone_rudraksha_report"]);
+
+// Same idea as BABY_NAME_REPORT_CODES — needs a real event type + city +
+// start date captured at purchase time (no birth profile involved at all;
+// this feature is location+date based, not birth-profile based).
+export const MUHURAT_REPORT_CODES = new Set(["muhurat_finder_report"]);
 
 export const PLANS = [
   {

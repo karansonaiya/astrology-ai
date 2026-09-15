@@ -72,6 +72,7 @@
     "numerology": "Numerology",
     "babyNames": "Baby Names",
     "gemstone": "Gemstone & Rudraksha",
+    "muhurat": "Muhurat Finder",
     "compatibility": "Compatibility",
     "career": "Career & Business",
     "relationship": "Relationship",
@@ -413,7 +414,8 @@
     "palmPhotoRequiredDesc": "This report needs a real photo of your palm. Take one now or upload one from your gallery.",
     "continueToPayment": "Continue to payment",
     "numerologyDetailsRequiredDesc": "This report needs your full name and birth date to calculate your real numbers.",
-    "babyNameDetailsRequiredDesc": "This report needs the baby's real birth date, time, and place to calculate the real Nakshatra."
+    "babyNameDetailsRequiredDesc": "This report needs the baby's real birth date, time, and place to calculate the real Nakshatra.",
+    "muhuratDetailsRequiredDesc": "This report needs your event type, start date, and city to check 5 real days of Panchang data."
   },
   "personas": {
     "pageTitle": "Choose who to chat with",
@@ -564,6 +566,31 @@
     "practicalTitle": "How this is traditionally used",
     "detailedReportTitle": "Want a deeper analysis?",
     "detailedReportDesc": "Get a Full Gemstone & Rudraksha Report — every planet in your real chart reviewed, with supportive guidance for any that are weak.",
+    "getDetailedReport": "Get Detailed Report",
+    "startOver": "Start over"
+  },
+  "muhurat": {
+    "title": "Muhurat Finder",
+    "subtitle": "Real auspicious time windows from real Panchang/Choghadiya data — for travel, starting a business, or a general auspicious beginning.",
+    "eventTypeLabel": "Purpose",
+    "eventType": {
+      "general": "General",
+      "travel": "Travel",
+      "business_start": "Business Start"
+    },
+    "dateLabel": "Date",
+    "startDateLabel": "Start date",
+    "cityLabel": "City",
+    "generate": "Check Muhurat",
+    "generating": "Checking real Panchang data…",
+    "favorableTitle": "Favorable windows",
+    "noFavorableWindows": "No favorable windows were found for this date.",
+    "especiallyGoodFor": "Especially good for this",
+    "abhijitLabel": "Abhijit Muhurat",
+    "avoidTitle": "Avoid",
+    "noAvoidWindows": "No inauspicious windows were found for this date.",
+    "detailedReportTitle": "Want to check more days?",
+    "detailedReportDesc": "Get a 5-Day Muhurat Window Report — real favorable and avoid windows across 5 real days, with a clear top recommendation.",
     "getDetailedReport": "Get Detailed Report",
     "startOver": "Start over"
   },

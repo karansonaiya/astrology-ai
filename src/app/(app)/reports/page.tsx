@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { useCheckout } from "@/lib/payments/use-checkout";
-import { PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES } from "@/lib/pricing/catalog";
+import { PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, MUHURAT_REPORT_CODES } from "@/lib/pricing/catalog";
 import { ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_BASE64_LENGTH } from "@/lib/validations/chat";
 import { compressImageFile } from "@/lib/image/compress-image";
 import { CityAutocomplete } from "@/components/ui/city-autocomplete";
@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 const PALM_HANDOFF_KEY = "prerna:palm-photo-handoff";
 const NUMEROLOGY_HANDOFF_KEY = "prerna:numerology-handoff";
 const BABY_NAME_HANDOFF_KEY = "prerna:baby-name-handoff";
+const MUHURAT_HANDOFF_KEY = "prerna:muhurat-handoff";
 
 // Found live: a handoff photo/name+date saved once from the free page
 // never expired, so if the user saved one, never actually bought a report,
@@ -110,6 +111,18 @@ export default function ReportsPage() {
   });
   const [babyNameCoords, setBabyNameCoords] = useState<{ latitude: number; longitude: number } | null>(null);
 
+  // Same idea for the 5-Day Muhurat Window Report — needs a real event type
+  // + city + start date (create-order/route.ts requires all for
+  // MUHURAT_REPORT_CODES). No birth profile involved.
+  const [pendingMuhuratTemplate, setPendingMuhuratTemplate] = useState<Template | null>(null);
+  const [muhuratForm, setMuhuratForm] = useState({
+    eventType: "general" as "general" | "travel" | "business_start",
+    startDate: "",
+    city: "",
+    country: "India",
+  });
+  const [muhuratCoords, setMuhuratCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+
   // Guards the ?upsell=<x> auto-open effects below so they only ever fire
   // once — without this, a background react-query refetch of `templates`
   // after the user has already started editing a dialog's fields would
@@ -173,6 +186,14 @@ export default function ReportsPage() {
       latitude?: number;
       longitude?: number;
       genderPreference: "boy" | "girl" | "any";
+    },
+    muhuratInput?: {
+      eventType: "general" | "travel" | "business_start";
+      startDate: string;
+      city: string;
+      country?: string;
+      latitude?: number;
+      longitude?: number;
     }
   ) => {
     checkout(
@@ -184,6 +205,7 @@ export default function ReportsPage() {
         numerologyName: numerology?.name,
         numerologyBirthDate: numerology?.birthDate,
         babyNameInput,
+        muhuratInput,
       },
       {
         // Found live: this used to just switch to the "My Reports" tab,
@@ -255,6 +277,17 @@ export default function ReportsPage() {
         setBabyNameCoords(null);
       }
       setPendingBabyNameTemplate(tpl);
+    } else if (MUHURAT_REPORT_CODES.has(tpl.code)) {
+      // Same read-only reasoning as the other branches above.
+      const handoff = readSessionJson<typeof muhuratForm & { latitude?: number; longitude?: number }>(MUHURAT_HANDOFF_KEY);
+      if (handoff) {
+        setMuhuratForm({ eventType: handoff.eventType, startDate: handoff.startDate, city: handoff.city, country: handoff.country });
+        setMuhuratCoords(handoff.latitude != null && handoff.longitude != null ? { latitude: handoff.latitude, longitude: handoff.longitude } : null);
+      } else {
+        setMuhuratForm({ eventType: "general", startDate: "", city: "", country: "India" });
+        setMuhuratCoords(null);
+      }
+      setPendingMuhuratTemplate(tpl);
     } else {
       buy(tpl.code);
     }
@@ -292,6 +325,19 @@ export default function ReportsPage() {
     setPendingBabyNameTemplate(null);
   };
 
+  const muhuratCanSubmit = muhuratForm.startDate && muhuratForm.city.trim();
+
+  const confirmMuhuratPurchase = () => {
+    if (!pendingMuhuratTemplate || !muhuratCanSubmit) return;
+    buy(pendingMuhuratTemplate.code, undefined, undefined, undefined, {
+      ...muhuratForm,
+      latitude: muhuratCoords?.latitude,
+      longitude: muhuratCoords?.longitude,
+    });
+    sessionStorage.removeItem(MUHURAT_HANDOFF_KEY);
+    setPendingMuhuratTemplate(null);
+  };
+
   // Deep-link from the free Numerology page's "Get Detailed Report" button
   // (?upsell=numerology) — auto-opens the one numerology paid tier's dialog
   // once the store's templates have loaded (there's only one tier, unlike
@@ -303,8 +349,13 @@ export default function ReportsPage() {
   useEffect(() => {
     if (handledUpsellRef.current) return;
     const upsell = searchParams.get("upsell");
-    if (upsell !== "numerology" && upsell !== "baby-names") return;
-    const codes = upsell === "numerology" ? NUMEROLOGY_REPORT_CODES : BABY_NAME_REPORT_CODES;
+    const UPSELL_CODES: Record<string, Set<string>> = {
+      numerology: NUMEROLOGY_REPORT_CODES,
+      "baby-names": BABY_NAME_REPORT_CODES,
+      muhurat: MUHURAT_REPORT_CODES,
+    };
+    const codes = upsell ? UPSELL_CODES[upsell] : undefined;
+    if (!codes) return;
     const tpl = templates?.templates.find((tp) => codes.has(tp.code));
     if (!tpl) return;
     handledUpsellRef.current = true;
@@ -572,6 +623,72 @@ export default function ReportsPage() {
               </div>
             </div>
             <Button className="mt-2" disabled={!babyNameCanSubmit || loading} onClick={confirmBabyNamePurchase}>
+              {loading ? t("common.loading") : t("reports.continueToPayment")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!pendingMuhuratTemplate}
+        onOpenChange={(open) => {
+          if (!open) setPendingMuhuratTemplate(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {pendingMuhuratTemplate?.name}
+              {pendingMuhuratTemplate && <span className="ml-2 text-gold">{formatInr(pendingMuhuratTemplate.priceInPaise, `${locale}-IN`)}</span>}
+            </DialogTitle>
+            <DialogDescription>{t("reports.muhuratDetailsRequiredDesc")}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div>
+              <Label>{t("muhurat.eventTypeLabel")}</Label>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                {(["general", "travel", "business_start"] as const).map((e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    onClick={() => setMuhuratForm((f) => ({ ...f, eventType: e }))}
+                    className={cn(
+                      "focus-ring rounded-lg border px-3 py-1.5 text-sm transition-colors",
+                      muhuratForm.eventType === e ? "border-gold bg-gold/10 text-gold" : "border-border text-muted hover:text-foreground"
+                    )}
+                  >
+                    {t(`muhurat.eventType.${e}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="report-mh-date">{t("muhurat.startDateLabel")}</Label>
+              <Input
+                id="report-mh-date"
+                type="date"
+                value={muhuratForm.startDate}
+                onChange={(e) => setMuhuratForm((f) => ({ ...f, startDate: e.target.value }))}
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <Label>{t("muhurat.cityLabel")}</Label>
+              <div className="mt-1.5">
+                <CityAutocomplete
+                  value={muhuratForm.city}
+                  onChange={(text) => {
+                    setMuhuratForm((f) => ({ ...f, city: text }));
+                    setMuhuratCoords(null);
+                  }}
+                  onSelect={(place) => {
+                    setMuhuratForm((f) => ({ ...f, country: place.country }));
+                    setMuhuratCoords({ latitude: place.latitude, longitude: place.longitude });
+                  }}
+                />
+              </div>
+            </div>
+            <Button className="mt-2" disabled={!muhuratCanSubmit || loading} onClick={confirmMuhuratPurchase}>
               {loading ? t("common.loading") : t("reports.continueToPayment")}
             </Button>
           </div>

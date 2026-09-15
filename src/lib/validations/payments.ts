@@ -29,6 +29,19 @@ export const createOrderSchema = z.object({
       genderPreference: z.enum(["boy", "girl", "any"]),
     })
     .optional(),
+  // Muhurat Finder Report only (MUHURAT_REPORT_CODES) — required the same
+  // way, no birth profile involved (location+date based, not birth-profile
+  // based).
+  muhuratInput: z
+    .object({
+      eventType: z.enum(["general", "travel", "business_start"]),
+      startDate: z.string().date(),
+      city: z.string().min(1).max(120),
+      country: z.string().max(120).optional(),
+      latitude: z.number().min(-90).max(90).optional(),
+      longitude: z.number().min(-180).max(180).optional(),
+    })
+    .optional(),
 });
 
 export const verifyPaymentSchema = z.object({

@@ -1,12 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { grantCredits } from "@/lib/credits";
-import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, GEMSTONE_REPORT_CODES } from "@/lib/pricing/catalog";
+import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, GEMSTONE_REPORT_CODES, MUHURAT_REPORT_CODES } from "@/lib/pricing/catalog";
 import { generateAstrologyReply } from "@/lib/ai";
 import { getOrComputeKundliCalculation, summarizeKundliForAi, getCachedKundliByBirthDetails } from "@/lib/astrology/adapter";
 import { calculateDetailedNumerology, calculateNumerologyRawComponents, calculateNumerology } from "@/lib/numerology/calculate";
 import { getRealNamingSyllable } from "@/lib/naming/nakshatra-names";
 import { generateBabyNameSuggestions } from "@/lib/ai/baby-name-suggestion";
 import { getRealGemstoneRecommendation, getPlanetDignity } from "@/lib/astrology/gemstones";
+import { getPanchangForDates } from "@/lib/astrology/panchang";
+import { getRealMuhuratVerdict, type MuhuratEventType } from "@/lib/astrology/muhurat";
 import { geocodeBirthPlace, resolveTimezone } from "@/lib/geo";
 import type { AppLocale } from "@/lib/i18n/config";
 import { maybeRewardReferral } from "@/lib/referral";
@@ -84,6 +86,8 @@ export async function fulfillOrder(orderId: string) {
         content = await generateBabyNameReportContent(purchase.userId, purchase.template.name, purchase.babyNameInput as BabyNameInput);
       } else if (purchase.template && GEMSTONE_REPORT_CODES.has(purchase.template.code)) {
         content = await generateGemstoneReportContent(purchase.userId, purchase.template.name, purchase.birthProfileId);
+      } else if (purchase.template && MUHURAT_REPORT_CODES.has(purchase.template.code) && purchase.muhuratInput) {
+        content = await generateMuhuratReportContent(purchase.userId, purchase.template.name, purchase.muhuratInput as MuhuratInput);
       } else {
         content = await generateReportContent(purchase.userId, purchase.templateId, purchase.birthProfileId);
       }
@@ -531,6 +535,139 @@ Hard rules: never claim a gemstone or Rudraksha guarantees any outcome — frame
 
   return {
     templateCode: "gemstone_rudraksha_report",
+    templateName,
+    generatedAt: new Date().toISOString(),
+    birthDataUsed: true,
+    body: reply.text,
+  };
+}
+
+/**
+ * The 5-Day Muhurat Window Report — same real Choghadiya/Rahu-Kaal/Abhijit
+ * grounding as the free /muhurat-finder feature (see muhurat.ts), taken
+ * across 5 real consecutive days instead of the free page's single day.
+ *
+ * getPanchangForDates only live-fetches up to `maxLiveFetches` still-missing
+ * days per call (Prokerala's 5-req/60s account cap — see panchang.ts's
+ * header comment); any day beyond that, or any day whose live fetch itself
+ * fails, comes back null and is simply left out of the report rather than
+ * invented. If too FEW real days resolved to make a useful report (under 3
+ * of 5), this throws instead of generating a thin/empty report — thanks to
+ * fulfillOrder's retry fix above, that leaves the purchase safely retriable
+ * (a later retry, once more days have cached via the daily prefill cron or
+ * simply enough time has passed for the rate limit to clear, can succeed)
+ * rather than permanently completing with too little real content.
+ */
+export type MuhuratInput = {
+  eventType: MuhuratEventType;
+  startDate: string;
+  city: string;
+  country?: string;
+  latitude?: number;
+  longitude?: number;
+};
+
+const EVENT_LABEL: Record<MuhuratEventType, string> = {
+  general: "a general auspicious beginning",
+  travel: "starting a journey/travel",
+  business_start: "starting a business/new venture",
+};
+
+async function generateMuhuratReportContent(userId: string, templateName: string, input: MuhuratInput) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const locale = (user?.locale ?? "en") as AppLocale;
+  const langName: Record<AppLocale, string> = { en: "English", hi: "Hindi", gu: "Gujarati" };
+
+  const failed = (reason: string) => ({
+    templateCode: "muhurat_finder_report",
+    templateName,
+    generatedAt: new Date().toISOString(),
+    birthDataUsed: false,
+    body: reason,
+  });
+
+  const geo =
+    input.latitude != null && input.longitude != null
+      ? { latitude: input.latitude, longitude: input.longitude, timezone: resolveTimezone(input.latitude, input.longitude) }
+      : await geocodeBirthPlace(input.city, input.country).catch(() => null);
+  if (!geo || !geo.timezone) {
+    return failed("We could not determine this city's coordinates, so this report could not be generated. Please contact support — you will not be charged for a report that didn't generate.");
+  }
+
+  const dates: string[] = [];
+  const start = new Date(`${input.startDate}T00:00:00.000Z`);
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(start);
+    d.setUTCDate(d.getUTCDate() + i);
+    dates.push(d.toISOString().slice(0, 10));
+  }
+
+  const panchangByDate = await getPanchangForDates(geo.latitude, geo.longitude, geo.timezone, dates, 3);
+
+  const verdicts = dates
+    .filter((date) => panchangByDate[date] !== null)
+    .map((date) => getRealMuhuratVerdict(panchangByDate[date]!, input.eventType, date));
+
+  // A real generation failure (provider rate-limit, transient error) throws
+  // deep inside getPanchangForDates' per-date try/catch and comes back as
+  // `null` there rather than propagating — so an all-null result here still
+  // needs its own explicit failure path, same "throw so the purchase stays
+  // retriable" reasoning as the header comment above.
+  if (verdicts.length < 3) {
+    throw new Error(`Muhurat report: only ${verdicts.length}/5 days resolved real panchang data (rate-limited or provider hiccup) — leaving purchase pending for retry.`);
+  }
+
+  // Deterministic, code-computed "which real day stands out" — not an AI
+  // judgment call: a day with a real event-specific favorable Choghadiya
+  // (see muhurat.ts's isSpecialForEvent) ranks first, then by real
+  // favorable-window count. Presented to the AI as a real fact to narrate,
+  // same "AI never invents real data" principle as every other feature.
+  const scored = [...verdicts].sort((a, b) => {
+    const aSpecial = a.favorableWindows.some((w) => w.isSpecialForEvent) ? 1 : 0;
+    const bSpecial = b.favorableWindows.some((w) => w.isSpecialForEvent) ? 1 : 0;
+    if (aSpecial !== bSpecial) return bSpecial - aSpecial;
+    return b.favorableWindows.length - a.favorableWindows.length;
+  });
+  const topPick = scored[0];
+
+  const dayBlocks = verdicts
+    .map((v) => {
+      const favorableText = v.favorableWindows.length
+        ? v.favorableWindows.map((w) => `${w.name} (${w.type}), ${w.start}–${w.end}${w.isSpecialForEvent ? " [especially recommended for this purpose]" : ""}`).join("; ")
+        : "none";
+      const avoidText = v.avoidWindows.length ? v.avoidWindows.map((w) => `${w.name}, ${w.start}–${w.end}`).join("; ") : "none";
+      const abhijitText = v.abhijitWindow ? `${v.abhijitWindow.start}–${v.abhijitWindow.end}` : "not available";
+      return `${v.date}${v.vaara ? ` (${v.vaara})` : ""}: favorable windows: ${favorableText}. Avoid: ${avoidText}. Abhijit Muhurat: ${abhijitText}.`;
+    })
+    .join("\n");
+
+  const missingCount = 5 - verdicts.length;
+
+  const reply = await generateAstrologyReply({
+    userId,
+    locale,
+    history: [],
+    userMessage: `Here are the real, already-checked Panchang/Choghadiya facts for ${verdicts.length} of 5 real consecutive days starting ${input.startDate} in ${input.city}, for the purpose of ${EVENT_LABEL[input.eventType]} — never question, recalculate, or invent a window beyond exactly what is given below. Write entirely in ${langName[locale]}.
+
+${dayBlocks}
+
+The real day that stands out most for this purpose, based on the real data above, is ${topPick.date}${topPick.vaara ? ` (${topPick.vaara})` : ""}.
+${missingCount > 0 ? `Note: ${missingCount} of the 5 days could not be checked due to a temporary data-provider limit — do not mention specific dates for these, just note briefly that a couple of days were not available to check.` : ""}
+
+This is a PAID, in-depth "${templateName}" — it must read as substantial and genuinely valuable. Structure it as:
+1. An opening overview (4-5 sentences) on the purpose and the real date range covered.
+2. A day-by-day breakdown, one short section per day given above (3-4 sentences each), naming the real favorable/avoid windows and times.
+3. A clear top recommendation section (4-5 sentences) on the single day/window that stands out most, as given above, and why.
+4. Practical guidance (3-4 sentences) on how these windows are traditionally used.
+5. A closing reflection (3-4 sentences).
+
+Hard rules: never claim a time window guarantees any outcome — frame everything as traditional auspicious-timing guidance for reflection and intention, not a guarantee. Never give medical, legal, or financial advice.`,
+    feature: "report",
+    maxTokens: 7000,
+  });
+
+  return {
+    templateCode: "muhurat_finder_report",
     templateName,
     generatedAt: new Date().toISOString(),
     birthDataUsed: true,
