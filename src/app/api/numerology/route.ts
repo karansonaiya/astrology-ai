@@ -32,8 +32,9 @@ export async function POST(req: NextRequest) {
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
     const locale = (dbUser?.locale ?? "en") as AppLocale;
 
-    const numbers = calculateNumerology(parsed.data.name, new Date(`${parsed.data.birthDate}T00:00:00.000Z`));
-    const reading = await generateNumerologyReading(numbers, locale);
+    const birthDate = new Date(`${parsed.data.birthDate}T00:00:00.000Z`);
+    const numbers = calculateNumerology(parsed.data.name, birthDate);
+    const reading = await generateNumerologyReading(parsed.data.name, birthDate, numbers, locale);
 
     return NextResponse.json({ reading });
   } catch (err) {

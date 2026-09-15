@@ -26,6 +26,7 @@ type NumerologyReading = {
   personality: NumerologyMeaning;
   birthday: NumerologyMeaning;
   summary: string;
+  followUpQuestion: string;
 };
 
 export default function NumerologyPage() {
@@ -131,6 +132,10 @@ export default function NumerologyPage() {
               </CardContent>
             </Card>
           ))}
+
+          {reading.followUpQuestion && (
+            <p className="text-sm italic text-muted">{reading.followUpQuestion}</p>
+          )}
 
           <Card className="border-gold/30 bg-gold/5">
             <CardContent className="flex flex-col items-start gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">

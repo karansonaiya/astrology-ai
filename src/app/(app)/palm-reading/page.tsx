@@ -22,7 +22,7 @@ import { PalmReferenceDiagram } from "@/components/palm-reference-diagram";
 const MAX_IMAGE_BYTES = Math.floor((MAX_IMAGE_BASE64_LENGTH * 3) / 4);
 
 type PalmLine = { name: string; observation: string; meaning: string };
-type PalmReading = { overview: string; handShape: string; lines: PalmLine[]; summary: string };
+type PalmReading = { overview: string; handShape: string; lines: PalmLine[]; summary: string; followUpQuestion: string };
 type ReportTemplate = { code: string; priceInPaise: number };
 
 export default function PalmReadingPage() {
@@ -237,6 +237,10 @@ export default function PalmReadingPage() {
               <p className="text-sm leading-relaxed">{reading.summary}</p>
             </CardContent>
           </Card>
+
+          {reading.followUpQuestion && (
+            <p className="text-sm italic text-muted">{reading.followUpQuestion}</p>
+          )}
 
           <Card className="border-gold/30 bg-gold/5">
             <CardContent className="flex flex-col items-start gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">

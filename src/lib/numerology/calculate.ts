@@ -129,3 +129,46 @@ export function calculateDetailedNumerology(
 
   return { ...base, maturity, personalYear, karmicDebtNumbers: [...karmicDebtNumbers] };
 }
+
+export type NumerologyRawComponents = {
+  day: number;
+  month: number;
+  year: number;
+  dayReduced: number;
+  monthReduced: number;
+  yearDigitSum: number;
+  yearReduced: number;
+  destinyRawSum: number;
+  soulUrgeRawSum: number;
+  personalityRawSum: number;
+};
+
+/**
+ * The exact intermediate arithmetic behind calculateNumerology's 5 numbers —
+ * NOT for display as separate numbers, but so the AI reading (numerology-
+ * reading.ts) can accurately narrate each real calculation ("your birth day
+ * 15 reduces to 6, your birth month...") as GIVEN facts instead of trying to
+ * reconstruct/guess the arithmetic itself from just the final number, which
+ * an LLM is not reliably accurate at and would risk narrating a plausible-
+ * looking but wrong calculation. Same 100%-real-math guarantee as
+ * calculateNumerology, just exposing the steps instead of only the result.
+ */
+export function calculateNumerologyRawComponents(name: string, birthDate: Date): NumerologyRawComponents {
+  const day = birthDate.getUTCDate();
+  const month = birthDate.getUTCMonth() + 1;
+  const year = birthDate.getUTCFullYear();
+  const letters = name.toLowerCase().split("").filter((c) => LETTER_VALUES[c] != null);
+
+  return {
+    day,
+    month,
+    year,
+    dayReduced: reduceToDigitOrMaster(day),
+    monthReduced: reduceToDigitOrMaster(month),
+    yearDigitSum: sumDigits(year),
+    yearReduced: reduceToDigitOrMaster(sumDigits(year)),
+    destinyRawSum: letters.reduce((sum, c) => sum + LETTER_VALUES[c], 0),
+    soulUrgeRawSum: letters.filter((c) => VOWELS.has(c)).reduce((sum, c) => sum + LETTER_VALUES[c], 0),
+    personalityRawSum: letters.filter((c) => !VOWELS.has(c)).reduce((sum, c) => sum + LETTER_VALUES[c], 0),
+  };
+}
