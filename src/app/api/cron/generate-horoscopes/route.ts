@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateHoroscopesForDate, type GenerateHoroscopesResult } from "@/lib/horoscope-automation";
+import { ZODIAC_SIGNS, type ZodiacSign } from "@/lib/zodiac";
 
 /**
  * Unattended daily automation — see CLAUDE.md and the admin route for why
@@ -26,11 +27,27 @@ import { generateHoroscopesForDate, type GenerateHoroscopesResult } from "@/lib/
  * logic making a retry cheap (it only redoes whatever didn't finish).
  * Omitting `locale` keeps the old all-3-locales-in-one-call behavior, still
  * useful for a local/manual full run.
+ *
+ * Optional `?sign=<zodiacSign>` scopes further, to one sign within that
+ * locale. Found live (2026-09-15): even one locale's 12 signs together
+ * could trip the AI provider's per-minute rate limit (see horoscope-
+ * automation.ts's CONCURRENCY comment) — and Netlify's function timeout
+ * (a hard 10s on the free/personal plan) leaves no room to fix that with
+ * an in-process delay, only with smaller, separately-timed requests.
+ * daily-cron.yml now calls this once per (locale, sign) pair — 36 small,
+ * fast requests spaced out by real delays in the workflow itself, instead
+ * of 3 requests each trying to do 12 signs' worth of AI calls in one
+ * 10-second window. Omitting `sign` keeps the previous all-12-signs
+ * behavior for that locale, still used by the admin "Generate with AI"
+ * button and local/manual runs.
  */
 const LOCALES = ["en", "hi", "gu"] as const;
 type Locale = (typeof LOCALES)[number];
 function isLocale(v: string | null): v is Locale {
   return v != null && (LOCALES as readonly string[]).includes(v);
+}
+function isZodiacSign(v: string | null): v is ZodiacSign {
+  return v != null && (ZODIAC_SIGNS as readonly string[]).includes(v);
 }
 
 function isAuthorized(req: NextRequest): boolean {
@@ -67,11 +84,18 @@ export async function GET(req: NextRequest) {
 async function handle(req: NextRequest) {
   if (!isAuthorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const requestedLocale = new URL(req.url).searchParams.get("locale");
+  const url = new URL(req.url);
+  const requestedLocale = url.searchParams.get("locale");
   if (requestedLocale != null && !isLocale(requestedLocale)) {
     return NextResponse.json({ error: "invalid_locale" }, { status: 400 });
   }
   const locales: readonly Locale[] = requestedLocale ? [requestedLocale] : LOCALES;
+
+  const requestedSign = url.searchParams.get("sign");
+  if (requestedSign != null && !isZodiacSign(requestedSign)) {
+    return NextResponse.json({ error: "invalid_sign" }, { status: 400 });
+  }
+  const signs = requestedSign ? [requestedSign] : undefined;
 
   const { dateStr, weekday, dayOfMonth } = getIstToday();
   const periodDate = new Date(`${dateStr}T00:00:00.000Z`);
@@ -84,7 +108,7 @@ async function handle(req: NextRequest) {
   for (const period of periods) {
     results[period] = {};
     for (const locale of locales) {
-      results[period][locale] = await generateHoroscopesForDate({ period, locale, periodDate, autoPublish: true });
+      results[period][locale] = await generateHoroscopesForDate({ period, locale, periodDate, signs, autoPublish: true });
     }
   }
 

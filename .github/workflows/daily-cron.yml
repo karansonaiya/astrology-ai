@@ -25,24 +25,22 @@ name: Daily content automation
 # instead of once. A successful run makes every later retry that day a
 # handful of instant no-op skip-checks — cheap insurance against any one
 # firing being dropped or delayed past when users start checking.
-# PAUSED 2026-09-15: the `schedule:` triggers below were disabled (not
-# deleted — uncomment to re-enable) because daily runs were failing and
-# emailing a failure notice every day, AND consuming real AI-provider
-# quota/spend on every attempt even when the run still ended up failing
-# overall. Manual `workflow_dispatch` (the button in the Actions tab) still
-# works for a one-off backfill/test in the meantime. Root cause of the
-# failures needs to be diagnosed before turning this back on — re-enabling
-# it as-is would just resume the same daily failure emails and AI spend.
+# PAUSED 2026-09-15, then RE-ENABLED the same day once the real cause was
+# fixed: daily runs were failing (emailing a failure notice every day) and
+# burning real AI-provider quota on every attempt with nothing to show for
+# it — see the "Generate daily horoscopes" step below for the actual root
+# cause (a free-tier AI rate limit colliding with Netlify's 10s function
+# timeout) and the fix (one small request per sign instead of 12 at once).
 on:
-  # schedule:
-  #   - cron: "0 0 * * *"    # prefill-panchang, 00:00 UTC (once — not seen to have this problem)
-  #   - cron: "30 0 * * *"   # generate-horoscopes — primary attempt, 00:30 UTC (06:00 IST)
-  #   - cron: "0 1 * * *"    # send-daily-reminder push, 01:00 UTC (06:30 IST) — after the primary attempt above has had time to finish
-  #   - cron: "30 2 * * *"   # generate-horoscopes — retry, 02:30 UTC (08:00 IST)
-  #   - cron: "30 4 * * *"   # generate-horoscopes — retry, 04:30 UTC (10:00 IST)
-  #   - cron: "30 6 * * *"   # generate-horoscopes — retry, 06:30 UTC (12:00 IST)
-  #   - cron: "30 8 * * *"   # generate-horoscopes — retry, 08:30 UTC (14:00 IST)
-  #   - cron: "30 10 * * *"  # generate-horoscopes — retry, 10:30 UTC (16:00 IST)
+  schedule:
+    - cron: "0 0 * * *"    # prefill-panchang, 00:00 UTC (once — not seen to have this problem)
+    - cron: "30 0 * * *"   # generate-horoscopes — primary attempt, 00:30 UTC (06:00 IST)
+    - cron: "0 1 * * *"    # send-daily-reminder push, 01:00 UTC (06:30 IST) — after the primary attempt above has had time to finish
+    - cron: "30 2 * * *"   # generate-horoscopes — retry, 02:30 UTC (08:00 IST)
+    - cron: "30 4 * * *"   # generate-horoscopes — retry, 04:30 UTC (10:00 IST)
+    - cron: "30 6 * * *"   # generate-horoscopes — retry, 06:30 UTC (12:00 IST)
+    - cron: "30 8 * * *"   # generate-horoscopes — retry, 08:30 UTC (14:00 IST)
+    - cron: "30 10 * * *"  # generate-horoscopes — retry, 10:30 UTC (16:00 IST)
   workflow_dispatch: {} # manual "Run workflow" button, for backfills/testing
 
 jobs:
@@ -78,31 +76,40 @@ jobs:
 
       - name: Generate daily horoscopes
         if: steps.which.outputs.horoscopes == 'true'
-        # One request per locale, not one request for all 3 — found live
-        # that a single all-locales call (up to 36 AI generations) reliably
-        # 502'd from Netlify's function timeout, which is exactly what was
-        # showing up as this job's daily failure email. Each locale is now a
-        # third of the work, and idempotent (already-generated signs are
-        # skipped instantly), so a retry after a timeout is cheap and only
-        # redoes whatever didn't finish. The job only actually fails (and
-        # emails) if one locale still can't get through after 3 tries.
+        # One request per (locale, sign) pair now — not one per locale.
+        # Found live 2026-09-15: even one locale's 12 signs in a single
+        # request could trip the AI provider's free-tier per-minute rate
+        # limit (the account is staying on the free tier, not upgrading),
+        # and every rate-limited call fell through the whole model fallback
+        # chain, slowing the request down enough to 502 on Netlify's function
+        # timeout (a hard 10s on the free/personal plan — confirmed against
+        # Netlify's own docs). There's no way to pace 12 AI calls safely
+        # under a per-minute limit AND finish inside a 10-second function
+        # window at the same time, so the pacing has to happen out here
+        # instead: 36 small, fast requests (each well under the 10s wall on
+        # its own), spaced out for real by the `sleep 5` below. Still
+        # idempotent either way — already-generated signs are skipped
+        # instantly, so a retry after any failure is cheap.
         run: |
           for locale in en hi gu; do
-            echo "== horoscopes: $locale =="
-            success=false
-            for attempt in 1 2 3; do
-              if curl -sS -f -X GET "${{ vars.APP_URL }}/api/cron/generate-horoscopes?locale=$locale" \
-                   -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"; then
-                success=true
-                break
+            for sign in aries taurus gemini cancer leo virgo libra scorpio sagittarius capricorn aquarius pisces; do
+              echo "== horoscopes: locale=$locale sign=$sign =="
+              success=false
+              for attempt in 1 2 3; do
+                if curl -sS -f -X GET "${{ vars.APP_URL }}/api/cron/generate-horoscopes?locale=$locale&sign=$sign" \
+                     -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"; then
+                  success=true
+                  break
+                fi
+                echo "attempt $attempt for locale=$locale sign=$sign failed, retrying in 10s..."
+                sleep 10
+              done
+              if [ "$success" != "true" ]; then
+                echo "::error::horoscope generation failed for locale=$locale sign=$sign after 3 attempts"
+                exit 1
               fi
-              echo "attempt $attempt for locale=$locale failed, retrying in 10s..."
-              sleep 10
+              sleep 5 # pace requests well under the AI provider's free-tier per-minute rate limit
             done
-            if [ "$success" != "true" ]; then
-              echo "::error::horoscope generation failed for locale=$locale after 3 attempts"
-              exit 1
-            fi
           done
 
       - name: Prefill panchang cache

@@ -6,10 +6,35 @@ import { geocodeBirthPlace } from "@/lib/geo";
 import { getCachedPanchang, buildLocalMorningDateTime } from "@/lib/astrology/panchang";
 import { getTransitPlanetPositions, houseFromSign } from "@/lib/astrology/adapter";
 
-// Small concurrency cap so a bulk "all 12 signs" generate doesn't fire 12
-// simultaneous requests at the AI provider (rate limits, especially on a
-// free-tier key) — still meaningfully faster than fully sequential.
-const CONCURRENCY = 4;
+// Found live (2026-09-15): a burst of 4 simultaneous requests against the
+// SAME free-tier Gemini model reliably trips its per-MINUTE rate limit
+// (its per-DAY quota, 500 RPD, is nowhere near exhausted — the account is
+// staying on the free tier, not upgrading, see .env's GEMINI_MODEL
+// comment). Every rate-limited call then falls through provider.ts's
+// entire fallback chain (6+ other models, each a real network round-trip),
+// which both slows this request down a lot AND burns into THOSE models'
+// separate free quotas — quotas real user-facing features (chat, career,
+// etc.) rely on all day.
+//
+// The tempting fix — add a real delay between calls so the request rate
+// respects the per-minute cap — does NOT work here: Netlify's free/
+// personal-plan function timeout is a hard 10 SECONDS per invocation
+// (confirmed against Netlify's own docs/support forum, 2026-09-15), and a
+// safe per-minute pace for 12 signs needs 30-90+ seconds, not 10. That
+// ceiling is exactly why generate-horoscopes/route.ts already splits the
+// cron into one request per locale rather than one for everything — and
+// now also splits further, one request per (locale, sign) pair (see that
+// route's `sign` query param), each fast enough alone to fit the 10s wall.
+// daily-cron.yml is what actually spaces those 36 separate requests out
+// over real time — that pacing has to live OUTSIDE any single Netlify
+// function's execution window, in the caller driving it.
+//
+// Concurrency here is just a modest safety margin for whoever still calls
+// this with multiple signs in one request (the admin "Generate with AI"
+// button, or a local/manual full run) — it doesn't need to be paranoid
+// about rate limits the way the automated daily cron does, since a manual
+// click is rare and tolerates an occasional slow fallback-chain hit.
+const CONCURRENCY = 2;
 
 // Same reference city as /api/cron/prefill-panchang — deliberately the same
 // lat/lon so this hits that cron's already-warmed PanchangCache instead of
