@@ -418,6 +418,7 @@ model KundliCalculation {
   dasha              Json?
   yogas              Json? // Array<{name, description}> — see adapter.ts's Yoga type
   aspects            Json? // Array<PlanetAspect> — see src/lib/astrology/aspects.ts
+  mangalDosha        Json? // MangalDosha (adapter.ts) — real Prokerala data, only computed when birth time is known
 
   // Cached full AI-generated "explain my kundli" reading (see
   // /api/kundli/explain) — generated once per locale, reused on repeat

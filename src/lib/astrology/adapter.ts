@@ -29,6 +29,25 @@ export type PlanetPosition = {
 
 export type Yoga = { name: string; description: string };
 
+// Real Mangal Dosha (Manglik) data — Prokerala's /kundli/advanced response
+// already includes this (verified live, 2026-09-15: has_dosha, description,
+// has_exception, type (severity: "Mild" etc.), exceptions[] and remedies[]
+// are all real fields Prokerala itself computes and writes) — this had been
+// fetched-and-ignored until now (see the ProkeralaAstrologyProvider comment
+// below). Depends on the real ascendant (Mars's house relative to Lagna),
+// so — same as ascendant/houses/dasha — only meaningful when birth time is
+// known; null otherwise.
+export type MangalDosha = {
+  hasDosha: boolean;
+  severity: string | null;
+  description: string | null;
+  hasException: boolean;
+  /** Real, classical reasons the dosha's effect is reduced/cancelled for this specific chart (e.g. Mars as yoga karaka for this ascendant) — Prokerala's own text, not AI-generated. */
+  exceptions: string[];
+  /** Real traditional remedies, as Prokerala's own text — shown for reflection, never as a paid-service upsell (see policy.ts's explicit rule against monetizing dosha fear). */
+  remedies: string[];
+};
+
 export type KundliResult = {
   provider: string;
   isDemoData: boolean;
@@ -48,6 +67,7 @@ export type KundliResult = {
   dasha: Array<{ period: string; from: string; to: string }> | null;
   yogas: Yoga[] | null;
   aspects: PlanetAspect[] | null;
+  mangalDosha: MangalDosha | null;
   configRequired: boolean;
 };
 
@@ -102,6 +122,16 @@ class MockAstrologyProvider implements AstrologyProvider {
       // positions below, so the mock chart's aspects are internally
       // consistent with its own (demo) houses rather than separately faked.
       aspects: computeVedicAspects(planetaryPositions),
+      mangalDosha: input.birthTimeKnown
+        ? {
+            hasDosha: seed % 3 === 0,
+            severity: seed % 3 === 0 ? "Mild (demo)" : null,
+            description: seed % 3 === 0 ? "Demo/placeholder Mangal Dosha description — not a real calculation." : null,
+            hasException: seed % 3 === 0,
+            exceptions: seed % 3 === 0 ? ["Demo exception — not real."] : [],
+            remedies: seed % 3 === 0 ? ["Demo remedy — not real."] : [],
+          }
+        : null,
       configRequired: false,
     };
   }
@@ -130,6 +160,7 @@ class RealAstrologyProvider implements AstrologyProvider {
       dasha: null,
       yogas: null,
       aspects: null,
+      mangalDosha: null,
       configRequired: true,
     };
   }
@@ -279,6 +310,7 @@ class ProkeralaAstrologyProvider implements AstrologyProvider {
         dasha: null,
         yogas: null,
         aspects: null,
+        mangalDosha: null,
         configRequired: true,
       };
     }
@@ -384,6 +416,30 @@ class ProkeralaAstrologyProvider implements AstrologyProvider {
     // (Prokerala has no drishti/aspects endpoint at all).
     const aspects = computeVedicAspects(planetaryPositions);
 
+    // Real Mangal Dosha — see MangalDosha's header comment. Depends on the
+    // real ascendant (same gate as houses/dasha above), so only meaningful
+    // when birth time is known.
+    type ApiMangalDosha = {
+      has_dosha?: boolean;
+      description?: string;
+      has_exception?: boolean;
+      type?: string;
+      exceptions?: string[];
+      remedies?: string[];
+    };
+    const rawDosha: ApiMangalDosha | undefined = kundliData?.data?.mangal_dosha;
+    const mangalDosha: KundliResult["mangalDosha"] =
+      input.birthTimeKnown && rawDosha
+        ? {
+            hasDosha: Boolean(rawDosha.has_dosha),
+            severity: rawDosha.type ?? null,
+            description: rawDosha.description ?? null,
+            hasException: Boolean(rawDosha.has_exception),
+            exceptions: Array.isArray(rawDosha.exceptions) ? rawDosha.exceptions.map((e) => e.trim()) : [],
+            remedies: Array.isArray(rawDosha.remedies) ? rawDosha.remedies.map((r) => r.trim()) : [],
+          }
+        : null;
+
     let dasha: KundliResult["dasha"] = null;
     if (input.birthTimeKnown) {
       const dashaRes = await fetchProkeralaWithRetry(`https://api.prokerala.com/v2/astrology/dasha-periods?${qs}`, {
@@ -414,6 +470,7 @@ class ProkeralaAstrologyProvider implements AstrologyProvider {
       dasha,
       yogas,
       aspects,
+      mangalDosha,
       configRequired: false,
     };
   }
@@ -551,7 +608,14 @@ export async function getOrComputeKundliCalculation(profile: {
   // the same birthTimeKnown flag) is not — recompute once to backfill,
   // same reasoning as the yogas/aspects check above.
   const isStalePreNakshatraPadaRow = existing && existing.houses != null && existing.nakshatraPada == null;
-  if (existing && !isStalePreMigrationRow && !isStalePreNakshatraPadaRow) return existing;
+  // Same idea, one more migration later: a row cached before mangalDosha
+  // existed has it null even though houses is not — recompute once to
+  // backfill. Unlike nakshatraPada, a real "no dosha found" IS `null`-ish
+  // in shape too (hasDosha: false, not a null object) — but the shape
+  // itself (an object at all) still distinguishes "backfilled" from
+  // "never computed", so this check is still correct.
+  const isStalePreMangalDoshaRow = existing && existing.houses != null && existing.mangalDosha == null;
+  if (existing && !isStalePreMigrationRow && !isStalePreNakshatraPadaRow && !isStalePreMangalDoshaRow) return existing;
 
   const result = await getAstrologyProvider().calculateKundli({
     birthDate: profile.birthDate,
@@ -587,6 +651,7 @@ export async function getOrComputeKundliCalculation(profile: {
       dasha: result.dasha,
       yogas: result.yogas,
       aspects: result.aspects,
+      mangalDosha: result.mangalDosha,
       explanation: null,
       explanationLocale: null,
       calculatedAt: new Date(),
@@ -619,6 +684,7 @@ export async function getOrComputeKundliCalculation(profile: {
     dasha: result.dasha ?? undefined,
     yogas: result.yogas ?? undefined,
     aspects: result.aspects ?? undefined,
+    mangalDosha: result.mangalDosha ?? undefined,
   };
   return prisma.kundliCalculation.upsert({
     where: { birthProfileId: profile.id },
@@ -667,12 +733,12 @@ export async function getCachedKundliByBirthDetails(input: BirthInput): Promise<
   if (existing) {
     const cached = existing.data as unknown as KundliResult;
     // Same self-healing idea as getOrComputeKundliCalculation's staleness
-    // checks: a row cached before nakshatraPada existed simply never had
-    // that key in its JSON at all (not even `null`) — recompute once
-    // rather than serving that forever. This cache has no schema
+    // checks: a row cached before nakshatraPada/mangalDosha existed simply
+    // never had that key in its JSON at all (not even `null`) — recompute
+    // once rather than serving that forever. This cache has no schema
     // migration to run (data is a plain JSON blob), so this check is the
     // only fix needed.
-    if ("nakshatraPada" in cached) return cached;
+    if ("nakshatraPada" in cached && "mangalDosha" in cached) return cached;
   }
 
   const result = await getAstrologyProvider().calculateKundli({ ...input, latitude, longitude });

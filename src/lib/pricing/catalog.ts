@@ -142,6 +142,22 @@ export const REPORT_TEMPLATES = [
     description: "Every traditional Samudrik Shastra feature in your real photo reviewed in depth — forehead, eyebrows, eyes, nose, lips, chin, and ears.",
     priceInPaise: 9900,
   },
+  // Mangal Dosha (Manglik) upsell — real Prokerala-computed data (see
+  // src/lib/astrology/adapter.ts's MangalDosha type: has_dosha, severity,
+  // description, exceptions, and remedies are all real fields Prokerala's
+  // /kundli/advanced endpoint already returns, previously fetched-and-
+  // ignored). No special purchase-time input needed (uses the same
+  // birthProfileId every basic report already accepts, same as gemstone).
+  // Market check (2026-09-15): general astrology consultations (which
+  // commonly cover Manglik matching) run Rs.300-800 entry-level, Rs.500-
+  // 3000+ typical; priced well below that, consistent with this session's
+  // other new features, since the real cost is a single AI text call.
+  {
+    code: "mangal_dosha_report",
+    name: "Detailed Mangal Dosha & Marriage Readiness Report",
+    description: "A deeper look at your real chart's Mangal Dosha result — real classical exceptions, traditional remedies explained, and what it means for marriage compatibility.",
+    priceInPaise: 9900,
+  },
 ];
 
 // Report template codes whose fulfillment requires a real uploaded photo
@@ -177,6 +193,10 @@ export const MUHURAT_REPORT_CODES = new Set(["muhurat_finder_report"]);
 // Same idea as PALM_REPORT_CODES — needs a real uploaded photo (a face
 // photo, not a palm one) captured at order-creation time.
 export const FACE_REPORT_CODES = new Set(["face_reading_report"]);
+
+// Same idea as GEMSTONE_REPORT_CODES — no special purchase-time input,
+// reuses the standard birthProfileId every basic report already accepts.
+export const MANGAL_DOSHA_REPORT_CODES = new Set(["mangal_dosha_report"]);
 
 export const PLANS = [
   {

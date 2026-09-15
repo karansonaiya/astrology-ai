@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { grantCredits } from "@/lib/credits";
-import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, GEMSTONE_REPORT_CODES, MUHURAT_REPORT_CODES, FACE_REPORT_CODES } from "@/lib/pricing/catalog";
+import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, GEMSTONE_REPORT_CODES, MUHURAT_REPORT_CODES, FACE_REPORT_CODES, MANGAL_DOSHA_REPORT_CODES } from "@/lib/pricing/catalog";
+import type { MangalDosha } from "@/lib/astrology/adapter";
 import { generateAstrologyReply } from "@/lib/ai";
 import { getOrComputeKundliCalculation, summarizeKundliForAi, getCachedKundliByBirthDetails } from "@/lib/astrology/adapter";
 import { calculateDetailedNumerology, calculateNumerologyRawComponents, calculateNumerology } from "@/lib/numerology/calculate";
@@ -90,6 +91,8 @@ export async function fulfillOrder(orderId: string) {
         content = await generateMuhuratReportContent(purchase.userId, purchase.template.name, purchase.muhuratInput as MuhuratInput);
       } else if (purchase.template && FACE_REPORT_CODES.has(purchase.template.code) && purchase.photoData && purchase.photoMimeType) {
         content = await generateFaceReportContent(purchase.userId, purchase.template.name, { data: purchase.photoData, mimeType: purchase.photoMimeType });
+      } else if (purchase.template && MANGAL_DOSHA_REPORT_CODES.has(purchase.template.code)) {
+        content = await generateMangalDoshaReportContent(purchase.userId, purchase.template.name, purchase.birthProfileId);
       } else {
         content = await generateReportContent(purchase.userId, purchase.templateId, purchase.birthProfileId);
       }
@@ -715,6 +718,74 @@ Structure it as:
     templateName,
     generatedAt: new Date().toISOString(),
     birthDataUsed: false,
+    body: reply.text,
+  };
+}
+
+/**
+ * The Detailed Mangal Dosha & Marriage Readiness Report — same real
+ * Prokerala-computed dosha data as the free /mangal-dosha feature (see
+ * adapter.ts's MangalDosha type), no special purchase-time input (reuses
+ * the standard birthProfileId every basic report already accepts).
+ */
+async function generateMangalDoshaReportContent(userId: string, templateName: string, birthProfileId: string | null) {
+  const [profile, user] = await Promise.all([
+    birthProfileId ? prisma.birthProfile.findFirst({ where: { id: birthProfileId, userId } }) : Promise.resolve(null),
+    prisma.user.findUnique({ where: { id: userId } }),
+  ]);
+  const locale = (user?.locale ?? "en") as AppLocale;
+  const langName: Record<AppLocale, string> = { en: "English", hi: "Hindi", gu: "Gujarati" };
+
+  const failed = (reason: string) => ({
+    templateCode: "mangal_dosha_report",
+    templateName,
+    generatedAt: new Date().toISOString(),
+    birthDataUsed: false,
+    body: reason,
+  });
+
+  if (!profile || !profile.birthTimeKnown) {
+    return failed("This report needs your real birth profile with a known birth time to determine Mangal Dosha (it depends on Mars's real house position). Please add your exact birth time and contact support — you will not be charged for a report that didn't generate.");
+  }
+
+  const calc = await getOrComputeKundliCalculation(profile);
+  const mangalDosha = calc.mangalDosha as unknown as MangalDosha | null;
+  if (!mangalDosha) {
+    return failed("We could not determine your real Mangal Dosha result for this report. Please contact support — you will not be charged for a report that didn't generate.");
+  }
+
+  const exceptionsText = mangalDosha.exceptions.length ? mangalDosha.exceptions.join(" ") : "none";
+  const remediesText = mangalDosha.remedies.length ? mangalDosha.remedies.join(" ") : "none";
+
+  const reply = await generateAstrologyReply({
+    userId,
+    locale,
+    history: [],
+    userMessage: `Here are the real, already-determined facts for this person's real chart — never question, recalculate, or change any of them, only explain and give calm context around them. Write entirely in ${langName[locale]}.
+
+Mangal Dosha present: ${mangalDosha.hasDosha ? "yes" : "no"}
+Real severity: ${mangalDosha.severity ?? "not applicable"}
+Real description (from the provider): ${mangalDosha.description ?? "not applicable"}
+Real exceptions: ${exceptionsText}
+Real traditional remedies: ${remediesText}
+
+This is a PAID, in-depth "${templateName}" — it must read as substantial and genuinely valuable, clearly deeper than a free reading. Structure it as:
+1. An opening overview (5-6 sentences) on the real result above, calm and without alarm.
+2. A section (5-7 sentences) explaining the real severity/description given above and what it traditionally means for marriage matching specifically.
+3. A section (4-6 sentences) on the real exceptions given above (if any) and their traditional calming effect — if none were given, explicitly say none were found rather than inventing one.
+4. A section (5-7 sentences) introducing the real traditional remedies given above as optional reference information — explicitly note they are not a requirement, and that a knowledgeable priest/astrologer should be consulted before undertaking any of them; if no dosha was found, instead write that no remedies are needed.
+5. A closing reflection (4-5 sentences) noting that real marriage compatibility depends on many factors — communication, values, and mutual respect — far more than any single traditional factor.
+
+Hard rules: never use fear tactics or present this as a certain misfortune. Never instruct spending money on any remedy. Never claim marriage compatibility depends on this factor alone. Never give medical, legal, or financial advice.`,
+    feature: "report",
+    maxTokens: 7000,
+  });
+
+  return {
+    templateCode: "mangal_dosha_report",
+    templateName,
+    generatedAt: new Date().toISOString(),
+    birthDataUsed: true,
     body: reply.text,
   };
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, MessageCircle, Users, User, Sun, Sparkles, GitCompareArrows, Briefcase, Heart,
-  FileText, Wallet, CreditCard, Gift, Settings, LifeBuoy, Hand, Hash, Baby, Gem, CalendarClock, ScanFace,
+  FileText, Wallet, CreditCard, Gift, Settings, LifeBuoy, Hand, Hash, Baby, Gem, CalendarClock, ScanFace, Flame,
 } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,7 @@ export function AppSidebar() {
         { href: "/baby-names", icon: Baby, label: t("nav.babyNames") },
         { href: "/gemstone-suggestion", icon: Gem, label: t("nav.gemstone") },
         { href: "/muhurat-finder", icon: CalendarClock, label: t("nav.muhurat") },
+        { href: "/mangal-dosha", icon: Flame, label: t("nav.mangalDosha") },
         { href: "/compatibility", icon: GitCompareArrows, label: t("nav.compatibility") },
         { href: "/career", icon: Briefcase, label: t("nav.career") },
         { href: "/relationship", icon: Heart, label: t("nav.relationship") },
