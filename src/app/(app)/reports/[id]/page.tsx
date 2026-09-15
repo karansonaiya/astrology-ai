@@ -11,12 +11,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, ArrowLeft } from "lucide-react";
+import { Download, ArrowLeft, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { AiMarkdown } from "@/components/ui/ai-markdown";
 
 type Purchase = {
   id: string;
+  status: "pending" | "completed" | "failed" | "refunded";
   createdAt: string;
   template: { name: string };
   birthProfile: { birthDate: string; birthCity: string | null } | null;
@@ -32,6 +33,14 @@ export default function ReportDetailPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["report", params.id],
     queryFn: () => apiFetch<{ purchase: Purchase }>(`/api/reports/${params.id}`),
+    // Found live: landing here straight after payment (see payments/
+    // return/page.tsx and reports/page.tsx's checkout onSuccess) usually
+    // already has the report ready (fulfillOrder generates it
+    // synchronously during payment verification) — but not always
+    // (webhook/client-verify race, a slow AI call) — poll while still
+    // "pending" instead of silently showing a blank report with no
+    // explanation, same pattern as the "My Reports" list.
+    refetchInterval: (query) => (query.state.data?.purchase.status === "pending" ? 2000 : false),
   });
 
   if (isLoading) return <div className="mx-auto max-w-2xl px-4 py-8 md:px-6"><Skeleton className="h-96" /></div>;
@@ -70,6 +79,13 @@ export default function ReportDetailPage() {
 
       <Card className="mt-4">
         <CardContent className="pt-5">
+          {purchase.status === "pending" && (
+            <div className="flex flex-col items-center gap-3 py-8 text-center">
+              <Loader2 size={28} className="animate-spin text-primary" />
+              <p className="text-sm text-muted">{t("reports.generatingBody")}</p>
+            </div>
+          )}
+          {purchase.status === "failed" && <p className="text-sm text-danger">{t("reports.generationFailedBody")}</p>}
           {purchase.generatedContent?.body && <AiMarkdown content={purchase.generatedContent.body} className="text-foreground/90" />}
         </CardContent>
       </Card>

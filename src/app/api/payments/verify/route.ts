@@ -53,7 +53,18 @@ export async function POST(req: NextRequest) {
 
     await fulfillOrder(order.id);
 
-    return NextResponse.json({ ok: true, orderId: order.id });
+    // Found live: every caller (the in-modal checkout flow AND Cashfree's
+    // full-page return_url redirect for UPI/netbanking) only ever got
+    // {ok, orderId} back, which isn't enough to send the customer straight
+    // to what they actually bought — every path was landing on a generic
+    // "Payments"/dashboard page regardless of purchase type, so a report
+    // buyer had no idea their report even existed until they went and
+    // clicked around to find it themselves. reportPurchaseId lets both
+    // callers route directly to /reports/[id] instead.
+    const reportPurchase =
+      order.type === "report" ? await prisma.reportPurchase.findUnique({ where: { orderId: order.id }, select: { id: true } }) : null;
+
+    return NextResponse.json({ ok: true, orderId: order.id, type: order.type, reportPurchaseId: reportPurchase?.id });
   } catch (err) {
     return errorResponse(err);
   }

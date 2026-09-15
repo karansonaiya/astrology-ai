@@ -23,6 +23,14 @@ type CreateOrderResponse = {
   cashfreeMode: "sandbox" | "production";
 };
 
+export type VerifyResult = {
+  orderId: string;
+  type: "credit_pack" | "report" | "subscription";
+  // Report purchases only — lets a caller route straight to /reports/[id]
+  // instead of a generic "payment successful" page.
+  reportPurchaseId?: string;
+};
+
 function loadCashfreeScript(): Promise<boolean> {
   return new Promise((resolve) => {
     if (window.Cashfree) return resolve(true);
@@ -47,15 +55,15 @@ export function useCheckout() {
   // After checkout closes (mock's simulated instant success, or Cashfree's
   // modal resolving), ask our own server to confirm — it independently asks
   // Cashfree's order-status API rather than trusting anything the client says.
-  const confirm = async (orderId: string, opts?: { onSuccess?: (orderId: string) => void; onError?: (message: string) => void }) => {
+  const confirm = async (orderId: string, opts?: { onSuccess?: (result: VerifyResult) => void; onError?: (message: string) => void }) => {
     try {
-      const result = await apiFetch<{ ok: boolean }>("/api/payments/verify", {
-        method: "POST",
-        body: JSON.stringify({ orderId }),
-      });
+      const result = await apiFetch<{ ok: boolean; orderId: string; type: VerifyResult["type"]; reportPurchaseId?: string }>(
+        "/api/payments/verify",
+        { method: "POST", body: JSON.stringify({ orderId }) }
+      );
       if (result.ok) {
         invalidateAfterPurchase();
-        opts?.onSuccess?.(orderId);
+        opts?.onSuccess?.({ orderId: result.orderId, type: result.type, reportPurchaseId: result.reportPurchaseId });
       } else {
         opts?.onError?.("Payment is still pending. If money was deducted, it will be confirmed automatically shortly.");
       }
@@ -79,7 +87,7 @@ export function useCheckout() {
       numerologyName?: string;
       numerologyBirthDate?: string;
     },
-    opts?: { onSuccess?: (orderId: string) => void; onError?: (message: string) => void }
+    opts?: { onSuccess?: (result: VerifyResult) => void; onError?: (message: string) => void }
   ) => {
     setLoading(true);
     try {

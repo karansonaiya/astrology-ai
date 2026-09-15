@@ -406,6 +406,8 @@
     "dataIncluded": "Included",
     "dataNotIncluded": "Not included",
     "downloadPdf": "Download PDF",
+    "generatingBody": "Your report is being generated — this page will update automatically in a few seconds.",
+    "generationFailedBody": "Something went wrong generating this report. Please contact support — you will not be charged for a report that didn't generate.",
     "palmPhotoRequiredDesc": "This report needs a real photo of your palm. Take one now or upload one from your gallery.",
     "continueToPayment": "Continue to payment",
     "numerologyDetailsRequiredDesc": "This report needs your full name and birth date to calculate your real numbers."

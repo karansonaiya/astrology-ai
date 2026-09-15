@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TriangleAlert, Camera, Upload } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useI18n, useT } from "@/lib/i18n/provider";
@@ -48,6 +48,7 @@ export default function ReportsPage() {
   const { locale } = useI18n();
   const { toast } = useToast();
   const { checkout, loading } = useCheckout();
+  const router = useRouter();
   const qc = useQueryClient();
   const searchParams = useSearchParams();
   // Was an uncontrolled `defaultValue="store"` — after buying a report, the
@@ -134,11 +135,17 @@ export default function ReportsPage() {
     checkout(
       { type: "report", code, birthProfileId, photo, numerologyName: numerology?.name, numerologyBirthDate: numerology?.birthDate },
       {
-        onSuccess: () => {
+        // Found live: this used to just switch to the "My Reports" tab,
+        // leaving the customer to spot their new purchase in a list and
+        // click "View Report" themselves — straight to the report itself
+        // instead, the same place the payment-return redirect page (for
+        // Cashfree's full-page UPI/netbanking flow) now also goes.
+        onSuccess: (result) => {
           toast({ title: t("payments.paymentSuccessTitle"), variant: "success" });
           qc.invalidateQueries({ queryKey: ["my-reports"] });
           qc.invalidateQueries({ queryKey: ["credits-summary"] });
-          setTab("mine");
+          if (result.reportPurchaseId) router.push(`/reports/${result.reportPurchaseId}`);
+          else setTab("mine");
         },
         onError: (msg) => toast({ title: t("payments.paymentFailedTitle"), description: msg, variant: "danger" }),
       }
