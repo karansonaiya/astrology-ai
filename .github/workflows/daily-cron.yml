@@ -25,16 +25,24 @@ name: Daily content automation
 # instead of once. A successful run makes every later retry that day a
 # handful of instant no-op skip-checks — cheap insurance against any one
 # firing being dropped or delayed past when users start checking.
+# PAUSED 2026-09-15: the `schedule:` triggers below were disabled (not
+# deleted — uncomment to re-enable) because daily runs were failing and
+# emailing a failure notice every day, AND consuming real AI-provider
+# quota/spend on every attempt even when the run still ended up failing
+# overall. Manual `workflow_dispatch` (the button in the Actions tab) still
+# works for a one-off backfill/test in the meantime. Root cause of the
+# failures needs to be diagnosed before turning this back on — re-enabling
+# it as-is would just resume the same daily failure emails and AI spend.
 on:
-  schedule:
-    - cron: "0 0 * * *"    # prefill-panchang, 00:00 UTC (once — not seen to have this problem)
-    - cron: "30 0 * * *"   # generate-horoscopes — primary attempt, 00:30 UTC (06:00 IST)
-    - cron: "0 1 * * *"    # send-daily-reminder push, 01:00 UTC (06:30 IST) — after the primary attempt above has had time to finish
-    - cron: "30 2 * * *"   # generate-horoscopes — retry, 02:30 UTC (08:00 IST)
-    - cron: "30 4 * * *"   # generate-horoscopes — retry, 04:30 UTC (10:00 IST)
-    - cron: "30 6 * * *"   # generate-horoscopes — retry, 06:30 UTC (12:00 IST)
-    - cron: "30 8 * * *"   # generate-horoscopes — retry, 08:30 UTC (14:00 IST)
-    - cron: "30 10 * * *"  # generate-horoscopes — retry, 10:30 UTC (16:00 IST)
+  # schedule:
+  #   - cron: "0 0 * * *"    # prefill-panchang, 00:00 UTC (once — not seen to have this problem)
+  #   - cron: "30 0 * * *"   # generate-horoscopes — primary attempt, 00:30 UTC (06:00 IST)
+  #   - cron: "0 1 * * *"    # send-daily-reminder push, 01:00 UTC (06:30 IST) — after the primary attempt above has had time to finish
+  #   - cron: "30 2 * * *"   # generate-horoscopes — retry, 02:30 UTC (08:00 IST)
+  #   - cron: "30 4 * * *"   # generate-horoscopes — retry, 04:30 UTC (10:00 IST)
+  #   - cron: "30 6 * * *"   # generate-horoscopes — retry, 06:30 UTC (12:00 IST)
+  #   - cron: "30 8 * * *"   # generate-horoscopes — retry, 08:30 UTC (14:00 IST)
+  #   - cron: "30 10 * * *"  # generate-horoscopes — retry, 10:30 UTC (16:00 IST)
   workflow_dispatch: {} # manual "Run workflow" button, for backfills/testing
 
 jobs:
