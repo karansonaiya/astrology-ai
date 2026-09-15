@@ -12,7 +12,6 @@ import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Download, ArrowLeft, Loader2 } from "lucide-react";
-import { useToast } from "@/components/ui/toast";
 import { AiMarkdown } from "@/components/ui/ai-markdown";
 
 type Purchase = {
@@ -28,7 +27,6 @@ export default function ReportDetailPage() {
   const t = useT();
   const { locale } = useI18n();
   const params = useParams<{ id: string }>();
-  const { toast } = useToast();
 
   const { data, isLoading } = useQuery({
     queryKey: ["report", params.id],
@@ -92,18 +90,19 @@ export default function ReportDetailPage() {
 
       <p className="mt-4 text-xs text-muted">{t("reports.disclosure")}</p>
 
-      <Button
-        variant="outline"
-        className="mt-4"
-        onClick={() =>
-          toast({
-            title: t("reports.downloadPdf"),
-            description: "PDF export isn't wired up in this environment yet — the report content above is the source of truth. See README §12.",
-          })
-        }
-      >
-        <Download size={14} /> {t("reports.downloadPdf")}
-      </Button>
+      {purchase.status === "completed" && (
+        // A plain anchor (not a client fetch + blob download) — same-origin
+        // GET carries the session cookie automatically, and the route's
+        // real Content-Disposition: attachment header does the rest. No
+        // download-progress state needed; a large-ish PDF is generated
+        // server-side in well under a second (no external API call in the
+        // render path — see render-report-pdf.tsx).
+        <Button asChild variant="outline" className="mt-4">
+          <a href={`/api/reports/${purchase.id}/pdf`} download>
+            <Download size={14} /> {t("reports.downloadPdf")}
+          </a>
+        </Button>
+      )}
     </div>
   );
 }

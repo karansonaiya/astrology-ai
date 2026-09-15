@@ -48,7 +48,10 @@ function estimateCostUsd(model: string, promptTokens: number, completionTokens: 
 // code-switched case (Gujarati sentence with English loanwords like
 // "career"/"compatibility") — Gujarati script anywhere in the reply is a
 // strong enough signal on its own, no need for full language detection.
-function detectReplyLocale(text: string, fallback: AppLocale): AppLocale {
+// Exported for reuse by render-report-pdf.tsx — the PDF's font must match
+// the report body's ACTUAL language, not just the user's current locale
+// setting (which may have changed since the report was generated).
+export function detectReplyLocale(text: string, fallback: AppLocale): AppLocale {
   if (/[઀-૿]/.test(text)) return "gu"; // Gujarati Unicode block
   if (/[ऀ-ॿ]/.test(text)) return "hi"; // Devanagari (Hindi) Unicode block
   if (/[a-zA-Z]{10,}/.test(text)) return "en";

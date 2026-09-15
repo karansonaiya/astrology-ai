@@ -204,9 +204,6 @@ src/components/ui          Hand-built accessible UI kit
 ## 12. What's intentionally out of scope for this MVP
 
 - Real ephemeris/astrology calculation (ships a clearly-labeled mock; see §6).
-- PDF file generation for reports (the report content, disclosure, and "download PDF" affordance are wired up;
-  wire a PDF renderer of your choice — e.g. `@react-pdf/renderer` or a headless-Chrome service — behind
-  `reports.downloadPdf`).
 - WhatsApp/SMS re-engagement notifications (architecture only, per the safety requirement not to implement
   unauthorised messaging).
 - SMTP email provider implementation (Resend and mock are implemented; SMTP throws a clear "not wired up" error —
