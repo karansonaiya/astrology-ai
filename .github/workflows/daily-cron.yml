@@ -31,16 +31,33 @@ name: Daily content automation
 # it — see the "Generate daily horoscopes" step below for the actual root
 # cause (a free-tier AI rate limit colliding with Netlify's 10s function
 # timeout) and the fix (one small request per sign instead of 12 at once).
+#
+# 2026-09-16: replaced the old once-a-day fixed-copy "send-daily-reminder"
+# push with 6 evenly-spaced (every 4 hours) AI-generated broadcasts, one
+# per BROADCAST_SLOTS entry in send-notification-broadcast/route.ts (a
+# different topic + target page each time, so someone getting all 6 in a
+# day never sees the same message twice) — this is what the founder asked
+# for: "the notification we have" (the admin's manual AI-broadcast tool)
+# running automatically instead of only on a manual admin click. Running
+# BOTH this and the old fixed reminder would be up to 7 pushes/day to the
+# same person, too much — slot 0 covers the exact "your daily horoscope is
+# ready" moment the old route used to own, so it's fully retired from the
+# schedule (the route file itself still exists for reference/manual testing).
 on:
   schedule:
     - cron: "0 0 * * *"    # prefill-panchang, 00:00 UTC (once — not seen to have this problem)
     - cron: "30 0 * * *"   # generate-horoscopes — primary attempt, 00:30 UTC (06:00 IST)
-    - cron: "0 1 * * *"    # send-daily-reminder push, 01:00 UTC (06:30 IST) — after the primary attempt above has had time to finish
+    - cron: "15 0 * * *"   # notification broadcast — slot 0, 00:15 UTC (05:45 IST)
     - cron: "30 2 * * *"   # generate-horoscopes — retry, 02:30 UTC (08:00 IST)
     - cron: "30 4 * * *"   # generate-horoscopes — retry, 04:30 UTC (10:00 IST)
+    - cron: "15 4 * * *"   # notification broadcast — slot 1, 04:15 UTC (09:45 IST)
     - cron: "30 6 * * *"   # generate-horoscopes — retry, 06:30 UTC (12:00 IST)
     - cron: "30 8 * * *"   # generate-horoscopes — retry, 08:30 UTC (14:00 IST)
+    - cron: "15 8 * * *"   # notification broadcast — slot 2, 08:15 UTC (13:45 IST)
     - cron: "30 10 * * *"  # generate-horoscopes — retry, 10:30 UTC (16:00 IST)
+    - cron: "15 12 * * *"  # notification broadcast — slot 3, 12:15 UTC (17:45 IST)
+    - cron: "15 16 * * *"  # notification broadcast — slot 4, 16:15 UTC (21:45 IST)
+    - cron: "15 20 * * *"  # notification broadcast — slot 5, 20:15 UTC (01:45 IST next day)
   workflow_dispatch: {} # manual "Run workflow" button, for backfills/testing
 
 jobs:
@@ -50,29 +67,43 @@ jobs:
       - name: Determine which job this run is for
         id: which
         run: |
-          # Exactly one schedule string each for panchang and the reminder
-          # push — every other schedule string is a generate-horoscopes
-          # attempt (primary or one of the retries above), so that one is
-          # matched by exclusion rather than listing every retry time here
-          # too. workflow_dispatch has no schedule string at all, so run
-          # everything in that case (manual backfill/testing).
-          if [ "${{ github.event.schedule }}" = "0 0 * * *" ]; then
-            echo "horoscopes=false" >> "$GITHUB_OUTPUT"
-            echo "panchang=true" >> "$GITHUB_OUTPUT"
-            echo "reminder=false" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.event.schedule }}" = "0 1 * * *" ]; then
-            echo "horoscopes=false" >> "$GITHUB_OUTPUT"
-            echo "panchang=false" >> "$GITHUB_OUTPUT"
-            echo "reminder=true" >> "$GITHUB_OUTPUT"
-          elif [ -n "${{ github.event.schedule }}" ]; then
-            echo "horoscopes=true" >> "$GITHUB_OUTPUT"
-            echo "panchang=false" >> "$GITHUB_OUTPUT"
-            echo "reminder=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "horoscopes=true" >> "$GITHUB_OUTPUT"
-            echo "panchang=true" >> "$GITHUB_OUTPUT"
-            echo "reminder=true" >> "$GITHUB_OUTPUT"
-          fi
+          # workflow_dispatch has no schedule string at all — run
+          # everything in that case (manual backfill/testing), broadcast
+          # slot 0 included.
+          case "${{ github.event.schedule }}" in
+            "0 0 * * *")
+              echo "horoscopes=false" >> "$GITHUB_OUTPUT"
+              echo "panchang=true" >> "$GITHUB_OUTPUT"
+              echo "broadcast=false" >> "$GITHUB_OUTPUT"
+              ;;
+            "15 0 * * *"|"15 4 * * *"|"15 8 * * *"|"15 12 * * *"|"15 16 * * *"|"15 20 * * *")
+              echo "horoscopes=false" >> "$GITHUB_OUTPUT"
+              echo "panchang=false" >> "$GITHUB_OUTPUT"
+              echo "broadcast=true" >> "$GITHUB_OUTPUT"
+              case "${{ github.event.schedule }}" in
+                "15 0 * * *") echo "broadcastSlot=0" >> "$GITHUB_OUTPUT" ;;
+                "15 4 * * *") echo "broadcastSlot=1" >> "$GITHUB_OUTPUT" ;;
+                "15 8 * * *") echo "broadcastSlot=2" >> "$GITHUB_OUTPUT" ;;
+                "15 12 * * *") echo "broadcastSlot=3" >> "$GITHUB_OUTPUT" ;;
+                "15 16 * * *") echo "broadcastSlot=4" >> "$GITHUB_OUTPUT" ;;
+                "15 20 * * *") echo "broadcastSlot=5" >> "$GITHUB_OUTPUT" ;;
+              esac
+              ;;
+            "")
+              echo "horoscopes=true" >> "$GITHUB_OUTPUT"
+              echo "panchang=true" >> "$GITHUB_OUTPUT"
+              echo "broadcast=true" >> "$GITHUB_OUTPUT"
+              echo "broadcastSlot=0" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              # Any other schedule string is a generate-horoscopes attempt
+              # (primary or one of the retries) — matched by exclusion
+              # rather than listing every retry time here too.
+              echo "horoscopes=true" >> "$GITHUB_OUTPUT"
+              echo "panchang=false" >> "$GITHUB_OUTPUT"
+              echo "broadcast=false" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
 
       - name: Generate daily horoscopes
         if: steps.which.outputs.horoscopes == 'true'
@@ -118,13 +149,14 @@ jobs:
           curl -sS -f -X GET "${{ vars.APP_URL }}/api/cron/prefill-panchang" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
 
-      - name: Send daily reminder push
-        if: steps.which.outputs.reminder == 'true'
+      - name: Send AI notification broadcast
+        if: steps.which.outputs.broadcast == 'true'
         # Best-effort, not `-f` — a subscriber base of zero (push not
         # configured yet, or nobody's opted in) still returns 200 with
         # {sent: 0}, so this only fails on a genuine server error, and even
-        # then a missed reminder once isn't worth failing the whole workflow
-        # run over (unlike horoscope generation, there's no content-gap risk).
+        # then a missed broadcast once isn't worth failing the whole
+        # workflow run over (unlike horoscope generation, there's no
+        # content-gap risk).
         run: |
-          curl -sS -X GET "${{ vars.APP_URL }}/api/cron/send-daily-reminder" \
+          curl -sS -X GET "${{ vars.APP_URL }}/api/cron/send-notification-broadcast?slot=${{ steps.which.outputs.broadcastSlot }}" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" || true
