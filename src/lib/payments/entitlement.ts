@@ -1,12 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { grantCredits } from "@/lib/credits";
-import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, GEMSTONE_REPORT_CODES, MUHURAT_REPORT_CODES, FACE_REPORT_CODES, MANGAL_DOSHA_REPORT_CODES, KAAL_SARP_SADE_SATI_REPORT_CODES } from "@/lib/pricing/catalog";
+import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, GEMSTONE_REPORT_CODES, MUHURAT_REPORT_CODES, FACE_REPORT_CODES, MANGAL_DOSHA_REPORT_CODES, KAAL_SARP_SADE_SATI_REPORT_CODES, COMPATIBILITY_REPORT_CODES } from "@/lib/pricing/catalog";
 import type { MangalDosha } from "@/lib/astrology/adapter";
 import { getRealKaalSarpDosha, KAAL_SARP_REMEDIES } from "@/lib/astrology/kaal-sarp";
 import { getRealSadeSatiStatus, SADE_SATI_REMEDIES } from "@/lib/astrology/sade-sati";
+import { getKundliMatchingProvider, type GunaMilanResult } from "@/lib/astrology/kundli-matching";
 import type { ZodiacSign } from "@prisma/client";
 import { generateAstrologyReply } from "@/lib/ai";
 import { getOrComputeKundliCalculation, summarizeKundliForAi, getCachedKundliByBirthDetails } from "@/lib/astrology/adapter";
+import type { BirthInput } from "@/lib/astrology/adapter";
 import { calculateDetailedNumerology, calculateNumerologyRawComponents, calculateNumerology } from "@/lib/numerology/calculate";
 import { getRealNamingSyllable } from "@/lib/naming/nakshatra-names";
 import { generateBabyNameSuggestions } from "@/lib/ai/baby-name-suggestion";
@@ -98,6 +100,8 @@ export async function fulfillOrder(orderId: string) {
         content = await generateMangalDoshaReportContent(purchase.userId, purchase.template.name, purchase.birthProfileId);
       } else if (purchase.template && KAAL_SARP_SADE_SATI_REPORT_CODES.has(purchase.template.code)) {
         content = await generateKaalSarpSadeSatiReportContent(purchase.userId, purchase.template.name, purchase.birthProfileId);
+      } else if (purchase.template && COMPATIBILITY_REPORT_CODES.has(purchase.template.code) && purchase.compatibilityRequestId) {
+        content = await generateCompatibilityReportContent(purchase.userId, purchase.template.name, purchase.compatibilityRequestId);
       } else {
         content = await generateReportContent(purchase.userId, purchase.templateId, purchase.birthProfileId);
       }
@@ -862,6 +866,119 @@ Hard rules: never use fear tactics or present either result as certain misfortun
 
   return {
     templateCode: "kaal_sarp_sade_sati_report",
+    templateName,
+    generatedAt: new Date().toISOString(),
+    birthDataUsed: true,
+    body: reply.text,
+  };
+}
+
+/**
+ * The Marriage Compatibility Report — references an existing
+ * CompatibilityRequest the account already generated for free (see
+ * src/app/api/compatibility/route.ts), rather than re-collecting both
+ * people's birth details at purchase time. Reuses the real Ashtakoot Guna
+ * Milan result already stored on that row when present (avoiding a
+ * redundant real Prokerala call); recomputes it if the row predates this
+ * feature (legacy rows only ever had `{text}`, no `gunaMilan`).
+ */
+type CompatibilityPersonSnapshot = {
+  label?: string;
+  birthDate: string;
+  birthTimeKnown: boolean;
+  birthTime?: string;
+  birthCity?: string;
+  birthCountry?: string;
+  latitude?: number;
+  longitude?: number;
+};
+
+async function resolveCompatibilityBirthInput(person: CompatibilityPersonSnapshot): Promise<BirthInput | null> {
+  if (!person.birthCity && (person.latitude == null || person.longitude == null)) return null;
+  const geo =
+    person.latitude != null && person.longitude != null
+      ? { latitude: person.latitude, longitude: person.longitude, timezone: resolveTimezone(person.latitude, person.longitude) }
+      : await geocodeBirthPlace(person.birthCity!, person.birthCountry).catch(() => null);
+  if (!geo || !geo.timezone) return null;
+  return {
+    birthDate: new Date(`${person.birthDate}T00:00:00.000Z`),
+    birthTimeKnown: person.birthTimeKnown,
+    birthTime: person.birthTimeKnown ? person.birthTime ?? null : null,
+    latitude: geo.latitude,
+    longitude: geo.longitude,
+    timezone: geo.timezone,
+  };
+}
+
+async function generateCompatibilityReportContent(userId: string, templateName: string, compatibilityRequestId: string) {
+  const [request, user] = await Promise.all([
+    prisma.compatibilityRequest.findFirst({ where: { id: compatibilityRequestId, userId } }),
+    prisma.user.findUnique({ where: { id: userId } }),
+  ]);
+  const locale = (user?.locale ?? "en") as AppLocale;
+  const langName: Record<AppLocale, string> = { en: "English", hi: "Hindi", gu: "Gujarati" };
+
+  const failed = (reason: string) => ({
+    templateCode: "compatibility_report",
+    templateName,
+    generatedAt: new Date().toISOString(),
+    birthDataUsed: false,
+    body: reason,
+  });
+
+  if (!request) {
+    return failed("We could not find the compatibility check this report is for. Please contact support — you will not be charged for a report that didn't generate.");
+  }
+
+  const personA = request.personAData as unknown as CompatibilityPersonSnapshot;
+  const personB = request.personBData as unknown as CompatibilityPersonSnapshot;
+  const existingResult = request.result as unknown as { text?: string; gunaMilan?: GunaMilanResult | null } | null;
+
+  // Reuse the real Guna Milan result already computed for the free check
+  // when present; only recompute for a legacy row that predates it.
+  let gunaMilan: GunaMilanResult | null = existingResult?.gunaMilan ?? null;
+  if (gunaMilan === null && existingResult?.gunaMilan === undefined) {
+    try {
+      const [birthInputA, birthInputB] = await Promise.all([
+        resolveCompatibilityBirthInput(personA),
+        resolveCompatibilityBirthInput(personB),
+      ]);
+      if (birthInputA && birthInputB) {
+        gunaMilan = await getKundliMatchingProvider().getGunaMilan(birthInputA, birthInputB);
+      }
+    } catch {
+      gunaMilan = null;
+    }
+  }
+
+  const gunaMilanText = gunaMilan
+    ? `Real Ashtakoot Guna Milan result: total score ${gunaMilan.totalPoints} out of ${gunaMilan.maximumPoints}, overall assessment "${gunaMilan.messageType}" — ${gunaMilan.messageDescription}. Person A's real Koot: Varna ${gunaMilan.girl.koot.varna}, Vashya ${gunaMilan.girl.koot.vasya}, Tara ${gunaMilan.girl.koot.tara}, Yoni ${gunaMilan.girl.koot.yoni}, Graha Maitri ${gunaMilan.girl.koot.grahaMaitri}, Gana ${gunaMilan.girl.koot.gana}, Bhakoot ${gunaMilan.girl.koot.bhakoot}, Nadi ${gunaMilan.girl.koot.nadi}. Person B's real Koot: Varna ${gunaMilan.boy.koot.varna}, Vashya ${gunaMilan.boy.koot.vasya}, Tara ${gunaMilan.boy.koot.tara}, Yoni ${gunaMilan.boy.koot.yoni}, Graha Maitri ${gunaMilan.boy.koot.grahaMaitri}, Gana ${gunaMilan.boy.koot.gana}, Bhakoot ${gunaMilan.boy.koot.bhakoot}, Nadi ${gunaMilan.boy.koot.nadi}.`
+    : "A real 36-point Ashtakoot Guna Milan score could not be calculated for this pairing (needs a known birth time and place for both people) — write this report using the general reflection below only, without inventing a score.";
+
+  const reply = await generateAstrologyReply({
+    userId,
+    locale,
+    history: [],
+    userMessage: `Here are the real, already-determined facts for this compatibility check between ${request.personALabel} and ${request.personBLabel} — never question, recalculate, or change any of them, only explain and give context around them. Write entirely in ${langName[locale]}.
+
+${gunaMilanText}
+
+Existing free reflection already given to this person previously: ${existingResult?.text ?? "none"}
+
+This is a PAID, in-depth "${templateName}" — it must read as substantial and genuinely valuable, clearly deeper than the free reflection above. Structure it as:
+1. An opening overview (5-6 sentences)${gunaMilan ? " on the real Guna Milan score and what it traditionally represents" : " on this compatibility reading"}.
+2. ${gunaMilan ? "A section (6-8 sentences) reviewing each of the 8 real Koot factors given above (Varna, Vashya, Tara, Yoni, Graha Maitri, Gana, Bhakoot, Nadi) and what each traditionally represents for this specific pairing." : "A section (6-8 sentences) on general relationship compatibility themes, grounded in whatever real chart data is available."}
+3. A section (5-7 sentences) on communication strengths and potential friction points.
+4. A section (4-6 sentences) with 2-3 open reflection questions for the couple to consider together.
+5. A closing reflection (4-5 sentences).
+
+Hard rules: never claim marriage compatibility depends on the Guna Milan score (or any single factor) alone — always note that real communication, values, and mutual respect matter at least as much. Never advise ending the relationship. Never give medical, legal, or financial advice.`,
+    feature: "report",
+    maxTokens: 7500,
+  });
+
+  return {
+    templateCode: "compatibility_report",
     templateName,
     generatedAt: new Date().toISOString(),
     birthDataUsed: true,

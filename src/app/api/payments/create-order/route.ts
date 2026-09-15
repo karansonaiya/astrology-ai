@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser, errorResponse } from "@/lib/auth/guard";
 import { createOrderSchema } from "@/lib/validations/payments";
 import { getPaymentProvider } from "@/lib/payments/provider";
-import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, MUHURAT_REPORT_CODES, FACE_REPORT_CODES } from "@/lib/pricing/catalog";
+import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, MUHURAT_REPORT_CODES, FACE_REPORT_CODES, COMPATIBILITY_REPORT_CODES } from "@/lib/pricing/catalog";
 import { rateLimit } from "@/lib/rate-limit";
 
 async function resolvePrice(type: string, code: string) {
@@ -102,6 +102,23 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "muhurat_details_required" }, { status: 400 });
       }
 
+      const isCompatibilityReport = COMPATIBILITY_REPORT_CODES.has(parsed.data.code);
+      if (isCompatibilityReport) {
+        if (!parsed.data.compatibilityRequestId) {
+          return NextResponse.json({ error: "compatibility_request_required" }, { status: 400 });
+        }
+        // Same ownership-check reasoning as birthProfileId above — without
+        // this, one user could reference another user's CompatibilityRequest
+        // id and the webhook's generateCompatibilityReportContent
+        // (entitlement.ts) would hand back that person's real two-party
+        // birth data inside the attacker's own ReportPurchase.
+        const owned = await prisma.compatibilityRequest.findFirst({
+          where: { id: parsed.data.compatibilityRequestId, userId: user.id },
+          select: { id: true },
+        });
+        if (!owned) return NextResponse.json({ error: "invalid_compatibility_request" }, { status: 403 });
+      }
+
       await prisma.reportPurchase.create({
         data: {
           userId: user.id,
@@ -117,6 +134,9 @@ export async function POST(req: NextRequest) {
             : {}),
           ...(isBabyNameReport && parsed.data.babyNameInput ? { babyNameInput: parsed.data.babyNameInput } : {}),
           ...(isMuhuratReport && parsed.data.muhuratInput ? { muhuratInput: parsed.data.muhuratInput } : {}),
+          ...(isCompatibilityReport && parsed.data.compatibilityRequestId
+            ? { compatibilityRequestId: parsed.data.compatibilityRequestId }
+            : {}),
         },
       });
     }

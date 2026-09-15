@@ -108,6 +108,11 @@ export function useCheckout() {
         latitude?: number;
         longitude?: number;
       };
+      // Marriage Compatibility Report only (COMPATIBILITY_REPORT_CODES) —
+      // references an existing CompatibilityRequest the account already
+      // generated for free, instead of re-collecting both people's birth
+      // details at purchase time.
+      compatibilityRequestId?: string;
     },
     opts?: { onSuccess?: (result: VerifyResult) => void; onError?: (message: string) => void }
   ) => {

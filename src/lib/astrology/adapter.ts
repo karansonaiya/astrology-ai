@@ -276,7 +276,11 @@ function rasiIdToZodiacSign(id?: number | null): ZodiacSign | null {
 }
 
 /** Builds an ISO8601 datetime with the birth place's UTC offset, e.g. "1996-08-19T20:00:00+05:30". */
-function buildBirthDateTime(input: BirthInput): string {
+// Exported for reuse by kundli-matching.ts — the real Guna Milan endpoint
+// needs the exact same "birth date + time (or noon fallback) + real
+// timezone offset" datetime string every other Prokerala call already
+// builds this way.
+export function buildBirthDateTime(input: BirthInput): string {
   const y = input.birthDate.getUTCFullYear();
   const mo = input.birthDate.getUTCMonth();
   const d = input.birthDate.getUTCDate();

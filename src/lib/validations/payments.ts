@@ -42,6 +42,10 @@ export const createOrderSchema = z.object({
       longitude: z.number().min(-180).max(180).optional(),
     })
     .optional(),
+  // Marriage Compatibility Report only (COMPATIBILITY_REPORT_CODES) —
+  // required the same way, references an existing CompatibilityRequest
+  // instead of new input.
+  compatibilityRequestId: z.string().optional(),
 });
 
 export const verifyPaymentSchema = z.object({

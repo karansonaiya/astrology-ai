@@ -23,10 +23,14 @@ export const REPORT_TEMPLATES = [
     description: "A deeper look at career and business direction, timing themes, and reflective next steps.",
     priceInPaise: 9900,
   },
+  // Upgraded to use the real 36-point Ashtakoot Guna Milan score (see
+  // src/lib/astrology/kundli-matching.ts) when both people's real birth
+  // time/place let it be calculated — description updated to reflect this
+  // real change, price unchanged.
   {
     code: "compatibility_report",
     name: "Marriage Compatibility Report",
-    description: "A detailed compatibility reflection for two people covering communication and potential friction points.",
+    description: "A detailed compatibility reflection for two people, grounded in the real 36-point Ashtakoot Guna Milan score when available, covering communication and potential friction points.",
     priceInPaise: 14900,
   },
   {
@@ -214,6 +218,13 @@ export const MANGAL_DOSHA_REPORT_CODES = new Set(["mangal_dosha_report"]);
 
 // Same idea again.
 export const KAAL_SARP_SADE_SATI_REPORT_CODES = new Set(["kaal_sarp_sade_sati_report"]);
+
+// The existing "Marriage Compatibility Report" (compatibility_report) —
+// needs a real CompatibilityRequest id (an existing free-tier check the
+// account already ran), not a single birthProfileId. See
+// create-order/route.ts's isCompatibilityReport check and
+// entitlement.ts's generateCompatibilityReportContent.
+export const COMPATIBILITY_REPORT_CODES = new Set(["compatibility_report"]);
 
 export const PLANS = [
   {

@@ -382,7 +382,21 @@
     "reflectionQuestions": "Reflection questions",
     "deleteComparison": "Delete this comparison",
     "savePersonBConsent": "Save person B's details for next time (optional, requires their consent)",
-    "privacyNotice": "Person B's details are only saved if you explicitly choose to."
+    "privacyNotice": "Person B's details are only saved if you explicitly choose to.",
+    "gunaMilanTitle": "Real Ashtakoot Guna Milan score",
+    "demoDataNotice": "Demo/placeholder data — not a real calculation.",
+    "kootFactor": "Factor",
+    "koot": {
+      "varna": "Varna",
+      "vasya": "Vashya",
+      "tara": "Tara",
+      "yoni": "Yoni",
+      "grahaMaitri": "Graha Maitri",
+      "gana": "Gana",
+      "bhakoot": "Bhakoot",
+      "nadi": "Nadi"
+    },
+    "getDetailedReport": "Get Detailed Report"
   },
   "career": {
     "title": "Career & Business Insight",

@@ -441,12 +441,17 @@ model CompatibilityRequest {
   personBData  Json
   personBSavedConsent Boolean @default(false)
 
-  result Json? // AI-generated compatibility narrative + structured scores
+  // AI-generated compatibility narrative + real structured Ashtakoot Guna
+  // Milan data when both people's real birth time/place allow it — shape:
+  // {text: string, gunaMilan: GunaMilanResult | null} (see
+  // src/lib/astrology/kundli-matching.ts).
+  result Json?
 
   createdAt DateTime  @default(now())
   deletedAt DateTime?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reportPurchases ReportPurchase[]
 
   @@index([userId])
 }
@@ -795,13 +800,21 @@ model ReportPurchase {
   // Null for every other report template.
   muhuratInput Json?
 
+  // Marriage Compatibility Report upsell only — references an existing
+  // CompatibilityRequest the account already generated for free (see
+  // GET /api/compatibility/[id], entitlement.ts's
+  // generateCompatibilityReportContent), rather than re-collecting both
+  // people's birth details at purchase time. Null for every other template.
+  compatibilityRequestId String?
+
   createdAt   DateTime  @default(now())
   completedAt DateTime?
 
-  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  template     ReportTemplate  @relation(fields: [templateId], references: [id])
-  birthProfile BirthProfile?   @relation(fields: [birthProfileId], references: [id])
-  order        Order?          @relation(fields: [orderId], references: [id])
+  user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template            ReportTemplate        @relation(fields: [templateId], references: [id])
+  birthProfile        BirthProfile?         @relation(fields: [birthProfileId], references: [id])
+  order               Order?                @relation(fields: [orderId], references: [id])
+  compatibilityRequest CompatibilityRequest? @relation(fields: [compatibilityRequestId], references: [id])
 
   @@index([userId])
 }
