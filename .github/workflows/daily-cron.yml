@@ -43,22 +43,28 @@ name: Daily content automation
 # same person, too much — slot 0 covers the exact "your daily horoscope is
 # ready" moment the old route used to own, so it's fully retired from the
 # schedule (the route file itself still exists for reference/manual testing).
+#
+# 2026-09-17: moved the notification broadcast's automatic trigger to
+# Pabbly Connect (an external scheduler the founder set up, calling
+# /api/cron/send-notification-broadcast every 3 hours with the same
+# CRON_SECRET) — this schedule's own broadcast crons are removed so the
+# two don't double-fire the same push to every user. The "Send AI
+# notification broadcast" step stays in this workflow for manual/
+# workflow_dispatch testing only (it no longer has any schedule trigger of
+# its own). generate-horoscopes/prefill-panchang stay here unchanged —
+# Pabbly can't easily replicate the 36-small-request-with-retry pacing
+# generate-horoscopes needs to survive Netlify's 10s function timeout and
+# the AI provider's per-minute rate limit (see that step's own comment).
 on:
   schedule:
     - cron: "0 0 * * *"    # prefill-panchang, 00:00 UTC (once — not seen to have this problem)
     - cron: "30 0 * * *"   # generate-horoscopes — primary attempt, 00:30 UTC (06:00 IST)
-    - cron: "15 0 * * *"   # notification broadcast — slot 0, 00:15 UTC (05:45 IST)
     - cron: "30 2 * * *"   # generate-horoscopes — retry, 02:30 UTC (08:00 IST)
     - cron: "30 4 * * *"   # generate-horoscopes — retry, 04:30 UTC (10:00 IST)
-    - cron: "15 4 * * *"   # notification broadcast — slot 1, 04:15 UTC (09:45 IST)
     - cron: "30 6 * * *"   # generate-horoscopes — retry, 06:30 UTC (12:00 IST)
     - cron: "30 8 * * *"   # generate-horoscopes — retry, 08:30 UTC (14:00 IST)
-    - cron: "15 8 * * *"   # notification broadcast — slot 2, 08:15 UTC (13:45 IST)
     - cron: "30 10 * * *"  # generate-horoscopes — retry, 10:30 UTC (16:00 IST)
-    - cron: "15 12 * * *"  # notification broadcast — slot 3, 12:15 UTC (17:45 IST)
-    - cron: "15 16 * * *"  # notification broadcast — slot 4, 16:15 UTC (21:45 IST)
-    - cron: "15 20 * * *"  # notification broadcast — slot 5, 20:15 UTC (01:45 IST next day)
-  workflow_dispatch: {} # manual "Run workflow" button, for backfills/testing
+  workflow_dispatch: {} # manual "Run workflow" button, for backfills/testing (still runs the broadcast step too, slot 0)
 
 jobs:
   trigger:
@@ -75,19 +81,6 @@ jobs:
               echo "horoscopes=false" >> "$GITHUB_OUTPUT"
               echo "panchang=true" >> "$GITHUB_OUTPUT"
               echo "broadcast=false" >> "$GITHUB_OUTPUT"
-              ;;
-            "15 0 * * *"|"15 4 * * *"|"15 8 * * *"|"15 12 * * *"|"15 16 * * *"|"15 20 * * *")
-              echo "horoscopes=false" >> "$GITHUB_OUTPUT"
-              echo "panchang=false" >> "$GITHUB_OUTPUT"
-              echo "broadcast=true" >> "$GITHUB_OUTPUT"
-              case "${{ github.event.schedule }}" in
-                "15 0 * * *") echo "broadcastSlot=0" >> "$GITHUB_OUTPUT" ;;
-                "15 4 * * *") echo "broadcastSlot=1" >> "$GITHUB_OUTPUT" ;;
-                "15 8 * * *") echo "broadcastSlot=2" >> "$GITHUB_OUTPUT" ;;
-                "15 12 * * *") echo "broadcastSlot=3" >> "$GITHUB_OUTPUT" ;;
-                "15 16 * * *") echo "broadcastSlot=4" >> "$GITHUB_OUTPUT" ;;
-                "15 20 * * *") echo "broadcastSlot=5" >> "$GITHUB_OUTPUT" ;;
-              esac
               ;;
             "")
               echo "horoscopes=true" >> "$GITHUB_OUTPUT"
