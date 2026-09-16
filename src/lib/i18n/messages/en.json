@@ -56,6 +56,7 @@
     "features": "Features",
     "dailyHoroscope": "Daily Horoscope",
     "panchang": "Panchang",
+    "festivals": "Festivals",
     "blog": "Blog",
     "pricing": "Pricing",
     "faq": "FAQ",
@@ -299,6 +300,14 @@
     "inauspiciousSubtitle": "Rahu Kaal, Yamaganda, and other periods best avoided for new beginnings",
     "demoDataNotice": "Demo data shown in development only — not a real calculation.",
     "calculatedNotice": "Calculated using Vedic astronomical data"
+  },
+  "festivals": {
+    "title": "Hindu Festival Calendar 2026",
+    "subtitle": "Real, curated dates for major pan-India festivals and vrats — not AI-invented.",
+    "upcoming": "Upcoming",
+    "pastThisYear": "Already passed this year",
+    "vrat": "Vrat",
+    "regionalNotice": "Dates reflect the most commonly observed date across India — exact timing can vary by a day depending on your region. Check that day's real Panchang for your exact city."
   },
   "blog": {
     "title": "Astrology Blog",

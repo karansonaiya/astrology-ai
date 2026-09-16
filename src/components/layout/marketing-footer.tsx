@@ -15,6 +15,7 @@ export function MarketingFooter() {
         { href: "/features", label: t("nav.features") },
         { href: "/horoscope", label: t("nav.dailyHoroscope") },
         { href: "/panchang", label: t("nav.panchang") },
+        { href: "/festivals", label: t("nav.festivals") },
         { href: "/blog", label: t("nav.blog") },
         { href: "/pricing", label: t("nav.pricing") },
       ],

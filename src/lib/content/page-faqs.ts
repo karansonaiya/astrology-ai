@@ -210,3 +210,30 @@ export const BLOG_FAQS: Faq[] = [
     },
   },
 ];
+
+export const FESTIVALS_FAQS: Faq[] = [
+  {
+    q: {
+      en: "Are these dates fixed or could they vary by a day?",
+      hi: "क्या ये तारीख़ें तय हैं या एक दिन आगे-पीछे हो सकती हैं?",
+      gu: "શું આ તારીખો નક્કી છે કે એક દિવસ આગળ-પાછળ થઈ શકે?",
+    },
+    a: {
+      en: "Hindu festival dates follow the lunar tithi, which can shift by a day depending on your region and local sunrise timing. The dates shown here reflect the most commonly observed date across India — for a date specific to your exact city, check that day's real Panchang.",
+      hi: "हिंदू त्योहारों की तारीख़ें चंद्र तिथि पर आधारित होती हैं, जो आपके क्षेत्र और स्थानीय सूर्योदय समय के आधार पर एक दिन आगे-पीछे हो सकती हैं। यहां दिखाई गई तारीख़ें पूरे भारत में सबसे आम रूप से मनाई जाने वाली तारीख़ को दर्शाती हैं - अपने सटीक शहर के लिए, उस दिन का असली पंचांग देखें।",
+      gu: "હિન્દુ તહેવારોની તારીખો ચંદ્ર તિથિ પર આધારિત હોય છે, જે તમારા વિસ્તાર અને સ્થાનિક સૂર્યોદય સમય પ્રમાણે એક દિવસ આગળ-પાછળ થઈ શકે છે. અહીં બતાવેલી તારીખો સમગ્ર ભારતમાં સૌથી સામાન્ય રીતે ઉજવાતી તારીખને દર્શાવે છે - તમારા ચોક્કસ શહેર માટે, તે દિવસનું સાચું પંચાંગ તપાસો.",
+    },
+  },
+  {
+    q: {
+      en: "Why isn't my regional festival listed?",
+      hi: "मेरे क्षेत्रीय त्योहार को यहां क्यों नहीं दिखाया गया?",
+      gu: "મારો પ્રાદેશિક તહેવાર અહીં કેમ બતાવ્યો નથી?",
+    },
+    a: {
+      en: "This list covers major pan-India festivals only, not every regional or community-specific observance (or the many Ekadashi fasting days through the year) — keeping it to what a general audience across India is most likely looking for.",
+      hi: "यह सूची केवल प्रमुख अखिल भारतीय त्योहारों को शामिल करती है, हर क्षेत्रीय या समुदाय-विशेष पर्व को नहीं (न ही साल भर के कई एकादशी व्रतों को) - इसे उस चीज़ तक सीमित रखा गया है जो पूरे भारत में सामान्य दर्शक सबसे ज़्यादा खोजते हैं।",
+      gu: "આ યાદીમાં ફક્ત મુખ્ય અખિલ ભારતીય તહેવારો સામેલ છે, દરેક પ્રાદેશિક કે સમુદાય-વિશિષ્ટ પર્વ નહીં (ન તો વર્ષભરના ઘણા એકાદશી વ્રતો) - તેને એ વસ્તુ સુધી મર્યાદિત રખાયું છે જે સમગ્ર ભારતમાં સામાન્ય દર્શકો સૌથી વધુ શોધે છે.",
+    },
+  },
+];
