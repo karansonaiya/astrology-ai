@@ -6,7 +6,7 @@ import { geocodeBirthPlace, resolveTimezone } from "@/lib/geo";
 import { getCachedPanchang, buildLocalMorningDateTime } from "@/lib/astrology/panchang";
 import { getRealMuhuratVerdict } from "@/lib/astrology/muhurat";
 import { generateMuhuratReading } from "@/lib/ai/muhurat-reading";
-import { consumeQuestionCredit, OutOfCreditsError } from "@/lib/credits";
+import { consumeQuestionCredit, refundQuestionCredit, OutOfCreditsError } from "@/lib/credits";
 import type { AppLocale } from "@/lib/i18n/config";
 
 /**
@@ -39,8 +39,9 @@ export async function POST(req: NextRequest) {
     const panchang = await getCachedPanchang({ latitude: geo.latitude, longitude: geo.longitude, datetime });
     const verdict = getRealMuhuratVerdict(panchang, eventType, date);
 
+    let usedFree: boolean;
     try {
-      await consumeQuestionCredit(user.id, "muhurat-finder");
+      ({ usedFree } = await consumeQuestionCredit(user.id, "muhurat-finder"));
     } catch (err) {
       if (err instanceof OutOfCreditsError) return NextResponse.json({ error: "out_of_credits" }, { status: 402 });
       throw err;
@@ -49,7 +50,17 @@ export async function POST(req: NextRequest) {
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
     const locale = (dbUser?.locale ?? "en") as AppLocale;
 
-    const reading = await generateMuhuratReading(verdict, locale);
+    // Credit was already consumed above — if the AI reading still fails (a
+    // real, previously-unrefunded failure mode: a transient Gemini error),
+    // that must not be a paid-for-nothing loss for the user.
+    let reading;
+    try {
+      reading = await generateMuhuratReading(verdict, locale);
+    } catch (err) {
+      await refundQuestionCredit(user.id, usedFree, "muhurat-finder");
+      console.error("[muhurat-finder] AI generation failed, credit refunded", err);
+      return NextResponse.json({ error: "ai_unavailable" }, { status: 503 });
+    }
 
     return NextResponse.json({ verdict, reading, isDemoData: panchang.isDemoData });
   } catch (err) {

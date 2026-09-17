@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
+import { useToast } from "@/components/ui/toast";
 import { KAAL_SARP_SADE_SATI_REPORT_CODES } from "@/lib/pricing/catalog";
 
 type ReportTemplate = { code: string; priceInPaise: number };
@@ -24,6 +25,7 @@ type Result = { kaalSarp: KaalSarpDosha; sadeSati: SadeSatiStatus; reading: Dosh
 export default function KaalSarpSadeSatiPage() {
   const t = useT();
   const { locale } = useI18n();
+  const { toast } = useToast();
   const [result, setResult] = useState<Result | null>(null);
   const [outOfCreditsOpen, setOutOfCreditsOpen] = useState(false);
   const [noProfile, setNoProfile] = useState(false);
@@ -31,9 +33,12 @@ export default function KaalSarpSadeSatiPage() {
   const generate = useMutation({
     mutationFn: () => apiFetch<Result>("/api/kaal-sarp-sade-sati", { method: "POST" }),
     onSuccess: (res) => setResult(res),
+    // Found in an audit: a genuine 500 fell through both branches here with
+    // zero feedback — added a generic fallback, matching gemstone/face-reading.
     onError: (err) => {
       if (err instanceof ApiError && err.status === 402) setOutOfCreditsOpen(true);
       else if (err instanceof ApiError && err.status === 422) setNoProfile(true);
+      else toast({ title: t("errors.generic"), variant: "danger" });
     },
   });
 

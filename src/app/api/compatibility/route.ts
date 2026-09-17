@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser, errorResponse } from "@/lib/auth/guard";
 import { compatibilitySchema } from "@/lib/validations/insights";
-import { consumeQuestionCredit, OutOfCreditsError } from "@/lib/credits";
+import { consumeQuestionCredit, refundQuestionCredit, OutOfCreditsError } from "@/lib/credits";
 import { generateAstrologyReply } from "@/lib/ai";
 import { getCachedKundliByBirthDetails, summarizeKundliForAi } from "@/lib/astrology/adapter";
 import { getKundliMatchingProvider, type GunaMilanResult } from "@/lib/astrology/kundli-matching";
@@ -80,8 +80,9 @@ export async function POST(req: NextRequest) {
     const parsed = compatibilitySchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "invalid_request" }, { status: 400 });
 
+    let usedFree: boolean;
     try {
-      await consumeQuestionCredit(user.id, "compatibility");
+      ({ usedFree } = await consumeQuestionCredit(user.id, "compatibility"));
     } catch (err) {
       if (err instanceof OutOfCreditsError) return NextResponse.json({ error: "out_of_credits" }, { status: 402 });
       throw err;
@@ -121,20 +122,48 @@ export async function POST(req: NextRequest) {
     // reliably keeps the reply in the account's actual locale.
     const langName: Record<AppLocale, string> = { en: "English", hi: "Hindi", gu: "Gujarati" };
     const gunaMilanText = gunaMilan
-      ? `\n\nReal Ashtakoot Guna Milan result (already calculated, never alter these real facts): total score ${gunaMilan.totalPoints} out of ${gunaMilan.maximumPoints}, overall assessment "${gunaMilan.messageType}" — ${gunaMilan.messageDescription}. Person A's real Koot: Varna ${gunaMilan.girl.koot.varna}, Vashya ${gunaMilan.girl.koot.vasya}, Tara ${gunaMilan.girl.koot.tara}, Yoni ${gunaMilan.girl.koot.yoni}, Graha Maitri ${gunaMilan.girl.koot.grahaMaitri}, Gana ${gunaMilan.girl.koot.gana}, Bhakoot ${gunaMilan.girl.koot.bhakoot}, Nadi ${gunaMilan.girl.koot.nadi}. Person B's real Koot: Varna ${gunaMilan.boy.koot.varna}, Vashya ${gunaMilan.boy.koot.vasya}, Tara ${gunaMilan.boy.koot.tara}, Yoni ${gunaMilan.boy.koot.yoni}, Graha Maitri ${gunaMilan.boy.koot.grahaMaitri}, Gana ${gunaMilan.boy.koot.gana}, Bhakoot ${gunaMilan.boy.koot.bhakoot}, Nadi ${gunaMilan.boy.koot.nadi}. Briefly explain what the real total score and a couple of the most notable real Koot factors traditionally mean, in plain warm language, before the sections below.`
+      ? `Real Ashtakoot Guna Milan result (already calculated, never alter these real facts): total score ${gunaMilan.totalPoints} out of ${gunaMilan.maximumPoints}, overall assessment "${gunaMilan.messageType}" — ${gunaMilan.messageDescription}. Person A's real Koot: Varna ${gunaMilan.girl.koot.varna}, Vashya ${gunaMilan.girl.koot.vasya}, Tara ${gunaMilan.girl.koot.tara}, Yoni ${gunaMilan.girl.koot.yoni}, Graha Maitri ${gunaMilan.girl.koot.grahaMaitri}, Gana ${gunaMilan.girl.koot.gana}, Bhakoot ${gunaMilan.girl.koot.bhakoot}, Nadi ${gunaMilan.girl.koot.nadi}. Person B's real Koot: Varna ${gunaMilan.boy.koot.varna}, Vashya ${gunaMilan.boy.koot.vasya}, Tara ${gunaMilan.boy.koot.tara}, Yoni ${gunaMilan.boy.koot.yoni}, Graha Maitri ${gunaMilan.boy.koot.grahaMaitri}, Gana ${gunaMilan.boy.koot.gana}, Bhakoot ${gunaMilan.boy.koot.bhakoot}, Nadi ${gunaMilan.boy.koot.nadi}. Briefly explain what the real total score and a couple of the most notable real Koot factors traditionally mean, in plain warm language, before the sections below.`
       : "";
+    // Found live in an audit: chartA/chartB/gunaMilanText (real chart text
+    // built server-side) used to be spliced directly into `prompt` below —
+    // but `prompt` becomes `generateAstrologyReply`'s classified
+    // `userMessage`, and safety.ts's keyword classifier's medical pattern
+    // matches bare "cancer", which is also a real zodiac sign. Any pairing
+    // where either person's real Sun/Moon/Ascendant/planet sign is Cancer
+    // silently got the generic "see a doctor" redirect instead of a real
+    // compatibility reply, after the user had already been charged a
+    // credit — the same bug class already fixed for paid reports (see
+    // index.ts), just unfixed here since this route isn't `feature:
+    // "report"`. Real chart text now goes through `birthContext` instead
+    // (never classified — same mechanism career/route.ts and
+    // relationship/route.ts already use for exactly this reason), leaving
+    // only the small, structured, low-risk fields (dates/times/city names)
+    // in the classified `userMessage`.
+    const birthContext = [chartA, chartB, gunaMilanText].filter(Boolean).join("\n") || undefined;
     const prompt = `Generate a general relationship compatibility reflection for two people, written entirely in ${langName[locale]}.
-Person A — birth date: ${personA.birthDate}, time: ${personA.birthTimeKnown ? personA.birthTime ?? "unknown" : "unknown"}, place: ${personA.birthCity ?? "unknown"}.${chartA ? `\n${chartA}` : ""}
-Person B — birth date: ${personB.birthDate}, time: ${personB.birthTimeKnown ? personB.birthTime ?? "unknown" : "unknown"}, place: ${personB.birthCity ?? "unknown"}.${chartB ? `\n${chartB}` : ""}${gunaMilanText}
+Person A — birth date: ${personA.birthDate}, time: ${personA.birthTimeKnown ? personA.birthTime ?? "unknown" : "unknown"}, place: ${personA.birthCity ?? "unknown"}.
+Person B — birth date: ${personB.birthDate}, time: ${personB.birthTimeKnown ? personB.birthTime ?? "unknown" : "unknown"}, place: ${personB.birthCity ?? "unknown"}.
 Structure the answer with three short sections: Communication strengths, Potential friction points, and Reflection questions (2-3 open questions). Keep it supportive and non-deterministic. Do not advise ending the relationship. Never claim marriage compatibility depends on the Guna Milan score alone if one was given — always note that real communication, values, and mutual respect matter at least as much.`;
 
-    const reply = await generateAstrologyReply({
-      userId: user.id,
-      locale,
-      history: [],
-      userMessage: prompt,
-      feature: "compatibility",
-    });
+    // Credit was already consumed above — if generation still fails (a real,
+    // previously-unrefunded failure mode: a transient Gemini error, same
+    // class the chat route's own refund fix already covers), that must not
+    // be a paid-for-nothing loss for the user.
+    let reply;
+    try {
+      reply = await generateAstrologyReply({
+        userId: user.id,
+        locale,
+        history: [],
+        userMessage: prompt,
+        birthContext,
+        feature: "compatibility",
+      });
+    } catch (err) {
+      await refundQuestionCredit(user.id, usedFree, "compatibility");
+      console.error("[compatibility] AI generation failed, credit refunded", err);
+      return NextResponse.json({ error: "ai_unavailable" }, { status: 503 });
+    }
 
     const request = await prisma.compatibilityRequest.create({
       data: {

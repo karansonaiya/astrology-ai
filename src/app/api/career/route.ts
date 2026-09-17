@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser, errorResponse } from "@/lib/auth/guard";
 import { careerInsightSchema } from "@/lib/validations/insights";
-import { consumeQuestionCredit, OutOfCreditsError } from "@/lib/credits";
+import { consumeQuestionCredit, refundQuestionCredit, OutOfCreditsError } from "@/lib/credits";
 import { generateAstrologyReply } from "@/lib/ai";
 import { getOrComputeKundliCalculation, summarizeKundliForAi } from "@/lib/astrology/adapter";
 import type { AppLocale } from "@/lib/i18n/config";
@@ -14,8 +14,9 @@ export async function POST(req: NextRequest) {
     const parsed = careerInsightSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "invalid_request" }, { status: 400 });
 
+    let usedFree: boolean;
     try {
-      await consumeQuestionCredit(user.id, "career");
+      ({ usedFree } = await consumeQuestionCredit(user.id, "career"));
     } catch (err) {
       if (err instanceof OutOfCreditsError) return NextResponse.json({ error: "out_of_credits" }, { status: 402 });
       throw err;
@@ -53,14 +54,24 @@ Combine general reflective, astrology-style interpretation with concrete, non-fi
       }
     }
 
-    const reply = await generateAstrologyReply({
-      userId: user.id,
-      locale,
-      history: [],
-      userMessage: prompt,
-      birthContext,
-      feature: "career",
-    });
+    // Credit was already consumed above — if generation still fails (a real,
+    // previously-unrefunded failure mode: a transient Gemini error), that
+    // must not be a paid-for-nothing loss for the user.
+    let reply;
+    try {
+      reply = await generateAstrologyReply({
+        userId: user.id,
+        locale,
+        history: [],
+        userMessage: prompt,
+        birthContext,
+        feature: "career",
+      });
+    } catch (err) {
+      await refundQuestionCredit(user.id, usedFree, "career");
+      console.error("[career] AI generation failed, credit refunded", err);
+      return NextResponse.json({ error: "ai_unavailable" }, { status: 503 });
+    }
 
     return NextResponse.json({ text: reply.text });
   } catch (err) {

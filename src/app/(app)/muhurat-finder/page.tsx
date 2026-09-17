@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
 import { CityAutocomplete } from "@/components/ui/city-autocomplete";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { MUHURAT_REPORT_CODES } from "@/lib/pricing/catalog";
 
@@ -40,6 +41,7 @@ export default function MuhuratFinderPage() {
   const t = useT();
   const { locale } = useI18n();
   const router = useRouter();
+  const { toast } = useToast();
   const [form, setForm] = useState<FormState>({ eventType: "general", date: todayStr(), city: "", country: "India" });
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [result, setResult] = useState<Result | null>(null);
@@ -61,8 +63,13 @@ export default function MuhuratFinderPage() {
         }),
       }),
     onSuccess: (res) => setResult(res),
+    // Found in an audit: this only ever handled the 402 (out-of-credits)
+    // case — every other real failure (place_not_found for a misspelled
+    // city, invalid_request, or a genuine 500) silently left the user
+    // staring at the same form with zero feedback, credit already spent.
     onError: (err) => {
       if (err instanceof ApiError && err.status === 402) setOutOfCreditsOpen(true);
+      else toast({ title: t("errors.generic"), variant: "danger" });
     },
   });
 

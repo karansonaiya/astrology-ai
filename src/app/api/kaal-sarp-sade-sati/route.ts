@@ -5,7 +5,7 @@ import { getOrComputeKundliCalculation } from "@/lib/astrology/adapter";
 import { getRealKaalSarpDosha, KAAL_SARP_REMEDIES } from "@/lib/astrology/kaal-sarp";
 import { getRealSadeSatiStatus, SADE_SATI_REMEDIES } from "@/lib/astrology/sade-sati";
 import { generateDoshaTransitReading } from "@/lib/ai/dosha-transit-reading";
-import { consumeQuestionCredit, OutOfCreditsError } from "@/lib/credits";
+import { consumeQuestionCredit, refundQuestionCredit, OutOfCreditsError } from "@/lib/credits";
 import type { AppLocale } from "@/lib/i18n/config";
 import type { ZodiacSign } from "@prisma/client";
 
@@ -49,8 +49,9 @@ export async function POST() {
       getRealSadeSatiStatus(calc.moonSign, profile.latitude, profile.longitude),
     ]);
 
+    let usedFree: boolean;
     try {
-      await consumeQuestionCredit(user.id, "kaal-sarp-sade-sati");
+      ({ usedFree } = await consumeQuestionCredit(user.id, "kaal-sarp-sade-sati"));
     } catch (err) {
       if (err instanceof OutOfCreditsError) return NextResponse.json({ error: "out_of_credits" }, { status: 402 });
       throw err;
@@ -59,8 +60,18 @@ export async function POST() {
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
     const locale = (dbUser?.locale ?? "en") as AppLocale;
 
+    // Credit was already consumed above — if the AI reading still fails (a
+    // real, previously-unrefunded failure mode: a transient Gemini error),
+    // that must not be a paid-for-nothing loss for the user.
     const remedies = [...KAAL_SARP_REMEDIES, ...SADE_SATI_REMEDIES];
-    const reading = await generateDoshaTransitReading(kaalSarp, sadeSati, remedies, locale);
+    let reading;
+    try {
+      reading = await generateDoshaTransitReading(kaalSarp, sadeSati, remedies, locale);
+    } catch (err) {
+      await refundQuestionCredit(user.id, usedFree, "kaal-sarp-sade-sati");
+      console.error("[kaal-sarp-sade-sati] AI generation failed, credit refunded", err);
+      return NextResponse.json({ error: "ai_unavailable" }, { status: 503 });
+    }
 
     return NextResponse.json({ kaalSarp, sadeSati, reading });
   } catch (err) {

@@ -39,15 +39,29 @@ import { maybeRewardReferral } from "@/lib/referral";
  * independent retry condition — purchase.status, not order.status) so a
  * transient generation failure stays retriable even after the order is
  * marked paid.
+ *
+ * Found live in a later audit: `alreadyPaid` was computed from a plain
+ * `findUnique` read with no locking — two concurrent callers (the
+ * client-verify route and the payment provider's webhook, which real
+ * traffic can genuinely trigger within milliseconds of each other) could
+ * both read `status !== "paid"`, both compute `alreadyPaid = false`, and
+ * both proceed to grant credits/create a subscription — a real double
+ * grant from a single payment. Fixed by claiming the created->paid
+ * transition atomically via `updateMany`'s affected-row count: only the
+ * caller whose `updateMany` actually flips the row (count === 1) treats
+ * this as "not already paid"; every other concurrent or later caller sees
+ * count === 0 and correctly treats it as already-claimed, same as if it
+ * had read a real "paid" status to begin with.
  */
 export async function fulfillOrder(orderId: string) {
   const order = await prisma.order.findUnique({ where: { id: orderId } });
   if (!order) return;
 
-  const alreadyPaid = order.status === "paid";
-  if (!alreadyPaid) {
-    await prisma.order.update({ where: { id: orderId }, data: { status: "paid" } });
-  }
+  const claim = await prisma.order.updateMany({
+    where: { id: orderId, status: { not: "paid" } },
+    data: { status: "paid" },
+  });
+  const alreadyPaid = claim.count === 0;
 
   if (order.type === "credit_pack" && !alreadyPaid) {
     const pack = CREDIT_PACKS.find((p) => p.code === order.relatedId);

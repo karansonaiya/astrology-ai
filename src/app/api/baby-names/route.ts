@@ -6,7 +6,7 @@ import { getCachedKundliByBirthDetails } from "@/lib/astrology/adapter";
 import { getRealNamingSyllable } from "@/lib/naming/nakshatra-names";
 import { generateBabyNameSuggestions } from "@/lib/ai/baby-name-suggestion";
 import { geocodeBirthPlace, resolveTimezone } from "@/lib/geo";
-import { consumeQuestionCredit, OutOfCreditsError } from "@/lib/credits";
+import { consumeQuestionCredit, refundQuestionCredit, OutOfCreditsError } from "@/lib/credits";
 import type { AppLocale } from "@/lib/i18n/config";
 
 /**
@@ -47,8 +47,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "nakshatra_unavailable" }, { status: 422 });
     }
 
+    let usedFree: boolean;
     try {
-      await consumeQuestionCredit(user.id, "baby-names");
+      ({ usedFree } = await consumeQuestionCredit(user.id, "baby-names"));
     } catch (err) {
       if (err instanceof OutOfCreditsError) return NextResponse.json({ error: "out_of_credits" }, { status: 402 });
       throw err;
@@ -57,7 +58,17 @@ export async function POST(req: NextRequest) {
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
     const locale = (dbUser?.locale ?? "en") as AppLocale;
 
-    const result = await generateBabyNameSuggestions(syllable, calc.nakshatra, genderPreference, 8, locale);
+    // Credit was already consumed above — if generation still fails (a
+    // real, previously-unrefunded failure mode: a transient Gemini error),
+    // that must not be a paid-for-nothing loss for the user.
+    let result;
+    try {
+      result = await generateBabyNameSuggestions(syllable, calc.nakshatra, genderPreference, 8, locale);
+    } catch (err) {
+      await refundQuestionCredit(user.id, usedFree, "baby-names");
+      console.error("[baby-names] AI generation failed, credit refunded", err);
+      return NextResponse.json({ error: "ai_unavailable" }, { status: 503 });
+    }
 
     return NextResponse.json({
       nakshatra: calc.nakshatra,

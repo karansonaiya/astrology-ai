@@ -5,7 +5,7 @@ import { getOrComputeKundliCalculation } from "@/lib/astrology/adapter";
 import { getRealGemstoneRecommendation } from "@/lib/astrology/gemstones";
 import type { ZodiacSign } from "@prisma/client";
 import { generateGemstoneReading } from "@/lib/ai/gemstone-reading";
-import { consumeQuestionCredit, OutOfCreditsError } from "@/lib/credits";
+import { consumeQuestionCredit, refundQuestionCredit, OutOfCreditsError } from "@/lib/credits";
 import type { AppLocale } from "@/lib/i18n/config";
 
 /**
@@ -36,8 +36,9 @@ export async function POST() {
     const planetaryPositions = calc.planetaryPositions as unknown as { planet: string; sign: ZodiacSign }[];
     const recommendation = getRealGemstoneRecommendation(calc.moonSign, planetaryPositions);
 
+    let usedFree: boolean;
     try {
-      await consumeQuestionCredit(user.id, "gemstone-suggestion");
+      ({ usedFree } = await consumeQuestionCredit(user.id, "gemstone-suggestion"));
     } catch (err) {
       if (err instanceof OutOfCreditsError) return NextResponse.json({ error: "out_of_credits" }, { status: 402 });
       throw err;
@@ -46,7 +47,17 @@ export async function POST() {
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
     const locale = (dbUser?.locale ?? "en") as AppLocale;
 
-    const reading = await generateGemstoneReading(recommendation, locale);
+    // Credit was already consumed above — if the AI reading still fails (a
+    // real, previously-unrefunded failure mode: a transient Gemini error),
+    // that must not be a paid-for-nothing loss for the user.
+    let reading;
+    try {
+      reading = await generateGemstoneReading(recommendation, locale);
+    } catch (err) {
+      await refundQuestionCredit(user.id, usedFree, "gemstone-suggestion");
+      console.error("[gemstone-suggestion] AI generation failed, credit refunded", err);
+      return NextResponse.json({ error: "ai_unavailable" }, { status: 503 });
+    }
 
     return NextResponse.json({ recommendation, reading });
   } catch (err) {
