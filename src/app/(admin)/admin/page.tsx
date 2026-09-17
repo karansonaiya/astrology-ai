@@ -13,7 +13,6 @@ type Stats = {
   newUsers30d: number;
   paidOrders: number;
   totalRevenueInPaise: number;
-  pendingRefunds: number;
   aiRequests30d: number;
   aiCostUsd30d: number;
   flaggedUnreviewed: number;
@@ -51,7 +50,6 @@ export default function AdminDashboardPage() {
     { label: "Paid orders", value: data.paidOrders },
     { label: "Revenue", value: formatInr(data.totalRevenueInPaise) },
     { label: "Conversion rate", value: `${data.conversionRate.toFixed(1)}%` },
-    { label: "Pending refunds", value: data.pendingRefunds },
     { label: "AI requests (30d)", value: data.aiRequests30d },
     { label: "AI cost est. (30d)", value: `$${data.aiCostUsd30d.toFixed(2)}` },
     { label: "Unreviewed flags", value: data.flaggedUnreviewed },

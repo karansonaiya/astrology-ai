@@ -51,8 +51,3 @@ export const createOrderSchema = z.object({
 export const verifyPaymentSchema = z.object({
   orderId: z.string().min(1),
 });
-
-export const refundRequestSchema = z.object({
-  orderId: z.string().min(1),
-  reason: z.string().min(5).max(1000),
-});

@@ -13,24 +13,16 @@ type Order = {
   status: string;
   amountInPaise: number;
   createdAt: string;
-  refundRequests: { status: string }[];
 };
 
-// Note: the "Request refund" entry point (button + dialog) was deliberately
-// removed here — the founder has decided refunds are not offered going
-// forward, so a user should no longer be able to open a new request with no
-// policy to reference. The underlying RefundRequest model, this GET (order
-// history) endpoint, POST /api/payments/refund-request, and the admin
-// /admin/refunds review screen are all left untouched for any already-
-// pending or legacy requests.
 export default function PaymentsPage() {
   const t = useT();
   const { locale } = useI18n();
 
-  const { data } = useQuery({ queryKey: ["payments"], queryFn: () => apiFetch<{ orders: Order[] }>("/api/payments/refund-request") });
+  const { data } = useQuery({ queryKey: ["payments"], queryFn: () => apiFetch<{ orders: Order[] }>("/api/payments/orders") });
 
-  const statusVariant = (status: string): "success" | "danger" | "gold" | "default" =>
-    status === "paid" ? "success" : status === "failed" ? "danger" : status === "refunded" ? "gold" : "default";
+  const statusVariant = (status: string): "success" | "danger" | "default" =>
+    status === "paid" ? "success" : status === "failed" ? "danger" : "default";
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 md:px-6">

@@ -68,7 +68,7 @@ export function useCheckout() {
         opts?.onError?.("Payment is still pending. If money was deducted, it will be confirmed automatically shortly.");
       }
     } catch {
-      opts?.onError?.("Payment verification failed. If money was deducted, it will be refunded automatically.");
+      opts?.onError?.("Payment verification failed. If money was deducted, please contact support with your order details.");
     }
   };
 

@@ -149,7 +149,6 @@ enum PurchaseStatus {
   pending
   completed
   failed
-  refunded
 }
 
 enum OrderType {
@@ -162,7 +161,6 @@ enum OrderStatus {
   created
   paid
   failed
-  refunded
   cancelled
 }
 
@@ -171,13 +169,6 @@ enum SubscriptionStatus {
   past_due
   cancelled
   expired
-}
-
-enum RefundStatus {
-  pending
-  approved
-  rejected
-  processed
 }
 
 enum ReferralStatus {
@@ -258,7 +249,6 @@ model User {
   reportPurchases     ReportPurchase[]
   subscriptions       Subscription[]
   orders              Order[]
-  refundRequests      RefundRequest[]
   referralsMade       Referral[]              @relation("Referrer")
   supportTickets      SupportTicket[]
   ticketReplies       SupportTicketReply[]
@@ -715,7 +705,7 @@ model HoroscopeContent {
 }
 
 // ---------------------------------------------------------------------------
-// Commerce: credits, reports, plans, orders, subscriptions, refunds
+// Commerce: credits, reports, plans, orders, subscriptions
 // ---------------------------------------------------------------------------
 
 model CreditWallet {
@@ -877,7 +867,6 @@ model Order {
 
   user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   paymentEvents  PaymentEvent[]
-  refundRequests RefundRequest[]
   reportPurchase ReportPurchase?
 
   @@index([userId])
@@ -899,24 +888,6 @@ model PaymentEvent {
 
   @@unique([provider, eventId])
   @@index([orderId])
-}
-
-model RefundRequest {
-  id      String       @id @default(cuid())
-  orderId String
-  userId  String
-
-  reason      String   @db.Text
-  status      RefundStatus @default(pending)
-  adminNotes  String?
-  processedBy String?
-  createdAt   DateTime @default(now())
-  processedAt DateTime?
-
-  order Order @relation(fields: [orderId], references: [id])
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([status])
 }
 
 // ---------------------------------------------------------------------------

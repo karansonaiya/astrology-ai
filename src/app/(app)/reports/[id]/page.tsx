@@ -16,7 +16,7 @@ import { AiMarkdown } from "@/components/ui/ai-markdown";
 
 type Purchase = {
   id: string;
-  status: "pending" | "completed" | "failed" | "refunded";
+  status: "pending" | "completed" | "failed";
   createdAt: string;
   template: { name: string };
   birthProfile: { birthDate: string; birthCity: string | null } | null;

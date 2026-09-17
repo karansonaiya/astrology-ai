@@ -20,7 +20,6 @@ export async function GET() {
       newUsers30d,
       paidOrders,
       totalRevenue,
-      pendingRefunds,
       aiUsage30d,
       flaggedUnreviewed,
       localeBreakdown,
@@ -36,7 +35,6 @@ export async function GET() {
       prisma.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
       prisma.order.count({ where: { status: "paid" } }),
       prisma.order.aggregate({ where: { status: "paid" }, _sum: { amountInPaise: true } }),
-      prisma.refundRequest.count({ where: { status: "pending" } }),
       prisma.aiUsageLog.aggregate({
         where: { createdAt: { gte: thirtyDaysAgo } },
         _sum: { costEstimateUsd: true, promptTokens: true, completionTokens: true },
@@ -57,7 +55,6 @@ export async function GET() {
       newUsers30d,
       paidOrders,
       totalRevenueInPaise: totalRevenue._sum.amountInPaise ?? 0,
-      pendingRefunds,
       aiRequests30d: aiUsage30d._count,
       aiCostUsd30d: aiUsage30d._sum.costEstimateUsd ?? 0,
       flaggedUnreviewed,
