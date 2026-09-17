@@ -245,7 +245,7 @@ export default function ChatPage() {
         <Button onClick={() => router.push("/chat/personas")} className="mb-3">
           <Plus size={16} /> {t("chat.newChat")}
         </Button>
-        <div className="flex flex-1 flex-col gap-1 overflow-y-auto">
+        <div className="scrollbar-thin flex flex-1 flex-col gap-1 overflow-y-auto">
           {chatList?.chats.map((c) => (
             <div key={c.id} className="group flex items-center gap-1">
               <button
@@ -270,7 +270,7 @@ export default function ChatPage() {
       </aside>
 
       <section className="flex flex-1 flex-col">
-        <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8">
+        <div className="scrollbar-thin flex-1 overflow-y-auto px-4 py-6 md:px-8">
           {!chatId ? (
             <div className="mx-auto max-w-lg text-center">
               <h1 className="font-heading text-xl font-semibold">{t("chat.emptyStateTitle")}</h1>

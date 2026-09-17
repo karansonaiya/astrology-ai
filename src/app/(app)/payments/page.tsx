@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/api-client";
 import { formatInr, formatDateTime } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Order = {
   id: string;
@@ -19,7 +20,7 @@ export default function PaymentsPage() {
   const t = useT();
   const { locale } = useI18n();
 
-  const { data } = useQuery({ queryKey: ["payments"], queryFn: () => apiFetch<{ orders: Order[] }>("/api/payments/orders") });
+  const { data, isLoading } = useQuery({ queryKey: ["payments"], queryFn: () => apiFetch<{ orders: Order[] }>("/api/payments/orders") });
 
   const statusVariant = (status: string): "success" | "danger" | "default" =>
     status === "paid" ? "success" : status === "failed" ? "danger" : "default";
@@ -29,6 +30,7 @@ export default function PaymentsPage() {
       <h1 className="font-heading text-2xl font-semibold">{t("payments.title")}</h1>
 
       <div className="mt-6 flex flex-col gap-3">
+        {isLoading && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16" />)}
         {data?.orders.map((o) => (
           <Card key={o.id}>
             <CardContent className="flex items-center justify-between py-4">
@@ -43,7 +45,7 @@ export default function PaymentsPage() {
             </CardContent>
           </Card>
         ))}
-        {data?.orders.length === 0 && <p className="py-10 text-center text-sm text-muted">{t("errors.notFound")}</p>}
+        {!isLoading && data?.orders.length === 0 && <p className="py-10 text-center text-sm text-muted">{t("errors.notFound")}</p>}
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 
 type Ticket = {
@@ -29,7 +30,7 @@ export default function HelpPage() {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
 
-  const { data } = useQuery({ queryKey: ["support-tickets"], queryFn: () => apiFetch<{ tickets: Ticket[] }>("/api/support/tickets") });
+  const { data, isLoading } = useQuery({ queryKey: ["support-tickets"], queryFn: () => apiFetch<{ tickets: Ticket[] }>("/api/support/tickets") });
 
   const create = useMutation({
     mutationFn: () => apiFetch("/api/support/tickets", { method: "POST", body: JSON.stringify({ subject, message }) }),
@@ -59,6 +60,7 @@ export default function HelpPage() {
       </Card>
 
       <div className="mt-6 flex flex-col gap-3">
+        {isLoading && Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
         {data?.tickets.map((ticket) => (
           <Card key={ticket.id}>
             <CardHeader className="flex-row items-center justify-between space-y-0">

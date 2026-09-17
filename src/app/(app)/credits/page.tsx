@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/api-client";
 import { formatInr } from "@/lib/utils";
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { useCheckout } from "@/lib/payments/use-checkout";
 
@@ -21,8 +22,8 @@ export default function CreditsPage() {
   const { toast } = useToast();
   const { checkout, loading } = useCheckout();
 
-  const { data: summary } = useQuery({ queryKey: ["credits-summary"], queryFn: () => apiFetch<CreditsSummary>("/api/credits/summary") });
-  const { data: pricing } = useQuery({ queryKey: ["public-pricing"], queryFn: () => apiFetch<PricingResponse>("/api/public/pricing") });
+  const { data: summary, isLoading: summaryLoading } = useQuery({ queryKey: ["credits-summary"], queryFn: () => apiFetch<CreditsSummary>("/api/credits/summary") });
+  const { data: pricing, isLoading: pricingLoading } = useQuery({ queryKey: ["public-pricing"], queryFn: () => apiFetch<PricingResponse>("/api/public/pricing") });
 
   const buy = (type: "credit_pack" | "subscription", code: string) => {
     checkout(
@@ -37,15 +38,20 @@ export default function CreditsPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 md:px-6">
       <h1 className="font-heading text-2xl font-semibold">{t("nav.credits")}</h1>
-      {summary && (
-        <p className="mt-1 text-sm text-muted">
-          {t("dashboard.creditsRemaining", { count: summary.balance })} · {t("dashboard.freeQuestionsRemaining", { count: summary.freeQuestionsRemaining })}
-        </p>
+      {summaryLoading ? (
+        <Skeleton className="mt-2 h-4 w-64" />
+      ) : (
+        summary && (
+          <p className="mt-1 text-sm text-muted">
+            {t("dashboard.creditsRemaining", { count: summary.balance })} · {t("dashboard.freeQuestionsRemaining", { count: summary.freeQuestionsRemaining })}
+          </p>
+        )
       )}
 
       <p className="mt-4 rounded-xl border border-gold/30 bg-gold/10 px-4 py-2 text-xs text-gold">{t("payments.mockModeNotice")}</p>
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
+        {pricingLoading && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32" />)}
         {pricing?.creditPacks.map((pack) => (
           <Card key={pack.code}>
             <CardHeader>

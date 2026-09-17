@@ -15,7 +15,7 @@ export function TabsList({ className, ...props }: React.ComponentProps<typeof Ra
       // viewport instead of just this row. Same category of bug (and same
       // fix shape) as the min-w-0 fix on the app shell's kundli tables.
       className={cn(
-        "inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-xl border border-border bg-surface p-1",
+        "scrollbar-thin inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-xl border border-border bg-surface p-1",
         className
       )}
       {...props}

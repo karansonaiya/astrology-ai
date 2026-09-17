@@ -28,10 +28,10 @@ export function AdminSidebar({ role }: { role: string }) {
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-0 h-screen w-60 shrink-0 border-r border-border p-4">
+    <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-border p-4">
       <Logo className="mb-2" />
       <p className="mb-4 px-1 text-[11px] uppercase tracking-wide text-muted">Admin · {role}</p>
-      <nav className="flex flex-col gap-0.5">
+      <nav className="scrollbar-thin flex flex-1 flex-col gap-0.5 overflow-y-auto">
         {NAV.filter((item) => item.roles.includes(role)).map((item) => {
           const active = pathname === item.href;
           return (

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { CityAutocomplete } from "@/components/ui/city-autocomplete";
 import { AiMarkdown } from "@/components/ui/ai-markdown";
@@ -61,7 +62,7 @@ export default function CompatibilityPage() {
   const [saveConsent, setSaveConsent] = useState(false);
   const [outOfCreditsOpen, setOutOfCreditsOpen] = useState(false);
 
-  const { data } = useQuery({ queryKey: ["compatibility"], queryFn: () => apiFetch<{ requests: CompatRequest[] }>("/api/compatibility") });
+  const { data, isLoading } = useQuery({ queryKey: ["compatibility"], queryFn: () => apiFetch<{ requests: CompatRequest[] }>("/api/compatibility") });
   const { data: templatesData } = useQuery({
     queryKey: ["report-templates"],
     queryFn: () => apiFetch<{ templates: ReportTemplate[] }>("/api/reports/templates"),
@@ -127,6 +128,7 @@ export default function CompatibilityPage() {
       </Button>
 
       <div className="mt-8 flex flex-col gap-4">
+        {isLoading && Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-32" />)}
         {data?.requests.map((r) => (
           <Card key={r.id}>
             <CardHeader className="flex-row items-center justify-between space-y-0">
@@ -181,7 +183,7 @@ function GunaMilanCard({ gunaMilan, personALabel, personBLabel }: { gunaMilan: G
       </div>
       <p className="mt-1 text-sm text-foreground/90">{gunaMilan.messageDescription}</p>
       {gunaMilan.isDemoData && <p className="mt-1 text-xs text-muted">{t("compatibility.demoDataNotice")}</p>}
-      <div className="mt-3 overflow-x-auto">
+      <div className="scrollbar-thin mt-3 overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
             <tr className="text-left text-muted">

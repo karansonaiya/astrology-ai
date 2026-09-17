@@ -8,6 +8,7 @@ import { useT } from "@/lib/i18n/provider";
 import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
@@ -20,7 +21,7 @@ export function AppHeader() {
   const t = useT();
   const { data: session } = useSession();
 
-  const { data: credits } = useQuery({
+  const { data: credits, isLoading: creditsLoading } = useQuery({
     queryKey: ["credits-summary"],
     queryFn: () => apiFetch<CreditsSummary>("/api/credits/summary"),
     enabled: !!session,
@@ -42,7 +43,7 @@ export function AppHeader() {
         )}
         <Badge variant="primary" className="hidden sm:inline-flex">
           <Wallet size={12} />
-          {credits ? credits.balance + credits.freeQuestionsRemaining : "…"}
+          {creditsLoading ? <Skeleton className="h-3 w-4" /> : credits ? credits.balance + credits.freeQuestionsRemaining : "…"}
         </Badge>
         <LanguageSwitcher className="hidden w-[100px] sm:flex" />
         <ThemeToggle />
