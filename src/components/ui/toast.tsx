@@ -29,14 +29,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ToastCtx.Provider value={{ toast }}>
-      <RadixToast.Provider swipeDirection="right" duration={5000}>
+      {/* 6s: long enough to read a full error sentence, short enough not to
+          pile up if several fire back to back. Swipe-to-dismiss goes right,
+          matching the top-right corner these now appear in. */}
+      <RadixToast.Provider swipeDirection="right" duration={6000}>
         {children}
         {items.map((item) => (
           <RadixToast.Root
             key={item.id}
             onOpenChange={(open) => !open && remove(item.id)}
             className={cn(
-              "glass rounded-xl px-4 py-3 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out",
+              "glass pointer-events-auto w-full rounded-xl px-4 py-3 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:slide-in-from-top-2 data-[swipe=end]:animate-out data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:slide-out-to-right-4",
               item.variant === "success" && "border-success",
               item.variant === "danger" && "border-danger"
             )}
@@ -48,13 +51,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                   <RadixToast.Description className="mt-1 text-xs text-muted">{item.description}</RadixToast.Description>
                 )}
               </div>
-              <RadixToast.Close aria-label="Close" className="focus-ring rounded p-0.5 text-muted hover:text-foreground">
+              <RadixToast.Close aria-label="Close" className="focus-ring shrink-0 rounded p-1 text-muted hover:text-foreground">
                 <X size={14} />
               </RadixToast.Close>
             </div>
           </RadixToast.Root>
         ))}
-        <RadixToast.Viewport className="fixed bottom-20 left-1/2 z-[100] flex w-full max-w-sm -translate-x-1/2 flex-col gap-2 p-4 outline-none md:bottom-6" />
+        <RadixToast.Viewport className="fixed inset-x-4 top-4 z-[100] flex max-h-screen flex-col gap-2 outline-none sm:inset-x-auto sm:right-4 sm:w-full sm:max-w-sm" />
       </RadixToast.Provider>
     </ToastCtx.Provider>
   );
