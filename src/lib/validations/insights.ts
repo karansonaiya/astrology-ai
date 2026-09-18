@@ -30,3 +30,7 @@ export const careerInsightSchema = z.object({
 export const relationshipInsightSchema = z.object({
   situation: z.string().min(5).max(1500),
 });
+
+export const tarotReadingSchema = z.object({
+  question: z.string().max(500).optional(),
+});

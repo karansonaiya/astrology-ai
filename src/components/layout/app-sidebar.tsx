@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, MessageCircle, Users, User, Sun, Sparkles, GitCompareArrows, Briefcase, Heart,
-  FileText, Wallet, CreditCard, Gift, Settings, LifeBuoy, Hand, Hash, Baby, Gem, CalendarClock, ScanFace, Flame, Orbit,
+  FileText, Wallet, CreditCard, Gift, Settings, LifeBuoy, Hand, Hash, Baby, Gem, CalendarClock, ScanFace, Flame, Orbit, Spade,
 } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
@@ -43,6 +43,7 @@ export function AppSidebar() {
         { href: "/compatibility", icon: GitCompareArrows, label: t("nav.compatibility") },
         { href: "/career", icon: Briefcase, label: t("nav.career") },
         { href: "/relationship", icon: Heart, label: t("nav.relationship") },
+        { href: "/tarot-reading", icon: Spade, label: t("nav.tarot") },
       ],
     },
     {

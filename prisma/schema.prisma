@@ -244,6 +244,7 @@ model User {
   chats               Chat[]
   messageFeedback     MessageFeedback[]
   compatibilityReqs   CompatibilityRequest[]
+  tarotReadings       TarotReading[]
   creditWallet        CreditWallet?
   creditTransactions  CreditTransaction[]
   reportPurchases     ReportPurchase[]
@@ -442,6 +443,29 @@ model CompatibilityRequest {
 
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   reportPurchases ReportPurchase[]
+
+  @@index([userId])
+}
+
+model TarotReading {
+  id     String @id @default(cuid())
+  userId String
+
+  question String? @db.Text // optional free-text question the reading was interpreted against
+
+  // The real random draw (see src/lib/tarot/draw.ts) — 3 entries, shape:
+  // [{code, name, orientation, position}], never re-drawn or altered after
+  // creation so a saved reading always reflects the cards it actually got.
+  cards Json
+
+  // AI-generated interpretation text (via generateAstrologyReply, same
+  // classified-userMessage/trusted-birthContext split as compatibility) —
+  // shape: {text: string}.
+  result Json?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }

@@ -80,6 +80,7 @@
     "compatibility": "Compatibility",
     "career": "Career & Business",
     "relationship": "Relationship",
+    "tarot": "Tarot Reading",
     "reports": "Report Store",
     "myReports": "My Reports",
     "credits": "Credits",
@@ -421,6 +422,25 @@
     "situationLabel": "What's on your mind?",
     "generateInsight": "Generate insight",
     "supportNotice": "For relationship distress or safety concerns, please reach out to a trusted person or professional support."
+  },
+  "tarot": {
+    "title": "Tarot Card Reading",
+    "subtitle": "A real 3-card Past, Present, Future spread — genuinely random each time, for reflection and guidance.",
+    "questionLabel": "Your question (optional)",
+    "questionPlaceholder": "What would you like guidance on?",
+    "drawCards": "Draw My Cards",
+    "drawing": "Drawing...",
+    "position": {
+      "past": "Past",
+      "present": "Present",
+      "future": "Future"
+    },
+    "orientation": {
+      "upright": "Upright",
+      "reversed": "Reversed"
+    },
+    "historyTitle": "Past Readings",
+    "noHistory": "No readings yet — draw your first spread above."
   },
   "reports": {
     "storeTitle": "Report Store",
