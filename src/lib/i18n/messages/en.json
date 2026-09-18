@@ -228,7 +228,17 @@
     "invalidCredentials": "Incorrect email or password.",
     "emailTaken": "An account with this email already exists. Try logging in, or continue with Google.",
     "accountSuspended": "This account has been suspended. Please contact support.",
-    "accountDeleted": "This account is no longer active."
+    "accountDeleted": "This account is no longer active.",
+    "forgotPasswordLink": "Forgot password?",
+    "forgotPasswordTitle": "Reset your password",
+    "forgotPasswordSub": "Enter your email and we'll send you a reset code.",
+    "resetPasswordSub": "Enter the code we sent you and choose a new password.",
+    "sendResetCode": "Send reset code",
+    "resetCodeLabel": "Enter the 6-digit code",
+    "newPasswordLabel": "New password",
+    "resetPasswordButton": "Reset password",
+    "resetCodeSentNotice": "A reset code has been sent. It may take a minute to arrive.",
+    "backToLogin": "Back to log in"
   },
   "dashboard": {
     "welcomeBack": "Welcome back, {name}",

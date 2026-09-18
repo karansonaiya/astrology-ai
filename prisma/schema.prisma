@@ -53,6 +53,7 @@ enum OtpPurpose {
   login
   signup
   phone_verify
+  password_reset
 }
 
 enum OtpChannel {

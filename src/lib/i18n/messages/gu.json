@@ -228,7 +228,17 @@
     "invalidCredentials": "ઈમેલ અથવા પાસવર્ડ ખોટો છે.",
     "emailTaken": "આ ઈમેલથી પહેલેથી એક એકાઉન્ટ છે. લૉગ ઇન કરો, અથવા Google થી આગળ વધો.",
     "accountSuspended": "આ એકાઉન્ટ સસ્પેન્ડ કરવામાં આવ્યું છે. કૃપા કરીને સપોર્ટનો સંપર્ક કરો.",
-    "accountDeleted": "આ એકાઉન્ટ હવે સક્રિય નથી."
+    "accountDeleted": "આ એકાઉન્ટ હવે સક્રિય નથી.",
+    "forgotPasswordLink": "પાસવર્ડ ભૂલી ગયા?",
+    "forgotPasswordTitle": "તમારો પાસવર્ડ રીસેટ કરો",
+    "forgotPasswordSub": "તમારું ઈમેલ દાખલ કરો, અમે તમને રીસેટ કોડ મોકલીશું.",
+    "resetPasswordSub": "અમે મોકલેલો કોડ દાખલ કરો અને નવો પાસવર્ડ પસંદ કરો.",
+    "sendResetCode": "રીસેટ કોડ મોકલો",
+    "resetCodeLabel": "6-અંકનો કોડ દાખલ કરો",
+    "newPasswordLabel": "નવો પાસવર્ડ",
+    "resetPasswordButton": "પાસવર્ડ રીસેટ કરો",
+    "resetCodeSentNotice": "એક રીસેટ કોડ મોકલાયો છે. પહોંચવામાં એક મિનિટ લાગી શકે છે.",
+    "backToLogin": "લૉગ ઇન પર પાછા જાઓ"
   },
   "dashboard": {
     "welcomeBack": "પાછા આવવા બદલ સ્વાગત છે, {name}",

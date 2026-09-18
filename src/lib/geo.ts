@@ -31,7 +31,28 @@ function normalizeQuery(city: string, country?: string | null): string {
   return [city, country].filter(Boolean).join(", ").trim().toLowerCase();
 }
 
-export async function geocodeBirthPlace(city: string, country?: string | null): Promise<GeocodeResult | null> {
+/**
+ * Thrown only when `throwOnTransientFailure` is set (see geocodeBirthPlace)
+ * — a real Nominatim/network hiccup, not "this city doesn't exist". Found
+ * live in an audit: without this distinction, a paid report generator
+ * (entitlement.ts) that geocoded a birth place and got `null` back had no
+ * way to tell "the geocoder is temporarily down" apart from "the user typed
+ * an unknown city" — it treated both as a permanent failure, marking the
+ * purchase "completed" with an apology instead of leaving it retriable for
+ * the (far more common) transient case.
+ */
+export class GeocodeUnavailableError extends Error {
+  constructor(message = "The geocoding service is temporarily unavailable") {
+    super(message);
+    this.name = "GeocodeUnavailableError";
+  }
+}
+
+export async function geocodeBirthPlace(
+  city: string,
+  country?: string | null,
+  opts?: { throwOnTransientFailure?: boolean }
+): Promise<GeocodeResult | null> {
   const query = [city, country].filter(Boolean).join(", ");
   if (!query.trim()) return null;
 
@@ -45,17 +66,40 @@ export async function geocodeBirthPlace(city: string, country?: string | null): 
     limit: "1",
   })}`;
 
-  const res = await fetch(url, {
-    headers: {
-      // Nominatim requires a real identifying User-Agent per its usage policy.
-      "User-Agent": "PrernaAI/1.0 (astrology birth-chart lookup)",
-      Accept: "application/json",
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: {
+        // Nominatim requires a real identifying User-Agent per its usage policy.
+        "User-Agent": "PrernaAI/1.0 (astrology birth-chart lookup)",
+        Accept: "application/json",
+      },
+    });
+  } catch (err) {
+    if (opts?.throwOnTransientFailure) {
+      throw new GeocodeUnavailableError(`Nominatim request failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return null;
+  }
 
-  if (!res.ok) return null;
+  if (!res.ok) {
+    if (opts?.throwOnTransientFailure) throw new GeocodeUnavailableError(`Nominatim returned HTTP ${res.status}`);
+    return null;
+  }
 
-  const results = (await res.json()) as Array<{ lat: string; lon: string }>;
+  let results: Array<{ lat: string; lon: string }>;
+  try {
+    results = await res.json();
+  } catch (err) {
+    if (opts?.throwOnTransientFailure) {
+      throw new GeocodeUnavailableError(`Nominatim returned invalid JSON: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return null;
+  }
+
+  // A real, definitive "no such place" — not transient, never thrown even
+  // in strict mode: retrying won't change the answer, only fixing the
+  // input would.
   const first = results[0];
   if (!first) return null;
 

@@ -67,6 +67,14 @@ export default function LoginPage() {
           </button>
         </p>
 
+        {mode === "login" && (
+          <p className="mt-2 text-center text-xs">
+            <Link href="/forgot-password" className="text-muted underline">
+              {t("auth.forgotPasswordLink")}
+            </Link>
+          </p>
+        )}
+
         <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5">
           <label className="flex items-start gap-2 text-xs text-muted">
             <input type="checkbox" className="mt-0.5" checked={consent} onChange={(e) => setConsent(e.target.checked)} />

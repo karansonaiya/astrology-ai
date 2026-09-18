@@ -431,12 +431,19 @@ async function generateBabyNameReportContent(userId: string, templateName: strin
     body: reason,
   });
 
+  // No .catch(() => null) here on purpose: a real "unknown city" still
+  // resolves to null (handled below, a permanent failure worth telling the
+  // user about), but a transient geocoder outage now throws
+  // GeocodeUnavailableError instead — left uncaught, so it propagates out
+  // of fulfillOrder() entirely, the ReportPurchase never gets marked
+  // "completed", and a later retry can actually regenerate it (see
+  // fulfillOrder's own comment on why purchase.status is the retry guard).
   const geo =
     input.latitude != null && input.longitude != null
       ? { latitude: input.latitude, longitude: input.longitude, timezone: resolveTimezone(input.latitude, input.longitude) }
-      : await geocodeBirthPlace(input.birthCity, input.birthCountry).catch(() => null);
+      : await geocodeBirthPlace(input.birthCity, input.birthCountry, { throwOnTransientFailure: true });
   if (!geo || !geo.timezone) {
-    return failed("We could not determine the birth place's coordinates, so this report could not be generated. Please contact support — you will not be charged for a report that didn't generate.");
+    return failed("We could not find that birth place. Please contact support to update it and regenerate this report — you will not be charged again.");
   }
 
   const birthDateObj = new Date(`${input.birthDate}T00:00:00.000Z`);
@@ -614,12 +621,16 @@ async function generateMuhuratReportContent(userId: string, templateName: string
     body: reason,
   });
 
+  // Same reasoning as generateBabyNameReportContent's identical comment: no
+  // .catch(() => null) here — a transient geocoder outage now throws
+  // GeocodeUnavailableError and is left uncaught, so the ReportPurchase
+  // never gets marked "completed" and a later retry can regenerate it.
   const geo =
     input.latitude != null && input.longitude != null
       ? { latitude: input.latitude, longitude: input.longitude, timezone: resolveTimezone(input.latitude, input.longitude) }
-      : await geocodeBirthPlace(input.city, input.country).catch(() => null);
+      : await geocodeBirthPlace(input.city, input.country, { throwOnTransientFailure: true });
   if (!geo || !geo.timezone) {
-    return failed("We could not determine this city's coordinates, so this report could not be generated. Please contact support — you will not be charged for a report that didn't generate.");
+    return failed("We could not find that city. Please contact support to update it and regenerate this report — you will not be charged again.");
   }
 
   const dates: string[] = [];

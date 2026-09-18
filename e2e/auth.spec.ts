@@ -77,4 +77,55 @@ test.describe("auth: signup, login, logout", () => {
     // broken (e.g. missing/mismatched client credentials on this environment).
     await Promise.all([page.waitForURL(/accounts\.google\.com/, { timeout: 15_000 }), googleButton.click()]);
   });
+
+  // Uses its own fresh throwaway account (via signup) rather than
+  // E2E_LOGIN_EMAIL — a shared email would hit issueOtp's real 45s
+  // per-destination cooldown (lib/auth/otp.ts) on a quick repeat run,
+  // which is correct anti-abuse behavior, not something to work around by
+  // weakening it.
+  test("forgot password resets the account and logs in with the new password", async ({ page }) => {
+    const email = freshSignupEmail();
+    const originalPassword = "OriginalPass!123";
+    const newPassword = "NewE2ePass!999";
+
+    await page.goto("/login");
+    await page.getByRole("button", { name: "Sign up", exact: true }).click();
+    await page.getByLabel("Email address").fill(email);
+    await page.getByLabel("Password", { exact: true }).fill(originalPassword);
+    await page.getByLabel("Confirm password").fill(originalPassword);
+    await checkConsent(page);
+    await page.getByRole("button", { name: "Create account" }).click();
+    await page.waitForURL(/\/onboarding/, { timeout: 15_000 });
+
+    await page.goto("/forgot-password");
+    await page.getByLabel("Email address").fill(email);
+    await page.getByRole("button", { name: "Send reset code" }).click();
+
+    // Dev-mode convenience (see password-reset/request/route.ts): the real
+    // code is shown inline instead of requiring a real inbox.
+    const devCode = page.locator("strong");
+    await expect(devCode).toBeVisible({ timeout: 10_000 });
+    const code = (await devCode.textContent())?.trim() ?? "";
+    expect(code).toMatch(/^\d{6}$/);
+
+    await page.getByLabel("Enter the 6-digit code").fill(code);
+    await page.getByLabel("New password").fill(newPassword);
+    await page.getByLabel("Confirm password").fill(newPassword);
+
+    // Auto-submits once all three fields are valid (see the page's own
+    // effect) — no explicit button click needed. Still-unonboarded account
+    // -> (app)/layout.tsx bounces /dashboard to /onboarding.
+    await page.waitForURL(/\/onboarding/, { timeout: 15_000 });
+
+    // Real proof the new password actually took effect: clear the session
+    // (no logout UI on the onboarding page) and log back in with ONLY the
+    // new password.
+    await page.context().clearCookies();
+    await page.goto("/login");
+    await page.getByLabel("Email address").fill(email);
+    await page.getByLabel("Password", { exact: true }).fill(newPassword);
+    await checkConsent(page);
+    await page.getByRole("button", { name: "Log in", exact: true }).click();
+    await page.waitForURL(/\/onboarding/, { timeout: 15_000 });
+  });
 });

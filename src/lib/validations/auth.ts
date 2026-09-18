@@ -35,3 +35,13 @@ export const passwordSignupSchema = z.object({
   email: z.string().email().max(120),
   password: z.string().min(8).max(72),
 });
+
+export const passwordResetRequestSchema = z.object({
+  email: z.string().email().max(120),
+});
+
+export const passwordResetConfirmSchema = z.object({
+  email: z.string().email().max(120),
+  code: z.string().length(6),
+  newPassword: z.string().min(8).max(72),
+});

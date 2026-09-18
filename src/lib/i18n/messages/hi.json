@@ -228,7 +228,17 @@
     "invalidCredentials": "ईमेल या पासवर्ड गलत है।",
     "emailTaken": "इस ईमेल से पहले से एक खाता मौजूद है। लॉग इन करें, या Google से जारी रखें।",
     "accountSuspended": "यह खाता निलंबित कर दिया गया है। कृपया सहायता से संपर्क करें।",
-    "accountDeleted": "यह खाता अब सक्रिय नहीं है।"
+    "accountDeleted": "यह खाता अब सक्रिय नहीं है।",
+    "forgotPasswordLink": "पासवर्ड भूल गए?",
+    "forgotPasswordTitle": "अपना पासवर्ड रीसेट करें",
+    "forgotPasswordSub": "अपना ईमेल दर्ज करें, हम आपको एक रीसेट कोड भेजेंगे।",
+    "resetPasswordSub": "हमने भेजा हुआ कोड दर्ज करें और नया पासवर्ड चुनें।",
+    "sendResetCode": "रीसेट कोड भेजें",
+    "resetCodeLabel": "6-अंकों का कोड दर्ज करें",
+    "newPasswordLabel": "नया पासवर्ड",
+    "resetPasswordButton": "पासवर्ड रीसेट करें",
+    "resetCodeSentNotice": "एक रीसेट कोड भेजा गया है। आने में एक मिनट लग सकता है।",
+    "backToLogin": "लॉग इन पर वापस जाएं"
   },
   "dashboard": {
     "welcomeBack": "वापसी पर स्वागत है, {name}",
