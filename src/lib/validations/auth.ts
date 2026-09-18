@@ -27,3 +27,11 @@ export const otpVerifySchema = z
     (v) => (v.channel === "phone" ? PHONE_RE.test(v.destination) : z.string().email().safeParse(v.destination).success),
     { message: "Invalid destination for the given channel", path: ["destination"] }
   );
+
+// bcrypt silently truncates/ignores input past 72 bytes — capped here so a
+// very long password isn't accepted at signup and then not what the user
+// thinks it is on every future login.
+export const passwordSignupSchema = z.object({
+  email: z.string().email().max(120),
+  password: z.string().min(8).max(72),
+});

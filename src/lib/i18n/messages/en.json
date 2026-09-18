@@ -181,7 +181,7 @@
   },
   "auth": {
     "loginTitle": "Log in to Prerna AI",
-    "loginSub": "Continue with your phone or email.",
+    "loginSub": "Log in with your email and password, or continue with Google.",
     "phoneLabel": "Phone number",
     "emailLabel": "Email address",
     "sendOtp": "Send OTP",
@@ -212,7 +212,23 @@
     "otpErrorAccountDeleted": "This account is no longer active.",
     "invalidPhoneFormat": "Enter a valid phone number with country code, e.g. +91 9XXXXXXXXX.",
     "invalidEmailFormat": "Enter a valid email address.",
-    "otpCooldownWait": "Please wait {seconds}s before requesting another code."
+    "otpCooldownWait": "Please wait {seconds}s before requesting another code.",
+    "signupTitle": "Create your Prerna AI account",
+    "signupSub": "Create an account with your email and password, or continue with Google.",
+    "passwordLabel": "Password",
+    "confirmPasswordLabel": "Confirm password",
+    "signInButton": "Log in",
+    "signUpButton": "Create account",
+    "needAccountPrompt": "Don't have an account?",
+    "haveAccountPrompt": "Already have an account?",
+    "switchToSignup": "Sign up",
+    "switchToLogin": "Log in",
+    "passwordMinHint": "At least 8 characters",
+    "passwordMismatch": "Passwords don't match.",
+    "invalidCredentials": "Incorrect email or password.",
+    "emailTaken": "An account with this email already exists. Try logging in, or continue with Google.",
+    "accountSuspended": "This account has been suspended. Please contact support.",
+    "accountDeleted": "This account is no longer active."
   },
   "dashboard": {
     "welcomeBack": "Welcome back, {name}",

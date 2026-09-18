@@ -181,7 +181,7 @@
   },
   "auth": {
     "loginTitle": "Prerna AI માં લૉગ ઇન કરો",
-    "loginSub": "તમારા ફોન અથવા ઈમેલથી આગળ વધો.",
+    "loginSub": "તમારા ઈમેલ અને પાસવર્ડથી લૉગ ઇન કરો, અથવા Google થી આગળ વધો.",
     "phoneLabel": "ફોન નંબર",
     "emailLabel": "ઈમેલ સરનામું",
     "sendOtp": "OTP મોકલો",
@@ -212,7 +212,23 @@
     "otpErrorAccountDeleted": "આ ખાતું હવે સક્રિય નથી.",
     "invalidPhoneFormat": "દેશ કોડ સાથે માન્ય ફોન નંબર દાખલ કરો, દા.ત. +91 9XXXXXXXXX.",
     "invalidEmailFormat": "કૃપા કરીને માન્ય ઈમેલ સરનામું દાખલ કરો.",
-    "otpCooldownWait": "નવો કોડ મંગાવતા પહેલા કૃપા કરીને {seconds} સેકન્ડ રાહ જુઓ."
+    "otpCooldownWait": "નવો કોડ મંગાવતા પહેલા કૃપા કરીને {seconds} સેકન્ડ રાહ જુઓ.",
+    "signupTitle": "તમારું Prerna AI એકાઉન્ટ બનાવો",
+    "signupSub": "તમારા ઈમેલ અને પાસવર્ડથી એકાઉન્ટ બનાવો, અથવા Google થી આગળ વધો.",
+    "passwordLabel": "પાસવર્ડ",
+    "confirmPasswordLabel": "પાસવર્ડની પુષ્ટિ કરો",
+    "signInButton": "લૉગ ઇન કરો",
+    "signUpButton": "એકાઉન્ટ બનાવો",
+    "needAccountPrompt": "એકાઉન્ટ નથી?",
+    "haveAccountPrompt": "પહેલેથી એકાઉન્ટ છે?",
+    "switchToSignup": "સાઇન અપ કરો",
+    "switchToLogin": "લૉગ ઇન કરો",
+    "passwordMinHint": "ઓછામાં ઓછા 8 અક્ષરો",
+    "passwordMismatch": "પાસવર્ડ મેળ ખાતા નથી.",
+    "invalidCredentials": "ઈમેલ અથવા પાસવર્ડ ખોટો છે.",
+    "emailTaken": "આ ઈમેલથી પહેલેથી એક એકાઉન્ટ છે. લૉગ ઇન કરો, અથવા Google થી આગળ વધો.",
+    "accountSuspended": "આ એકાઉન્ટ સસ્પેન્ડ કરવામાં આવ્યું છે. કૃપા કરીને સપોર્ટનો સંપર્ક કરો.",
+    "accountDeleted": "આ એકાઉન્ટ હવે સક્રિય નથી."
   },
   "dashboard": {
     "welcomeBack": "પાછા આવવા બદલ સ્વાગત છે, {name}",

@@ -1,28 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useT } from "@/lib/i18n/provider";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, ApiError } from "@/lib/api-client";
-
-// Mirrors OTP_REQUEST_COOLDOWN_SECONDS's default in .env(.example) — the
-// server is the source of truth (a "cooldown" error response carries the
-// exact retryAfterSeconds), this is just the optimistic UI countdown shown
-// immediately after a send so the resend button doesn't sit clickable.
-const RESEND_COOLDOWN_SECONDS = 45;
+// PAUSED 2026-09-18 — see auth.ts's matching comment for why, and for how
+// to bring OTP back. This import (and the OtpFlow function it powered,
+// commented out at the bottom of this file) is what the OTP tabs UI used.
+// import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-// E.164-ish: leading +, country code, 8-15 digits — matches otpRequestSchema
-// server-side (lib/validations/auth.ts).
-const PHONE_RE = /^\+[1-9]\d{7,14}$/;
 
 /** Google's own 4-color "G" brand mark — standard asset, matches Google's sign-in button guidelines. */
 function GoogleIcon() {
@@ -36,15 +30,6 @@ function GoogleIcon() {
   );
 }
 
-function normalizeDestination(channel: "phone" | "email", value: string): string {
-  if (channel === "phone") return value.replace(/[\s-]/g, "");
-  return value.trim().toLowerCase();
-}
-
-function isValidDestination(channel: "phone" | "email", normalized: string): boolean {
-  return channel === "phone" ? PHONE_RE.test(normalized) : EMAIL_RE.test(normalized);
-}
-
 export default function LoginPage() {
   const t = useT();
   const searchParams = useSearchParams();
@@ -53,6 +38,7 @@ export default function LoginPage() {
   const [consent, setConsent] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const consentOk = consent && ageConfirmed;
+  const [mode, setMode] = useState<"login" | "signup">("login");
 
   // Stash a referral code from the link into a short-lived cookie so
   // /api/onboarding can link it once the account is actually created.
@@ -64,22 +50,22 @@ export default function LoginPage() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle>{t("auth.loginTitle")}</CardTitle>
-        <CardDescription>{t("auth.loginSub")}</CardDescription>
+        <CardTitle>{mode === "login" ? t("auth.loginTitle") : t("auth.signupTitle")}</CardTitle>
+        <CardDescription>{mode === "login" ? t("auth.loginSub") : t("auth.signupSub")}</CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="phone">
-          <TabsList className="w-full">
-            <TabsTrigger value="phone" className="flex-1">{t("auth.continueWithPhone")}</TabsTrigger>
-            <TabsTrigger value="email" className="flex-1">{t("auth.continueWithEmail")}</TabsTrigger>
-          </TabsList>
-          <TabsContent value="phone">
-            <OtpFlow channel="phone" consentOk={consentOk} callbackUrl={callbackUrl} />
-          </TabsContent>
-          <TabsContent value="email">
-            <OtpFlow channel="email" consentOk={consentOk} callbackUrl={callbackUrl} />
-          </TabsContent>
-        </Tabs>
+        <PasswordFlow mode={mode} consentOk={consentOk} callbackUrl={callbackUrl} />
+
+        <p className="mt-4 text-center text-xs text-muted">
+          {mode === "login" ? t("auth.needAccountPrompt") : t("auth.haveAccountPrompt")}{" "}
+          <button
+            type="button"
+            className="font-medium text-foreground underline"
+            onClick={() => setMode(mode === "login" ? "signup" : "login")}
+          >
+            {mode === "login" ? t("auth.switchToSignup") : t("auth.switchToLogin")}
+          </button>
+        </p>
 
         <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5">
           <label className="flex items-start gap-2 text-xs text-muted">
@@ -116,10 +102,151 @@ export default function LoginPage() {
   );
 }
 
-// Server-side codes from lib/auth/otp.ts's VerifyOtpResult["reason"], plus
-// "invalid_request" / "account_suspended" / "account_deleted" thrown by
-// auth.ts's OtpSignInError — forwarded to the client via NextAuth's
-// CredentialsSignin.code (see auth.ts for how that plumbing works).
+// Server-side codes from auth.ts's "password" provider's PasswordSignInError,
+// plus "invalid_request" for a malformed submit.
+const PASSWORD_ERROR_KEYS: Record<string, string> = {
+  invalid_request: "errors.generic",
+  invalid_credentials: "auth.invalidCredentials",
+  account_suspended: "auth.accountSuspended",
+  account_deleted: "auth.accountDeleted",
+};
+
+function PasswordFlow({ mode, consentOk, callbackUrl }: { mode: "login" | "signup"; consentOk: boolean; callbackUrl: string }) {
+  const t = useT();
+  const { toast } = useToast();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  const submit = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    setEmailError(null);
+    setPasswordError(null);
+
+    if (!EMAIL_RE.test(normalizedEmail)) {
+      setEmailError(t("auth.invalidEmailFormat"));
+      return;
+    }
+    if (mode === "signup") {
+      if (password.length < 8) {
+        setPasswordError(t("auth.passwordMinHint"));
+        return;
+      }
+      if (password !== confirmPassword) {
+        setPasswordError(t("auth.passwordMismatch"));
+        return;
+      }
+    }
+    if (!consentOk) return;
+
+    setSubmitting(true);
+    try {
+      if (mode === "signup") {
+        await apiFetch("/api/auth/signup", { method: "POST", body: JSON.stringify({ email: normalizedEmail, password }) });
+      }
+      const res = await signIn("password", { email: normalizedEmail, password, redirect: false });
+      if (res?.error) {
+        const key = res.code ? PASSWORD_ERROR_KEYS[res.code] : undefined;
+        setPasswordError(key ? t(key) : t("errors.generic"));
+        setSubmitting(false);
+        return;
+      }
+      // Hard navigation, not router.push — the same fix the paused OTP flow
+      // used (see auth.ts's comment / git history): a client-side
+      // transition right after signIn(..., {redirect:false}) sets the
+      // session cookie, but next-auth's client SessionProvider and the
+      // server-side auth() read in (app)/layout.tsx don't reliably both
+      // pick up the brand-new session before rendering, which could land on
+      // a stale/blank dashboard. A full page load re-fetches everything
+      // against the now-real cookie.
+      window.location.href = callbackUrl;
+    } catch (err) {
+      if (mode === "signup" && err instanceof ApiError && (err.body as { error?: string } | null)?.error === "email_taken") {
+        setEmailError(t("auth.emailTaken"));
+      } else {
+        toast({ title: t("errors.generic"), variant: "danger" });
+      }
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 flex flex-col gap-4">
+      <div>
+        <Label htmlFor="email">{t("auth.emailLabel")}</Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            if (emailError) setEmailError(null);
+          }}
+          className="mt-1.5"
+        />
+        {emailError && <p className="mt-1.5 text-xs text-danger">{emailError}</p>}
+      </div>
+      <div>
+        <Label htmlFor="password">{t("auth.passwordLabel")}</Label>
+        <Input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            if (passwordError) setPasswordError(null);
+          }}
+          className="mt-1.5"
+        />
+        {mode === "signup" && <p className="mt-1.5 text-xs text-muted">{t("auth.passwordMinHint")}</p>}
+      </div>
+      {mode === "signup" && (
+        <div>
+          <Label htmlFor="confirmPassword">{t("auth.confirmPasswordLabel")}</Label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => {
+              setConfirmPassword(e.target.value);
+              if (passwordError) setPasswordError(null);
+            }}
+            className="mt-1.5"
+          />
+        </div>
+      )}
+      {passwordError && <p className="text-xs text-danger">{passwordError}</p>}
+      <Button onClick={submit} disabled={!consentOk || !email || !password || submitting}>
+        {mode === "login" ? t("auth.signInButton") : t("auth.signUpButton")}
+      </Button>
+    </div>
+  );
+}
+
+/* PAUSED 2026-09-18 — phone/email OTP login+signup, replaced above by
+   PasswordFlow. See auth.ts's matching "PAUSED" comment for why and for the
+   paused Credentials provider this UI called. Kept complete so re-enabling
+   is: uncomment this, uncomment the Tabs import at the top, uncomment the
+   Credentials({id: "otp", ...}) block in auth.ts, and swap the JSX in
+   LoginPage's CardContent back to the <Tabs>/<OtpFlow> pair this replaced.
+
+const RESEND_COOLDOWN_SECONDS = 45;
+const PHONE_RE = /^\+[1-9]\d{7,14}$/;
+
+function normalizeDestination(channel: "phone" | "email", value: string): string {
+  if (channel === "phone") return value.replace(/[\s-]/g, "");
+  return value.trim().toLowerCase();
+}
+
+function isValidDestination(channel: "phone" | "email", normalized: string): boolean {
+  return channel === "phone" ? PHONE_RE.test(normalized) : EMAIL_RE.test(normalized);
+}
+
 const OTP_ERROR_KEYS: Record<string, string> = {
   incorrect_code: "auth.otpErrorIncorrectCode",
   expired: "auth.otpErrorExpired",
@@ -146,7 +273,6 @@ function OtpFlow({ channel, consentOk, callbackUrl }: { channel: "phone" | "emai
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const lastAutoSubmitted = useRef<string | null>(null);
 
-  // Countdown tick for the resend cooldown.
   useEffect(() => {
     if (!cooldownUntil) return;
     const tick = () => {
@@ -217,24 +343,9 @@ function OtpFlow({ channel, consentOk, callbackUrl }: { channel: "phone" | "emai
       lastAutoSubmitted.current = null;
       return;
     }
-    // Deliberately a hard navigation, not router.push(). Found live: after
-    // signIn(..., { redirect: false }) sets the session cookie, a
-    // client-side router.push straight to /dashboard could land on a blank
-    // white screen that only a manual browser refresh fixed. (app)/layout.tsx
-    // reads the session server-side via auth() per request, and next-auth's
-    // client SessionProvider caches its own session state separately — a
-    // soft App Router transition doesn't reliably force either of those to
-    // pick up the just-created session before rendering, so the dashboard's
-    // client-side pieces could render against stale/absent session state.
-    // A full page load re-fetches everything from scratch against the
-    // now-real cookie, the same fix already used for the logout/bfcache
-    // stale-page issue (see BfcacheGuard).
     window.location.href = callbackUrl;
   };
 
-  // Auto-submit once a full 6-digit code is typed/pasted — a standard OTP-UX
-  // pattern — but only once per distinct value so a failed attempt doesn't
-  // re-fire on every keystroke while the (now-cleared) field refills.
   useEffect(() => {
     if (code.length === 6 && lastAutoSubmitted.current !== code) {
       lastAutoSubmitted.current = code;
@@ -320,3 +431,4 @@ function OtpFlow({ channel, consentOk, callbackUrl }: { channel: "phone" | "emai
     </div>
   );
 }
+*/

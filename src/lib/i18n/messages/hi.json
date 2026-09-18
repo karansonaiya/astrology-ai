@@ -181,7 +181,7 @@
   },
   "auth": {
     "loginTitle": "Prerna AI में लॉग इन करें",
-    "loginSub": "अपने फ़ोन या ईमेल से जारी रखें।",
+    "loginSub": "अपने ईमेल और पासवर्ड से लॉग इन करें, या Google से जारी रखें।",
     "phoneLabel": "फ़ोन नंबर",
     "emailLabel": "ईमेल पता",
     "sendOtp": "OTP भेजें",
@@ -212,7 +212,23 @@
     "otpErrorAccountDeleted": "यह खाता अब सक्रिय नहीं है।",
     "invalidPhoneFormat": "देश कोड सहित मान्य फ़ोन नंबर दर्ज करें, जैसे +91 9XXXXXXXXX।",
     "invalidEmailFormat": "कृपया मान्य ईमेल पता दर्ज करें।",
-    "otpCooldownWait": "नया कोड मंगवाने से पहले कृपया {seconds} सेकंड प्रतीक्षा करें।"
+    "otpCooldownWait": "नया कोड मंगवाने से पहले कृपया {seconds} सेकंड प्रतीक्षा करें।",
+    "signupTitle": "अपना Prerna AI खाता बनाएं",
+    "signupSub": "अपने ईमेल और पासवर्ड से खाता बनाएं, या Google से जारी रखें।",
+    "passwordLabel": "पासवर्ड",
+    "confirmPasswordLabel": "पासवर्ड की पुष्टि करें",
+    "signInButton": "लॉग इन करें",
+    "signUpButton": "खाता बनाएं",
+    "needAccountPrompt": "खाता नहीं है?",
+    "haveAccountPrompt": "पहले से ही खाता है?",
+    "switchToSignup": "साइन अप करें",
+    "switchToLogin": "लॉग इन करें",
+    "passwordMinHint": "कम से कम 8 अक्षर",
+    "passwordMismatch": "पासवर्ड मेल नहीं खाते।",
+    "invalidCredentials": "ईमेल या पासवर्ड गलत है।",
+    "emailTaken": "इस ईमेल से पहले से एक खाता मौजूद है। लॉग इन करें, या Google से जारी रखें।",
+    "accountSuspended": "यह खाता निलंबित कर दिया गया है। कृपया सहायता से संपर्क करें।",
+    "accountDeleted": "यह खाता अब सक्रिय नहीं है।"
   },
   "dashboard": {
     "welcomeBack": "वापसी पर स्वागत है, {name}",
