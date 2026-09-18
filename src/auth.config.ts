@@ -25,6 +25,22 @@ import type { AppLocale } from "@/lib/i18n/config";
  */
 export const authConfig: NextAuthConfig = {
   trustHost: true,
+  // Found live: logout appeared to do nothing on the deployed (Netlify)
+  // site — the redirect to "/" happened, but a protected page right after
+  // still rendered as logged in. Root cause: Auth.js's default for this
+  // (@auth/core's init.ts: `config.useSecureCookies ?? url.protocol ===
+  // "https:"`) infers secure-cookie mode PER REQUEST from the URL trustHost
+  // builds out of forwarded headers — and Netlify's proxying didn't report
+  // "https:" consistently on every single invocation. Whichever request
+  // guessed wrong used unprefixed cookie names (e.g. plain
+  // "authjs.session-token") to try to clear a cookie the browser actually
+  // has stored as "__Host-authjs.session-token" (a different cookie, as far
+  // as the browser is concerned) — the clear silently no-ops, so the real
+  // session cookie survives logout. Setting this explicitly, from a static
+  // env check instead of per-request header inference, makes every
+  // invocation (this lite config via proxy.ts, and the full one in auth.ts)
+  // agree on the same cookie name every time.
+  useSecureCookies: process.env.NODE_ENV === "production",
   pages: {
     signIn: "/login",
   },
