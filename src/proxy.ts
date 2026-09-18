@@ -141,5 +141,18 @@ function applySecurityHeaders(res: NextResponse) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|icons/).*)"],
+  // api/auth excluded: found live on Netlify — logout appeared to do
+  // nothing because /api/auth/signout's own response actually carried TWO
+  // Set-Cookie headers for the session token: the signout route handler's
+  // real clear (Max-Age=0), immediately followed by ANOTHER one re-issuing
+  // the SAME old token with a far-future expiry. That second one came from
+  // this middleware's own `auth()` wrapper — it's Auth.js's normal
+  // session-cookie-refresh side effect (re-signs the cookie from whatever
+  // session it read off the incoming request) firing on every matched
+  // request, auth's own routes included. Since a later Set-Cookie for the
+  // same name/path wins, the refreshed cookie silently undid the clear in
+  // the very same response. Auth.js's own routes manage their cookies
+  // completely on their own; they should never be re-wrapped by this
+  // session-refreshing middleware.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|icons/|api/auth).*)"],
 };
