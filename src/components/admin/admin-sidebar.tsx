@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, CreditCard, Cpu, TriangleAlert,
-  FileText, DollarSign, Gift, LifeBuoy, ToggleLeft, BarChart3, ArrowLeft, Bell,
+  FileText, DollarSign, Gift, LifeBuoy, ToggleLeft, BarChart3, ArrowLeft, Bell, Flame, Store,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/layout/logo";
@@ -19,6 +19,8 @@ const NAV = [
   { href: "/admin/notifications", icon: Bell, label: "Notifications", roles: ["admin"] },
   { href: "/admin/pricing", icon: DollarSign, label: "Pricing", roles: ["admin"] },
   { href: "/admin/referrals", icon: Gift, label: "Referrals", roles: ["admin"] },
+  { href: "/admin/puja-requests", icon: Flame, label: "Puja Requests", roles: ["admin", "support_agent"] },
+  { href: "/admin/shop", icon: Store, label: "Shop", roles: ["admin"] },
   { href: "/admin/support", icon: LifeBuoy, label: "Support", roles: ["admin", "support_agent"] },
   { href: "/admin/flags", icon: ToggleLeft, label: "Feature Flags", roles: ["admin"] },
   { href: "/admin/analytics", icon: BarChart3, label: "Analytics", roles: ["admin"] },

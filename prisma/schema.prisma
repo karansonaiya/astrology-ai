@@ -246,6 +246,8 @@ model User {
   messageFeedback     MessageFeedback[]
   compatibilityReqs   CompatibilityRequest[]
   tarotReadings       TarotReading[]
+  pujaBookingRequests PujaBookingRequest[]
+  productInquiries    ProductInquiry[]
   creditWallet        CreditWallet?
   creditTransactions  CreditTransaction[]
   reportPurchases     ReportPurchase[]
@@ -964,6 +966,93 @@ model SupportTicket {
 
   user    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   replies SupportTicketReply[]
+
+  @@index([status])
+}
+
+enum PujaRequestStatus {
+  pending
+  contacted
+  scheduled
+  completed
+  cancelled
+}
+
+// A real lead-capture step toward an eventual real pandit-booking system —
+// not a live booking (no real pandit network/availability exists yet, see
+// the founder's own explicit "AI guidance now, real booking later" call).
+// Admin sees these in /admin/puja-requests and arranges the real puja
+// manually until a real vendor network exists to automate this.
+model PujaBookingRequest {
+  id      String @id @default(cuid())
+  userId  String
+
+  pujaCode String? // matches src/lib/puja/catalog.ts's Puja.code when picked from the list, null for a custom/typed-in request
+  pujaName String // display name — the catalog name, or whatever the user typed for a custom request
+  preferredDate DateTime?
+  contactPhone  String
+  notes         String? @db.Text
+
+  status     PujaRequestStatus @default(pending)
+  adminNotes String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+enum ProductCategory {
+  gemstone
+  rudraksha
+  yantra
+  other
+}
+
+// Deliberately starts empty — no fabricated products/prices. Admin adds
+// real inventory (with real supplier photos/pricing) via /admin/shop once
+// that exists; this is the catalog structure ready for it, per the
+// founder's own explicit "set it up now, real shop later" call.
+model SpiritualProduct {
+  id            String          @id @default(cuid())
+  name          String
+  description   String          @db.Text
+  category      ProductCategory
+  priceInPaise  Int
+  imageUrl      String?
+  active        Boolean         @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inquiries ProductInquiry[]
+
+  @@index([active])
+}
+
+enum ProductInquiryStatus {
+  new
+  contacted
+  closed
+}
+
+model ProductInquiry {
+  id        String  @id @default(cuid())
+  productId String
+  userId    String?
+
+  contactName  String
+  contactPhone String
+  message      String? @db.Text
+
+  status ProductInquiryStatus @default(new)
+
+  createdAt DateTime @default(now())
+
+  product SpiritualProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([status])
 }

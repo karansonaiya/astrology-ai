@@ -7,6 +7,7 @@ import * as RadixDialog from "@radix-ui/react-dialog";
 import {
   Home, MessageCircle, Sparkles, FileText, Menu, X,
   Users, User, Sun, GitCompareArrows, Briefcase, Heart, Wallet, CreditCard, Gift, Settings, LifeBuoy, Spade,
+  Flame, Wand, Store,
 } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,10 @@ const MORE_ITEMS = [
   { href: "/career", icon: Briefcase, labelKey: "nav.career" },
   { href: "/relationship", icon: Heart, labelKey: "nav.relationship" },
   { href: "/tarot-reading", icon: Spade, labelKey: "nav.tarot" },
+  { href: "/vastu-shastra", icon: Home, labelKey: "nav.vastuShastra" },
+  { href: "/puja-services", icon: Flame, labelKey: "nav.pujaServices" },
+  { href: "/remedies", icon: Wand, labelKey: "nav.remedies" },
+  { href: "/shop", icon: Store, labelKey: "nav.shop" },
   { href: "/credits", icon: Wallet, labelKey: "nav.credits" },
   { href: "/payments", icon: CreditCard, labelKey: "nav.payments" },
   { href: "/referral", icon: Gift, labelKey: "nav.referral" },

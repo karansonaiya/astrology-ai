@@ -34,3 +34,41 @@ export const relationshipInsightSchema = z.object({
 export const tarotReadingSchema = z.object({
   question: z.string().max(500).optional(),
 });
+
+export const vastuSchema = z.object({
+  propertyType: z.enum(["home", "office", "shop"]),
+  mainDoorDirection: z.enum(["N", "NE", "E", "SE", "S", "SW", "W", "NW", "center"]),
+  elements: z
+    .array(
+      z.object({
+        element: z.enum(["main_door", "kitchen", "master_bedroom", "pooja_room", "toilet", "staircase", "water_source", "cash_locker"]),
+        direction: z.enum(["N", "NE", "E", "SE", "S", "SW", "W", "NW", "center"]),
+      })
+    )
+    .max(8)
+    .default([]),
+  concern: z.string().max(500).optional(),
+});
+
+export const remedySchema = z.object({
+  concern: z.string().min(5).max(1000),
+});
+
+export const pujaGuidanceSchema = z.object({
+  concern: z.string().min(5).max(500),
+});
+
+export const pujaBookingRequestSchema = z.object({
+  pujaCode: z.string().max(80).optional(),
+  pujaName: z.string().min(1).max(120),
+  preferredDate: z.string().date().optional(),
+  contactPhone: z.string().min(4).max(20),
+  notes: z.string().max(1000).optional(),
+});
+
+export const productInquirySchema = z.object({
+  productId: z.string().min(1),
+  contactName: z.string().min(1).max(120),
+  contactPhone: z.string().min(4).max(20),
+  message: z.string().max(1000).optional(),
+});

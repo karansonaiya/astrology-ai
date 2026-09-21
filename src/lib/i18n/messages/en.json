@@ -81,6 +81,10 @@
     "career": "Career & Business",
     "relationship": "Relationship",
     "tarot": "Tarot Reading",
+    "vastuShastra": "Vastu Shastra",
+    "pujaServices": "Puja Services",
+    "remedies": "Remedies",
+    "shop": "Shop",
     "reports": "Report Store",
     "myReports": "My Reports",
     "credits": "Credits",
@@ -467,6 +471,60 @@
     },
     "historyTitle": "Past Readings",
     "noHistory": "No readings yet — draw your first spread above."
+  },
+  "vastuShastra": {
+    "title": "Vastu Shastra Consultation",
+    "subtitle": "Traditional Vastu guidance for your home, office, or shop, based on real directional principles.",
+    "propertyTypeLabel": "Property type",
+    "propertyType": {
+      "home": "Home",
+      "office": "Office",
+      "shop": "Shop"
+    },
+    "mainDoorLabel": "Which direction does the main door face?",
+    "otherElementsHint": "Optional — add directions for any other areas you'd like checked",
+    "notApplicable": "Not applicable / skip",
+    "concernLabel": "Any specific concern? (optional)",
+    "concernPlaceholder": "e.g. frequent arguments at home, money doesn't stay",
+    "generate": "Get Vastu Guidance",
+    "generating": "Analyzing..."
+  },
+  "remedies": {
+    "title": "Remedies Finder",
+    "subtitle": "Describe a concern and get general traditional remedy suggestions.",
+    "concernLabel": "What's troubling you?",
+    "generate": "Find Remedies",
+    "generating": "Finding remedies..."
+  },
+  "pujaServices": {
+    "title": "Puja Services",
+    "subtitle": "Get guidance on which traditional puja fits your situation, or request one to be arranged.",
+    "guidanceTitle": "Which puja is right for me?",
+    "concernPlaceholder": "e.g. starting a new business, health worries, marriage delays",
+    "getGuidance": "Get Guidance",
+    "generating": "Thinking...",
+    "requestTitle": "Request a Puja",
+    "requestNotice": "This sends a real request to our team — we don't have an automated booking system yet, so we'll contact you directly to arrange it.",
+    "selectPujaLabel": "Which puja?",
+    "customPuja": "Something else (type below)",
+    "customPujaNameLabel": "Puja name",
+    "preferredDateLabel": "Preferred date (optional)",
+    "contactPhoneLabel": "Contact phone number",
+    "notesLabel": "Notes",
+    "sendRequest": "Send Request",
+    "requestSentNotice": "Your request has been sent. We'll contact you soon.",
+    "yourRequestsTitle": "Your Requests",
+    "noRequests": "No requests yet."
+  },
+  "shop": {
+    "title": "Spiritual Shop",
+    "subtitle": "Gemstones, rudraksha, and yantras — reach out and we'll help you choose the right one.",
+    "emptyNotice": "No products listed yet — check back soon.",
+    "imInterested": "I'm interested",
+    "inquiryTitle": "Tell us you're interested",
+    "contactNameLabel": "Your name",
+    "sendInquiry": "Send Inquiry",
+    "inquirySentNotice": "Thanks! We'll reach out to you soon."
   },
   "reports": {
     "storeTitle": "Report Store",

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
-import { MessageCircle, Sun, Sparkles, GitCompareArrows, Briefcase, Heart, FileText, Hand, Hash, Baby, Gem, CalendarClock, ScanFace, Flame, Orbit, Spade } from "lucide-react";
+import { MessageCircle, Sun, Sparkles, GitCompareArrows, Briefcase, Heart, FileText, Hand, Hash, Baby, Gem, CalendarClock, ScanFace, Flame, Orbit, Spade, Home, Wand, Store } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { apiFetch } from "@/lib/api-client";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -39,7 +39,11 @@ export default function DashboardPage() {
     { href: "/career", icon: Briefcase, label: t("nav.career") },
     { href: "/relationship", icon: Heart, label: t("nav.relationship") },
     { href: "/tarot-reading", icon: Spade, label: t("nav.tarot") },
+    { href: "/vastu-shastra", icon: Home, label: t("nav.vastuShastra") },
+    { href: "/puja-services", icon: Flame, label: t("nav.pujaServices") },
+    { href: "/remedies", icon: Wand, label: t("nav.remedies") },
     { href: "/reports", icon: FileText, label: t("nav.reports") },
+    { href: "/shop", icon: Store, label: t("nav.shop") },
   ];
 
   return (
