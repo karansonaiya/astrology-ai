@@ -88,7 +88,7 @@ export default function ShopPage() {
               </div>
               <CardTitle className="text-base">{p.name}</CardTitle>
               <Badge variant="gold" className="w-fit capitalize">{p.category}</Badge>
-              <CardDescription>{p.description}</CardDescription>
+              <CardDescription className="break-words">{p.description}</CardDescription>
             </CardHeader>
             <CardFooter className="mt-auto flex items-center justify-between">
               <span className="font-semibold text-gold">{formatInr(p.priceInPaise, `${locale}-IN`)}</span>

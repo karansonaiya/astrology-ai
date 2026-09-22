@@ -138,7 +138,7 @@ export default function PujaServicesPage() {
           )}
           <div>
             <Label className="mb-1.5 block text-xs">{t("pujaServices.preferredDateLabel")}</Label>
-            <Input type="date" value={preferredDate} onChange={(e) => setPreferredDate(e.target.value)} />
+            <Input type="date" min={new Date().toISOString().slice(0, 10)} value={preferredDate} onChange={(e) => setPreferredDate(e.target.value)} />
           </div>
           <div>
             <Label className="mb-1.5 block text-xs">{t("pujaServices.contactPhoneLabel")}</Label>

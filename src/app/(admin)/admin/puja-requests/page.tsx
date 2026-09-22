@@ -44,7 +44,7 @@ export default function AdminPujaRequestsPage() {
           {data?.requests.map((r) => (
             <Card key={r.id}>
               <CardContent className="flex flex-col gap-2 py-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
+                <div className="min-w-0 break-words">
                   <p className="text-sm font-medium">{r.pujaName} — {r.user.name ?? r.user.email}</p>
                   <p className="text-xs text-muted">Phone: {r.contactPhone}{r.preferredDate ? ` · Preferred: ${formatDateTime(r.preferredDate)}` : ""}</p>
                   {r.notes && <p className="mt-1 text-xs text-muted">{r.notes}</p>}

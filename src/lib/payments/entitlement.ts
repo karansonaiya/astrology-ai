@@ -15,7 +15,7 @@ import { generateBabyNameSuggestions } from "@/lib/ai/baby-name-suggestion";
 import { getRealGemstoneRecommendation, getPlanetDignity } from "@/lib/astrology/gemstones";
 import { getPanchangForDates } from "@/lib/astrology/panchang";
 import { getRealMuhuratVerdict, type MuhuratEventType } from "@/lib/astrology/muhurat";
-import { geocodeBirthPlace, resolveTimezone } from "@/lib/geo";
+import { geocodeBirthPlace, resolveTimezone, GeocodeUnavailableError } from "@/lib/geo";
 import type { AppLocale } from "@/lib/i18n/config";
 import { maybeRewardReferral } from "@/lib/referral";
 
@@ -57,16 +57,39 @@ export async function fulfillOrder(orderId: string) {
   const order = await prisma.order.findUnique({ where: { id: orderId } });
   if (!order) return;
 
-  const claim = await prisma.order.updateMany({
+  // Still claimed atomically for its own sake — this is what makes
+  // Order.status correctly flip to "paid" exactly once under real
+  // concurrent callers (the client-verify route and the webhook can both
+  // fire within milliseconds of each other) — but nothing below branches on
+  // its result any more. Every entitlement branch has its own independent,
+  // ledger/row-based idempotency check instead (see each one's own
+  // comment) — found in a later audit that gating credit_pack/subscription
+  // on this alone (like the report branch was correctly NOT doing) left a
+  // transient failure between "order claimed paid" and "entitlement
+  // actually delivered" permanently unrecoverable.
+  await prisma.order.updateMany({
     where: { id: orderId, status: { not: "paid" } },
     data: { status: "paid" },
   });
-  const alreadyPaid = claim.count === 0;
 
-  if (order.type === "credit_pack" && !alreadyPaid) {
+  // Found in a full audit: this used to be gated on `!alreadyPaid`, same as
+  // the subscription branch below — but `alreadyPaid` only ever tells you
+  // the ORDER's own atomic claim already happened, not whether this
+  // specific credit grant actually landed. A transient DB error right after
+  // the claim (order already "paid") but before/during this grantCredits
+  // call left the customer charged with no credits and no way to recover —
+  // every future retry (client retry, webhook redelivery) saw
+  // `alreadyPaid === true` and skipped this block forever. Fixed the same
+  // way the report branch below already was: check the real ledger for
+  // whether this exact order's grant already happened, independent of
+  // order.status, so a retry can always complete a half-done purchase.
+  if (order.type === "credit_pack") {
     const pack = CREDIT_PACKS.find((p) => p.code === order.relatedId);
     if (pack) {
-      await grantCredits(order.userId, pack.credits, "purchase", `Purchased ${pack.name}`, `order:${order.id}`);
+      const alreadyGranted = await prisma.creditTransaction.findFirst({ where: { relatedEntity: `order:${order.id}` } });
+      if (!alreadyGranted) {
+        await grantCredits(order.userId, pack.credits, "purchase", `Purchased ${pack.name}`, `order:${order.id}`);
+      }
     }
   }
 
@@ -126,16 +149,28 @@ export async function fulfillOrder(orderId: string) {
     }
   }
 
-  if (order.type === "subscription" && !alreadyPaid) {
+  // Same fix and reasoning as the credit_pack branch above: independent,
+  // ledger/row-based idempotency instead of `!alreadyPaid`, so a transient
+  // failure between creating the Subscription row and granting its
+  // included credits (two separate steps that can each fail on their own)
+  // doesn't permanently strand either one — a retry checks each
+  // independently and only does whichever part didn't land yet.
+  if (order.type === "subscription") {
     const plan = await prisma.plan.findFirst({ where: { code: order.relatedId ?? undefined } });
     if (plan) {
-      const periodEnd = new Date();
-      periodEnd.setMonth(periodEnd.getMonth() + 1);
-      await prisma.subscription.create({
-        data: { userId: order.userId, planId: plan.id, currentPeriodEnd: periodEnd },
-      });
+      let subscription = await prisma.subscription.findUnique({ where: { orderId: order.id } });
+      if (!subscription) {
+        const periodEnd = new Date();
+        periodEnd.setMonth(periodEnd.getMonth() + 1);
+        subscription = await prisma.subscription.create({
+          data: { userId: order.userId, planId: plan.id, currentPeriodEnd: periodEnd, orderId: order.id },
+        });
+      }
       if (plan.creditsGranted > 0) {
-        await grantCredits(order.userId, plan.creditsGranted, "purchase", `${plan.name} monthly credits`, `order:${order.id}`);
+        const alreadyGranted = await prisma.creditTransaction.findFirst({ where: { relatedEntity: `order:${order.id}` } });
+        if (!alreadyGranted) {
+          await grantCredits(order.userId, plan.creditsGranted, "purchase", `${plan.name} monthly credits`, `order:${order.id}`);
+        }
       }
     }
   }
@@ -920,10 +955,15 @@ type CompatibilityPersonSnapshot = {
 
 async function resolveCompatibilityBirthInput(person: CompatibilityPersonSnapshot): Promise<BirthInput | null> {
   if (!person.birthCity && (person.latitude == null || person.longitude == null)) return null;
+  // No .catch(() => null) here — same reasoning as baby-name/muhurat's fix
+  // (see geo.ts's GeocodeUnavailableError): a transient outage should read
+  // as "temporarily unavailable", not as "these two people's data isn't
+  // enough to calculate a score", which is what a null return means below.
+  // The caller distinguishes the two in the report's own fallback wording.
   const geo =
     person.latitude != null && person.longitude != null
       ? { latitude: person.latitude, longitude: person.longitude, timezone: resolveTimezone(person.latitude, person.longitude) }
-      : await geocodeBirthPlace(person.birthCity!, person.birthCountry).catch(() => null);
+      : await geocodeBirthPlace(person.birthCity!, person.birthCountry, { throwOnTransientFailure: true });
   if (!geo || !geo.timezone) return null;
   return {
     birthDate: new Date(`${person.birthDate}T00:00:00.000Z`),
@@ -962,6 +1002,16 @@ async function generateCompatibilityReportContent(userId: string, templateName: 
   // Reuse the real Guna Milan result already computed for the free check
   // when present; only recompute for a legacy row that predates it.
   let gunaMilan: GunaMilanResult | null = existingResult?.gunaMilan ?? null;
+  // Found in a full audit: a transient geocoder outage here used to be
+  // indistinguishable from "these two people's data genuinely isn't enough
+  // to calculate a score" — both silently produced the same generic
+  // fallback text below, telling the customer their own data was
+  // insufficient when it might just have been Nominatim being down for a
+  // moment. Tracked separately so the report is honest about which one
+  // actually happened. This doesn't block the report (it still generates
+  // and completes either way — the rest of the reading has real value on
+  // its own), it only fixes what it tells the customer.
+  let gunaMilanTransientFailure = false;
   if (gunaMilan === null && existingResult?.gunaMilan === undefined) {
     try {
       const [birthInputA, birthInputB] = await Promise.all([
@@ -971,14 +1021,17 @@ async function generateCompatibilityReportContent(userId: string, templateName: 
       if (birthInputA && birthInputB) {
         gunaMilan = await getKundliMatchingProvider().getGunaMilan(birthInputA, birthInputB);
       }
-    } catch {
+    } catch (err) {
       gunaMilan = null;
+      gunaMilanTransientFailure = err instanceof GeocodeUnavailableError;
     }
   }
 
   const gunaMilanText = gunaMilan
     ? `Real Ashtakoot Guna Milan result: total score ${gunaMilan.totalPoints} out of ${gunaMilan.maximumPoints}, overall assessment "${gunaMilan.messageType}" — ${gunaMilan.messageDescription}. Person A's real Koot: Varna ${gunaMilan.girl.koot.varna}, Vashya ${gunaMilan.girl.koot.vasya}, Tara ${gunaMilan.girl.koot.tara}, Yoni ${gunaMilan.girl.koot.yoni}, Graha Maitri ${gunaMilan.girl.koot.grahaMaitri}, Gana ${gunaMilan.girl.koot.gana}, Bhakoot ${gunaMilan.girl.koot.bhakoot}, Nadi ${gunaMilan.girl.koot.nadi}. Person B's real Koot: Varna ${gunaMilan.boy.koot.varna}, Vashya ${gunaMilan.boy.koot.vasya}, Tara ${gunaMilan.boy.koot.tara}, Yoni ${gunaMilan.boy.koot.yoni}, Graha Maitri ${gunaMilan.boy.koot.grahaMaitri}, Gana ${gunaMilan.boy.koot.gana}, Bhakoot ${gunaMilan.boy.koot.bhakoot}, Nadi ${gunaMilan.boy.koot.nadi}.`
-    : "A real 36-point Ashtakoot Guna Milan score could not be calculated for this pairing (needs a known birth time and place for both people) — write this report using the general reflection below only, without inventing a score.";
+    : gunaMilanTransientFailure
+      ? "A real 36-point Ashtakoot Guna Milan score could not be calculated right now due to a temporary issue with the astrology data service (not missing information) — write this report using the general reflection below only, without inventing a score."
+      : "A real 36-point Ashtakoot Guna Milan score could not be calculated for this pairing (needs a known birth time and place for both people) — write this report using the general reflection below only, without inventing a score.";
 
   const reply = await generateAstrologyReply({
     userId,

@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { generateNotificationCopy } from "@/lib/ai/notification-copy";
 import { sendPushToAllSubscribed } from "@/lib/push/send";
+
+// Real schedule is every 3 hours (Pabbly Connect) — this margin is under
+// that cadence but well above any real retry/duplicate-trigger window, so
+// a genuinely-due next send is never blocked, only an actual duplicate.
+const MIN_INTERVAL_MS = 2.5 * 60 * 60 * 1000;
+const LOCK_KEY = "notification-broadcast";
 
 /**
  * Automatic version of the admin's manual "AI-generated push broadcast"
@@ -74,9 +81,27 @@ async function handle(req: NextRequest) {
     return NextResponse.json({ error: "invalid_slot" }, { status: 400 });
   }
 
+  // Found in a full audit: no protection existed against this route firing
+  // twice in a short window (a scheduler retry, a second workflow, or a
+  // manual re-trigger) — every subscriber would get two real notifications,
+  // the exact failure mode that moved this off GitHub Actions in the first
+  // place. This lock doesn't fix a scheduling-reliability problem (that's
+  // Pabbly's job), it just makes the route itself refuse to double-send
+  // regardless of how many times something calls it too soon.
+  const lock = await prisma.cronRunLock.findUnique({ where: { key: LOCK_KEY } });
+  if (lock && Date.now() - lock.lastRunAt.getTime() < MIN_INTERVAL_MS) {
+    return NextResponse.json({ skipped: true, reason: "already sent recently", lastRunAt: lock.lastRunAt });
+  }
+
   const { topic, url } = BROADCAST_SLOTS[slot];
   const copy = await generateNotificationCopy(topic);
   const result = await sendPushToAllSubscribed({ title: copy.title, body: copy.body, url });
+
+  await prisma.cronRunLock.upsert({
+    where: { key: LOCK_KEY },
+    create: { key: LOCK_KEY, lastRunAt: new Date() },
+    update: { lastRunAt: new Date() },
+  });
 
   return NextResponse.json({ slot, topic, copy, result });
 }

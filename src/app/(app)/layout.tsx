@@ -15,8 +15,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { onboardingCompletedAt: true },
+    select: { onboardingCompletedAt: true, status: true },
   });
+
+  // Found in a full audit: this only ever checked onboarding completion —
+  // a user suspended/deleted AFTER their session was issued (JWT strategy,
+  // no server-side revocation) kept seeing the full app here regardless,
+  // same gap requireUser()/requireAdmin() had for every API route (now
+  // fixed there too — see lib/auth/guard.ts). This can't fully invalidate
+  // the JWT itself from a layout Server Component, but combined with that
+  // API-level fix, a suspended/deleted user can no longer see real app
+  // content OR have any API call succeed, even with a still-valid cookie.
+  if (user?.status === "suspended" || user?.status === "deleted") redirect("/login");
 
   if (!user?.onboardingCompletedAt) redirect("/onboarding");
 

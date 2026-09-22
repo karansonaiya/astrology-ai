@@ -107,23 +107,25 @@ const providers = [
   // Optional — only registered if credentials are present so the login
   // screen doesn't advertise a broken provider in dev.
   //
-  // allowDangerousEmailAccountLinking: true — without this, "Google login
-  // sometimes doesn't work" is the actual symptom of a well-known Auth.js
-  // default: this app's OTP flow already lets anyone sign up with just an
-  // email (no Google involved), so a real, easy-to-hit case is "sign up via
-  // email OTP first, try Continue with Google (same email) later" — Auth.js
-  // by default REFUSES to link a new OAuth sign-in to an existing account
-  // with the same email unless this flag is set, throwing
-  // OAuthAccountNotLinked and sending the user to a generic error page,
-  // which looks exactly like "Google login is broken" from the outside.
-  // Despite the name, this is the safe case the flag exists for: Google
-  // only ever hands back a verified email (it wouldn't issue an id_token
-  // for an address the user doesn't control), and this app's own email-OTP
-  // path independently verifies the same thing — there's no unverified
-  // third party email to spoof here, unlike the genuinely dangerous case
-  // (a provider that lets anyone claim any email unverified).
+  // allowDangerousEmailAccountLinking is DELIBERATELY left at its safe
+  // default (false) — found in a full pre-launch audit that it used to be
+  // set to true here, on the reasoning that "this app's own email-OTP path
+  // already verifies the same email ownership Google does, so linking is
+  // safe." That reasoning broke the moment OTP was paused (see above):
+  // password-signup (api/auth/signup/route.ts) never verifies email
+  // ownership at all (no confirmation email, emailVerified stays null).
+  // With the flag on, an attacker could sign up with password auth using
+  // someone else's real email, and when that real person later used
+  // "Continue with Google" with their own address, Auth.js would silently
+  // link the OAuth identity into the attacker's existing account — the
+  // attacker's password would then keep working on the victim's account
+  // indefinitely. Leaving this off means that case now correctly fails
+  // with OAuthAccountNotLinked instead — a worse error message, but the
+  // safe failure mode. Only turn this back on once password-signup gets
+  // real email verification (or once OTP, which does verify, comes back
+  // as this app's account-creation gate again).
   ...(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
-    ? [Google({ clientId: process.env.AUTH_GOOGLE_ID, clientSecret: process.env.AUTH_GOOGLE_SECRET, allowDangerousEmailAccountLinking: true })]
+    ? [Google({ clientId: process.env.AUTH_GOOGLE_ID, clientSecret: process.env.AUTH_GOOGLE_SECRET })]
     : []),
 ];
 
@@ -152,6 +154,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   callbacks: {
     ...authConfig.callbacks, // keep the Prisma-free session() callback as-is
+    // Found in a full pre-launch audit: the password provider's own
+    // authorize() already blocked a suspended/deleted account, but that
+    // check ONLY ran on that one provider — Google sign-in has no
+    // authorize() at all (OAuth providers never do), so a suspended/deleted
+    // user with Google linked could just click "Continue with Google" and
+    // be right back in, moderation completely ignored. This callback runs
+    // after every provider (Credentials or OAuth) resolves a real user, so
+    // it's the one place that actually covers all of them uniformly.
+    async signIn({ user }) {
+      if (!user.id) return true;
+      const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { status: true } });
+      if (dbUser?.status === "suspended" || dbUser?.status === "deleted") return false;
+      return true;
+    },
     async jwt({ token, user, trigger, session }) {
       if (user?.id) {
         const dbUser = await prisma.user.findUnique({ where: { id: user.id } });

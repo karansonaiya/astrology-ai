@@ -34,7 +34,8 @@ export default function SettingsPage() {
         });
       }
     } else {
-      await push.unsubscribe();
+      const ok = await push.unsubscribe();
+      if (!ok) toast({ title: t("errors.generic"), variant: "danger" });
     }
   };
 
@@ -44,17 +45,31 @@ export default function SettingsPage() {
       qc.invalidateQueries({ queryKey: ["birth-profile-summary"] });
       toast({ title: t("settings.deleteBirthDetails"), variant: "success" });
     },
+    onError: () => toast({ title: t("errors.generic"), variant: "danger" }),
   });
 
+  const [exporting, setExporting] = useState(false);
   const exportData = async () => {
-    const res = await fetch("/api/account/export", { method: "POST" });
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "prerna-ai-data-export.json";
-    a.click();
-    URL.revokeObjectURL(url);
+    setExporting(true);
+    try {
+      const res = await fetch("/api/account/export", { method: "POST" });
+      // Found in a full audit: this had no status check at all — a failed
+      // request (e.g. session expired, a real 500) would still download
+      // whatever error body came back and name it like a real data export,
+      // with the user having no way to tell it wasn't their actual data.
+      if (!res.ok) throw new Error(`export failed: ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "prerna-ai-data-export.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: t("errors.generic"), variant: "danger" });
+    } finally {
+      setExporting(false);
+    }
   };
 
   const deleteAccount = useMutation({
@@ -62,6 +77,7 @@ export default function SettingsPage() {
     onSuccess: () => {
       signOut({ callbackUrl: "/" });
     },
+    onError: () => toast({ title: t("errors.generic"), variant: "danger" }),
   });
 
   return (
@@ -123,7 +139,7 @@ export default function SettingsPage() {
           <CardTitle className="text-base">{t("settings.privacy")}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          <Button variant="outline" onClick={exportData}>{t("settings.exportData")}</Button>
+          <Button variant="outline" onClick={exportData} disabled={exporting}>{t("settings.exportData")}</Button>
           <Button variant="outline" onClick={() => deleteBirthDetails.mutate()}>{t("settings.deleteBirthDetails")}</Button>
           <Button variant="danger" onClick={() => setConfirmDelete(true)}>{t("settings.deleteAccount")}</Button>
         </CardContent>

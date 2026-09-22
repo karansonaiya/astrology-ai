@@ -854,6 +854,13 @@ model Subscription {
   userId String
   planId String
 
+  // Which real Order this subscription came from — same idempotency
+  // purpose as ReportPurchase.orderId (see fulfillOrder's comment): lets a
+  // retry after a transient failure between subscription creation and its
+  // credit grant tell "already created for this order" apart from "not yet
+  // created", independent of Order.status.
+  orderId String? @unique
+
   status               SubscriptionStatus @default(active)
   currentPeriodStart   DateTime           @default(now())
   currentPeriodEnd     DateTime
@@ -863,8 +870,9 @@ model Subscription {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan Plan @relation(fields: [planId], references: [id])
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan  Plan   @relation(fields: [planId], references: [id])
+  order Order? @relation(fields: [orderId], references: [id])
 
   @@index([userId])
 }
@@ -895,6 +903,7 @@ model Order {
   user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   paymentEvents  PaymentEvent[]
   reportPurchase ReportPurchase?
+  subscription   Subscription?
 
   @@index([userId])
   @@index([status])
@@ -1071,6 +1080,22 @@ model SupportTicketReply {
 // ---------------------------------------------------------------------------
 // Platform config, audit, exports
 // ---------------------------------------------------------------------------
+
+// Found in a full audit: send-notification-broadcast had zero protection
+// against being fired twice in the same window — its only trigger
+// (external Pabbly Connect schedule, see daily-cron.yml's own comment
+// trail) has no idempotency key of its own, so a scheduler retry-on-
+// timeout, a second workflow accidentally pointed at the same URL, or
+// anyone re-hitting it manually with the real secret would push every
+// subscriber two different real notifications. This is a general-purpose
+// per-key "don't run again within N" lock any cron route can use the same
+// way, not specific to this one broadcast.
+model CronRunLock {
+  key       String   @id
+  lastRunAt DateTime
+
+  @@index([lastRunAt])
+}
 
 model FeatureFlag {
   id          String   @id @default(cuid())

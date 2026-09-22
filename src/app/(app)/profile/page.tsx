@@ -89,6 +89,7 @@ function ProfileForm({ initial, hasProfile }: { initial: Profile; hasProfile: bo
       qc.invalidateQueries({ queryKey: ["birth-profile-summary"] });
       toast({ title: t("common.save"), variant: "success" });
     },
+    onError: () => toast({ title: t("errors.generic"), variant: "danger" }),
   });
 
   const remove = useMutation({
@@ -97,6 +98,7 @@ function ProfileForm({ initial, hasProfile }: { initial: Profile; hasProfile: bo
       qc.invalidateQueries({ queryKey: ["birth-profile-summary"] });
       toast({ title: t("settings.deleteBirthDetails"), variant: "success" });
     },
+    onError: () => toast({ title: t("errors.generic"), variant: "danger" }),
   });
 
   return (

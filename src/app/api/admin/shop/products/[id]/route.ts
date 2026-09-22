@@ -7,7 +7,7 @@ const patchSchema = z.object({
   name: z.string().min(1).max(160).optional(),
   description: z.string().min(1).max(2000).optional(),
   category: z.enum(["gemstone", "rudraksha", "yantra", "other"]).optional(),
-  priceInPaise: z.number().int().min(0).optional(),
+  priceInPaise: z.number().int().min(1).optional(),
   imageUrl: z.string().url().max(500).nullable().optional(),
   active: z.boolean().optional(),
 });

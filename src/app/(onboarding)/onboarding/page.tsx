@@ -12,6 +12,7 @@ import { useI18n, useT } from "@/lib/i18n/provider";
 import { locales, localeLabels, type AppLocale } from "@/lib/i18n/config";
 import { apiFetch } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/toast";
 
 type Gender = "male" | "female" | "other" | "prefer_not_to_say";
 type Interest = "career" | "marriage" | "relationship" | "business" | "daily_guidance" | "compatibility" | "self_reflection";
@@ -22,6 +23,7 @@ export default function OnboardingPage() {
   const t = useT();
   const { locale, setLocale } = useI18n();
   const router = useRouter();
+  const { toast } = useToast();
 
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
@@ -63,6 +65,13 @@ export default function OnboardingPage() {
         }),
       });
       router.push("/dashboard");
+    } catch {
+      // Found in a full audit: this had no catch/onError at all — a failed
+      // submit (network blip, a real 500) just silently re-enabled the
+      // button with zero indication anything went wrong, on a 10-step form
+      // whose entered data lives only in this page's state (a refresh would
+      // lose all of it).
+      toast({ title: t("errors.generic"), variant: "danger" });
     } finally {
       setSubmitting(false);
     }

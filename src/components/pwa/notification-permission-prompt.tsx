@@ -5,6 +5,7 @@ import { Bell, X } from "lucide-react";
 import { usePushSubscription } from "@/lib/push/use-push-subscription";
 import { useT } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 
 // Per-browser, not per-account (a plain localStorage flag) — deliberately:
 // this is "don't ask on THIS device again", not tied to the user's data,
@@ -23,6 +24,7 @@ const DISMISS_KEY = "prerna_notif_prompt_dismissed";
 export function NotificationPermissionPrompt() {
   const t = useT();
   const push = usePushSubscription();
+  const { toast } = useToast();
   const [dismissed, setDismissed] = useState(true); // starts hidden until the localStorage check below resolves, so it never flashes on then off
 
   useEffect(() => {
@@ -53,6 +55,10 @@ export function NotificationPermissionPrompt() {
   const enable = async () => {
     const ok = await push.subscribe();
     if (ok) dismiss();
+    // Found in a full audit: a failed subscribe attempt here left the
+    // banner just sitting there with zero feedback — the person has no way
+    // to tell whether clicking did anything at all.
+    else toast({ title: t("errors.generic"), variant: "danger" });
   };
 
   if (push.loading || push.state !== "ready" || push.subscribed || dismissed) return null;

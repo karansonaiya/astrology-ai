@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
+import { useToast } from "@/components/ui/toast";
 import { NUMEROLOGY_REPORT_CODES } from "@/lib/pricing/catalog";
 
 type ReportTemplate = { code: string; priceInPaise: number };
@@ -33,6 +34,7 @@ export default function NumerologyPage() {
   const t = useT();
   const { locale } = useI18n();
   const router = useRouter();
+  const { toast } = useToast();
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [reading, setReading] = useState<NumerologyReading | null>(null);
@@ -43,6 +45,7 @@ export default function NumerologyPage() {
     onSuccess: (res) => setReading(res.reading),
     onError: (err) => {
       if (err instanceof ApiError && err.status === 402) setOutOfCreditsOpen(true);
+      else toast({ title: t("errors.generic"), variant: "danger" });
     },
   });
 

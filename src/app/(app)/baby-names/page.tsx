@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
+import { useToast } from "@/components/ui/toast";
 import { CityAutocomplete } from "@/components/ui/city-autocomplete";
 import { cn } from "@/lib/utils";
 import { BABY_NAME_REPORT_CODES } from "@/lib/pricing/catalog";
@@ -42,6 +43,7 @@ export default function BabyNamesPage() {
   const t = useT();
   const { locale } = useI18n();
   const router = useRouter();
+  const { toast } = useToast();
   const [form, setForm] = useState<FormState>({
     birthDate: "",
     birthTimeKnown: true,
@@ -72,8 +74,13 @@ export default function BabyNamesPage() {
         }),
       }),
     onSuccess: (res) => setResult(res),
+    // Found in an audit: this only ever handled the 402 (out-of-credits)
+    // case — every other real failure (place_not_found for a misspelled
+    // city, nakshatra_unavailable, or a genuine 500) silently left the user
+    // staring at the same form with zero feedback.
     onError: (err) => {
       if (err instanceof ApiError && err.status === 402) setOutOfCreditsOpen(true);
+      else toast({ title: t("errors.generic"), variant: "danger" });
     },
   });
 

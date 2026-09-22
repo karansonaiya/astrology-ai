@@ -58,13 +58,23 @@ export const pujaGuidanceSchema = z.object({
   concern: z.string().min(5).max(500),
 });
 
-export const pujaBookingRequestSchema = z.object({
-  pujaCode: z.string().max(80).optional(),
-  pujaName: z.string().min(1).max(120),
-  preferredDate: z.string().date().optional(),
-  contactPhone: z.string().min(4).max(20),
-  notes: z.string().max(1000).optional(),
-});
+export const pujaBookingRequestSchema = z
+  .object({
+    pujaCode: z.string().max(80).optional(),
+    pujaName: z.string().min(1).max(120),
+    preferredDate: z.string().date().optional(),
+    contactPhone: z.string().min(4).max(20),
+    notes: z.string().max(1000).optional(),
+  })
+  // Found in a full audit: the <input type="date">'s `min` attribute is
+  // only a browser-UI hint (a manually typed/pasted date can still bypass
+  // it), so a real server-side check is needed too — otherwise admin sees
+  // an already-impossible "pending" request with nothing indicating it
+  // can never actually be arranged.
+  .refine((v) => !v.preferredDate || v.preferredDate >= new Date().toISOString().slice(0, 10), {
+    message: "Preferred date can't be in the past",
+    path: ["preferredDate"],
+  });
 
 export const productInquirySchema = z.object({
   productId: z.string().min(1),

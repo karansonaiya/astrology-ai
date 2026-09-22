@@ -80,41 +80,58 @@ export function usePushSubscription() {
     };
   }, []);
 
+  // Found in a full audit: this whole body had no try/catch, and neither
+  // did either of its two call sites (settings.tsx, notification-
+  // permission-prompt.tsx) — a failed POST to /api/push/subscribe (network
+  // blip, a real 500) left the browser holding a real, active push
+  // subscription the server never recorded, with the exception propagating
+  // uncaught and the toggle/banner showing no error at all. Catching it
+  // here and returning false (the existing "did this work" signal both
+  // call sites already check) fixes both without touching either of them.
   async function subscribe(): Promise<boolean> {
     const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     if (!publicKey || !swWillRegister) return false;
 
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      setState(permission === "denied" ? "denied" : state);
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        setState(permission === "denied" ? "denied" : state);
+        return false;
+      }
+
+      const reg = await withTimeout(navigator.serviceWorker.ready);
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        // TS's lib.dom types for BufferSource have gotten stricter than what
+        // PushManager.subscribe() actually accepts at runtime (a plain
+        // Uint8Array has always worked here in every real browser) — cast
+        // rather than fight the type, same as any other lib.dom/runtime gap.
+        applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
+      });
+
+      await apiFetch("/api/push/subscribe", { method: "POST", body: JSON.stringify(sub.toJSON()) });
+      setSubscribed(true);
+      setState("ready");
+      return true;
+    } catch {
       return false;
     }
-
-    const reg = await withTimeout(navigator.serviceWorker.ready);
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      // TS's lib.dom types for BufferSource have gotten stricter than what
-      // PushManager.subscribe() actually accepts at runtime (a plain
-      // Uint8Array has always worked here in every real browser) — cast
-      // rather than fight the type, same as any other lib.dom/runtime gap.
-      applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
-    });
-
-    await apiFetch("/api/push/subscribe", { method: "POST", body: JSON.stringify(sub.toJSON()) });
-    setSubscribed(true);
-    setState("ready");
-    return true;
   }
 
-  async function unsubscribe(): Promise<void> {
-    if (!swWillRegister) return;
-    const reg = await withTimeout(navigator.serviceWorker.ready);
-    const sub = await reg.pushManager.getSubscription();
-    if (sub) {
-      await apiFetch("/api/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint: sub.endpoint }) });
-      await sub.unsubscribe();
+  async function unsubscribe(): Promise<boolean> {
+    if (!swWillRegister) return true;
+    try {
+      const reg = await withTimeout(navigator.serviceWorker.ready);
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await apiFetch("/api/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint: sub.endpoint }) });
+        await sub.unsubscribe();
+      }
+      setSubscribed(false);
+      return true;
+    } catch {
+      return false;
     }
-    setSubscribed(false);
   }
 
   return { subscribed, state, loading, subscribe, unsubscribe };
