@@ -22,7 +22,13 @@ export default function VastuShastraPage() {
   const t = useT();
   const { toast } = useToast();
   const [propertyType, setPropertyType] = useState<"home" | "office" | "shop">("home");
-  const [mainDoorDirection, setMainDoorDirection] = useState<VastuDirection>("N");
+  // Found live: this used to default to "N" — a real value, not an empty
+  // one — so the form could be submitted (spending a credit) without the
+  // user ever having actually chosen their real main door direction. Starts
+  // unselected now; the Select shows a placeholder instead of a silent
+  // default, and submit is blocked with a real error until it's chosen.
+  const [mainDoorDirection, setMainDoorDirection] = useState<VastuDirection | null>(null);
+  const [mainDoorError, setMainDoorError] = useState<string | null>(null);
   const [elementDirections, setElementDirections] = useState<Record<VastuElement, string>>(
     Object.fromEntries(VASTU_ELEMENTS.map((e) => [e.value, NOT_SET])) as Record<VastuElement, string>
   );
@@ -47,6 +53,15 @@ export default function VastuShastraPage() {
     },
   });
 
+  const handleSubmit = () => {
+    if (!mainDoorDirection) {
+      setMainDoorError(t("vastuShastra.mainDoorRequired"));
+      return;
+    }
+    setMainDoorError(null);
+    generate.mutate();
+  };
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
       <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold">
@@ -70,14 +85,23 @@ export default function VastuShastraPage() {
 
           <div>
             <Label className="mb-1.5 block text-xs">{t("vastuShastra.mainDoorLabel")}</Label>
-            <Select value={mainDoorDirection} onValueChange={(v) => setMainDoorDirection(v as VastuDirection)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select
+              value={mainDoorDirection ?? undefined}
+              onValueChange={(v) => {
+                setMainDoorDirection(v as VastuDirection);
+                setMainDoorError(null);
+              }}
+            >
+              <SelectTrigger className={mainDoorError ? "border-danger" : undefined}>
+                <SelectValue placeholder={t("vastuShastra.selectDirectionPlaceholder")} />
+              </SelectTrigger>
               <SelectContent>
                 {VASTU_DIRECTIONS.map((d) => (
                   <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {mainDoorError && <p className="mt-1.5 text-xs text-danger">{mainDoorError}</p>}
           </div>
 
           <p className="text-xs font-medium uppercase tracking-wide text-muted">{t("vastuShastra.otherElementsHint")}</p>
@@ -110,7 +134,7 @@ export default function VastuShastraPage() {
             />
           </div>
 
-          <Button disabled={generate.isPending} onClick={() => generate.mutate()}>
+          <Button disabled={generate.isPending} onClick={handleSubmit}>
             {generate.isPending ? t("vastuShastra.generating") : t("vastuShastra.generate")}
           </Button>
         </CardContent>

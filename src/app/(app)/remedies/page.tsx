@@ -17,6 +17,7 @@ export default function RemediesPage() {
   const t = useT();
   const { toast } = useToast();
   const [concern, setConcern] = useState("");
+  const [concernError, setConcernError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [outOfCreditsOpen, setOutOfCreditsOpen] = useState(false);
 
@@ -29,6 +30,15 @@ export default function RemediesPage() {
     },
   });
 
+  const handleSubmit = () => {
+    if (concern.trim().length < 5) {
+      setConcernError(t("remedies.concernTooShort"));
+      return;
+    }
+    setConcernError(null);
+    generate.mutate();
+  };
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
       <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold">
@@ -38,13 +48,19 @@ export default function RemediesPage() {
 
       <Card className="mt-5">
         <CardContent className="flex flex-col gap-4 pt-5">
-          <Textarea
-            placeholder={t("remedies.concernLabel")}
-            value={concern}
-            onChange={(e) => setConcern(e.target.value)}
-            className="min-h-32"
-          />
-          <Button disabled={concern.length < 5 || generate.isPending} onClick={() => generate.mutate()}>
+          <div>
+            <Textarea
+              placeholder={t("remedies.concernLabel")}
+              value={concern}
+              onChange={(e) => {
+                setConcern(e.target.value);
+                if (concernError) setConcernError(null);
+              }}
+              className={concernError ? "min-h-32 border-danger" : "min-h-32"}
+            />
+            {concernError && <p className="mt-1.5 text-xs text-danger">{concernError}</p>}
+          </div>
+          <Button disabled={generate.isPending} onClick={handleSubmit}>
             {generate.isPending ? t("remedies.generating") : t("remedies.generate")}
           </Button>
         </CardContent>

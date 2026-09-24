@@ -29,6 +29,8 @@ export default function HelpPage() {
   const qc = useQueryClient();
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [subjectError, setSubjectError] = useState<string | null>(null);
+  const [messageError, setMessageError] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({ queryKey: ["support-tickets"], queryFn: () => apiFetch<{ tickets: Ticket[] }>("/api/support/tickets") });
 
@@ -40,7 +42,31 @@ export default function HelpPage() {
       setMessage("");
       toast({ title: t("common.submit"), variant: "success" });
     },
+    // Found in a full audit: this had no onError at all — a rejected or
+    // failed submit (the server enforces the same 3/5-char minimums)
+    // showed literally nothing, worse than every other form in the app.
+    onError: () => toast({ title: t("errors.generic"), variant: "danger" }),
   });
+
+  const handleSubmit = () => {
+    setSubjectError(null);
+    setMessageError(null);
+    // Mirrors the server's real createTicketSchema (subject min 3, message
+    // min 5) — found in a full audit: the old client check only tested
+    // `!subject` (truthy), so a 1-2 character subject passed the client
+    // gate and only ever got rejected server-side with no explanation.
+    let valid = true;
+    if (subject.trim().length < 3) {
+      setSubjectError(t("help.subjectTooShort"));
+      valid = false;
+    }
+    if (message.trim().length < 5) {
+      setMessageError(t("help.messageTooShort"));
+      valid = false;
+    }
+    if (!valid) return;
+    create.mutate();
+  };
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
@@ -51,9 +77,29 @@ export default function HelpPage() {
           <CardTitle className="text-base">{t("help.contactSupport")}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          <Input placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
-          <Textarea placeholder="How can we help?" value={message} onChange={(e) => setMessage(e.target.value)} />
-          <Button disabled={!subject || message.length < 5 || create.isPending} onClick={() => create.mutate()}>
+          <div>
+            <Input
+              placeholder="Subject"
+              value={subject}
+              onChange={(e) => {
+                setSubject(e.target.value);
+                if (subjectError) setSubjectError(null);
+              }}
+            />
+            {subjectError && <p className="mt-1.5 text-xs text-danger">{subjectError}</p>}
+          </div>
+          <div>
+            <Textarea
+              placeholder="How can we help?"
+              value={message}
+              onChange={(e) => {
+                setMessage(e.target.value);
+                if (messageError) setMessageError(null);
+              }}
+            />
+            {messageError && <p className="mt-1.5 text-xs text-danger">{messageError}</p>}
+          </div>
+          <Button disabled={create.isPending} onClick={handleSubmit}>
             {t("common.submit")}
           </Button>
         </CardContent>

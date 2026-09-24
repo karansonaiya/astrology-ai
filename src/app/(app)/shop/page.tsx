@@ -33,6 +33,7 @@ export default function ShopPage() {
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [message, setMessage] = useState("");
+  const [inquiryErrors, setInquiryErrors] = useState<{ contactName?: string; contactPhone?: string }>({});
 
   const { data, isLoading } = useQuery({
     queryKey: ["shop-products"],
@@ -51,11 +52,19 @@ export default function ShopPage() {
       setContactName("");
       setContactPhone("");
       setMessage("");
+      setInquiryErrors({});
     },
     onError: () => toast({ title: t("errors.generic"), variant: "danger" }),
   });
 
-  const inquiryValid = contactName.trim().length > 0 && contactPhone.trim().length >= 4;
+  const handleInquirySubmit = () => {
+    const next: { contactName?: string; contactPhone?: string } = {};
+    if (!contactName.trim()) next.contactName = t("errors.fieldRequired");
+    if (contactPhone.trim().length < 4) next.contactPhone = t("pujaServices.contactPhoneTooShort");
+    setInquiryErrors(next);
+    if (Object.keys(next).length > 0) return;
+    inquire.mutate();
+  };
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 md:px-6">
@@ -92,7 +101,15 @@ export default function ShopPage() {
             </CardHeader>
             <CardFooter className="mt-auto flex items-center justify-between">
               <span className="font-semibold text-gold">{formatInr(p.priceInPaise, `${locale}-IN`)}</span>
-              <Button size="sm" onClick={() => setInquiryProduct(p)}>{t("shop.imInterested")}</Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setInquiryProduct(p);
+                  setInquiryErrors({});
+                }}
+              >
+                {t("shop.imInterested")}
+              </Button>
             </CardFooter>
           </Card>
         ))}
@@ -107,17 +124,35 @@ export default function ShopPage() {
           <div className="flex flex-col gap-3">
             <div>
               <Label className="mb-1.5 block text-xs">{t("shop.contactNameLabel")}</Label>
-              <Input value={contactName} onChange={(e) => setContactName(e.target.value)} />
+              <Input
+                value={contactName}
+                onChange={(e) => {
+                  setContactName(e.target.value);
+                  if (inquiryErrors.contactName) setInquiryErrors((er) => ({ ...er, contactName: undefined }));
+                }}
+                className={inquiryErrors.contactName ? "border-danger" : undefined}
+              />
+              {inquiryErrors.contactName && <p className="mt-1.5 text-xs text-danger">{inquiryErrors.contactName}</p>}
             </div>
             <div>
               <Label className="mb-1.5 block text-xs">{t("pujaServices.contactPhoneLabel")}</Label>
-              <Input type="tel" placeholder="+91 9XXXXXXXXX" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} />
+              <Input
+                type="tel"
+                placeholder="+91 9XXXXXXXXX"
+                value={contactPhone}
+                onChange={(e) => {
+                  setContactPhone(e.target.value);
+                  if (inquiryErrors.contactPhone) setInquiryErrors((er) => ({ ...er, contactPhone: undefined }));
+                }}
+                className={inquiryErrors.contactPhone ? "border-danger" : undefined}
+              />
+              {inquiryErrors.contactPhone && <p className="mt-1.5 text-xs text-danger">{inquiryErrors.contactPhone}</p>}
             </div>
             <div>
               <Label className="mb-1.5 block text-xs">{t("common.optional")}: {t("pujaServices.notesLabel")}</Label>
               <Textarea value={message} onChange={(e) => setMessage(e.target.value)} className="min-h-16" />
             </div>
-            <Button disabled={!inquiryValid || inquire.isPending} onClick={() => inquire.mutate()}>
+            <Button disabled={inquire.isPending} onClick={handleInquirySubmit}>
               {t("shop.sendInquiry")}
             </Button>
           </div>

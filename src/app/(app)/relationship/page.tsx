@@ -16,6 +16,7 @@ export default function RelationshipPage() {
   const t = useT();
   const { toast } = useToast();
   const [situation, setSituation] = useState("");
+  const [situationError, setSituationError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [outOfCreditsOpen, setOutOfCreditsOpen] = useState(false);
 
@@ -28,6 +29,15 @@ export default function RelationshipPage() {
     },
   });
 
+  const handleSubmit = () => {
+    if (situation.trim().length < 5) {
+      setSituationError(t("relationship.situationTooShort"));
+      return;
+    }
+    setSituationError(null);
+    generate.mutate();
+  };
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
       <h1 className="font-heading text-2xl font-semibold">{t("relationship.title")}</h1>
@@ -35,13 +45,19 @@ export default function RelationshipPage() {
 
       <Card className="mt-5">
         <CardContent className="flex flex-col gap-4 pt-5">
-          <Textarea
-            placeholder={t("relationship.situationLabel")}
-            value={situation}
-            onChange={(e) => setSituation(e.target.value)}
-            className="min-h-32"
-          />
-          <Button disabled={situation.length < 5 || generate.isPending} onClick={() => generate.mutate()}>
+          <div>
+            <Textarea
+              placeholder={t("relationship.situationLabel")}
+              value={situation}
+              onChange={(e) => {
+                setSituation(e.target.value);
+                if (situationError) setSituationError(null);
+              }}
+              className={situationError ? "min-h-32 border-danger" : "min-h-32"}
+            />
+            {situationError && <p className="mt-1.5 text-xs text-danger">{situationError}</p>}
+          </div>
+          <Button disabled={generate.isPending} onClick={handleSubmit}>
             {t("relationship.generateInsight")}
           </Button>
         </CardContent>

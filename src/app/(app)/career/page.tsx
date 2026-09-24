@@ -18,6 +18,7 @@ export default function CareerPage() {
   const t = useT();
   const { toast } = useToast();
   const [form, setForm] = useState({ currentWork: "", skills: "", goals: "", timeHorizon: "6_months", mainConcern: "" });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [result, setResult] = useState<string | null>(null);
   const [outOfCreditsOpen, setOutOfCreditsOpen] = useState(false);
 
@@ -30,7 +31,21 @@ export default function CareerPage() {
     },
   });
 
-  const complete = form.currentWork && form.skills && form.goals && form.mainConcern;
+  const setField = (key: keyof typeof form) => (value: string) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    if (errors[key]) setErrors((e) => ({ ...e, [key]: "" }));
+  };
+
+  const handleSubmit = () => {
+    const next: Record<string, string> = {};
+    if (!form.currentWork.trim()) next.currentWork = t("errors.fieldRequired");
+    if (!form.skills.trim()) next.skills = t("errors.fieldRequired");
+    if (!form.goals.trim()) next.goals = t("errors.fieldRequired");
+    if (!form.mainConcern.trim()) next.mainConcern = t("errors.fieldRequired");
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
+    generate.mutate();
+  };
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
@@ -38,14 +53,26 @@ export default function CareerPage() {
 
       <Card className="mt-5">
         <CardContent className="flex flex-col gap-4 pt-5">
-          <Field label={t("career.currentWork")}>
-            <Textarea value={form.currentWork} onChange={(e) => setForm((f) => ({ ...f, currentWork: e.target.value }))} />
+          <Field label={t("career.currentWork")} error={errors.currentWork}>
+            <Textarea
+              value={form.currentWork}
+              onChange={(e) => setField("currentWork")(e.target.value)}
+              className={errors.currentWork ? "border-danger" : undefined}
+            />
           </Field>
-          <Field label={t("career.skills")}>
-            <Textarea value={form.skills} onChange={(e) => setForm((f) => ({ ...f, skills: e.target.value }))} />
+          <Field label={t("career.skills")} error={errors.skills}>
+            <Textarea
+              value={form.skills}
+              onChange={(e) => setField("skills")(e.target.value)}
+              className={errors.skills ? "border-danger" : undefined}
+            />
           </Field>
-          <Field label={t("career.goals")}>
-            <Textarea value={form.goals} onChange={(e) => setForm((f) => ({ ...f, goals: e.target.value }))} />
+          <Field label={t("career.goals")} error={errors.goals}>
+            <Textarea
+              value={form.goals}
+              onChange={(e) => setField("goals")(e.target.value)}
+              className={errors.goals ? "border-danger" : undefined}
+            />
           </Field>
           <Field label={t("career.timeHorizon")}>
             <Select value={form.timeHorizon} onValueChange={(v) => setForm((f) => ({ ...f, timeHorizon: v }))}>
@@ -58,10 +85,14 @@ export default function CareerPage() {
               </SelectContent>
             </Select>
           </Field>
-          <Field label={t("career.mainConcern")}>
-            <Textarea value={form.mainConcern} onChange={(e) => setForm((f) => ({ ...f, mainConcern: e.target.value }))} />
+          <Field label={t("career.mainConcern")} error={errors.mainConcern}>
+            <Textarea
+              value={form.mainConcern}
+              onChange={(e) => setField("mainConcern")(e.target.value)}
+              className={errors.mainConcern ? "border-danger" : undefined}
+            />
           </Field>
-          <Button disabled={!complete || generate.isPending} onClick={() => generate.mutate()}>
+          <Button disabled={generate.isPending} onClick={handleSubmit}>
             {t("career.generateInsight")}
           </Button>
         </CardContent>
@@ -84,11 +115,12 @@ export default function CareerPage() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div>
       <Label className="mb-1.5 block">{label}</Label>
       {children}
+      {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}
     </div>
   );
 }

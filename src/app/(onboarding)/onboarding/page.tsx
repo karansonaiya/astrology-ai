@@ -36,10 +36,17 @@ export default function OnboardingPage() {
   const [birthCoords, setBirthCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [interest, setInterest] = useState<Interest>("self_reflection");
   const [consent, setConsent] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
   const [saveBirthDetails, setSaveBirthDetails] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const next = () => setStep((s) => Math.min(TOTAL_STEPS, s + 1));
+  const next = () => {
+    if (step === 9 && !consent) {
+      setConsentError(t("onboarding.step9ConsentRequired"));
+      return;
+    }
+    setStep((s) => Math.min(TOTAL_STEPS, s + 1));
+  };
   const back = () => setStep((s) => Math.max(1, s - 1));
 
   const finish = async () => {
@@ -200,9 +207,18 @@ export default function OnboardingPage() {
             {birthDate ? t("onboarding.step9Consent") : t("onboarding.step9SkipStorage")}
           </label>
           <label className="mt-3 flex items-start gap-2 text-sm">
-            <input type="checkbox" className="mt-0.5" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={consent}
+              onChange={(e) => {
+                setConsent(e.target.checked);
+                if (consentError) setConsentError(null);
+              }}
+            />
             {t("auth.ageConfirm")}
           </label>
+          {consentError && <p className="mt-1.5 text-xs text-danger">{consentError}</p>}
         </Step>
       )}
 
@@ -213,7 +229,7 @@ export default function OnboardingPage() {
           {t("common.back")}
         </Button>
         {step < TOTAL_STEPS ? (
-          <Button onClick={next} disabled={step === 9 && !consent}>
+          <Button onClick={next}>
             {t("common.next")}
           </Button>
         ) : (

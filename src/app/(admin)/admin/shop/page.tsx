@@ -25,6 +25,7 @@ type Inquiry = {
 export default function AdminShopPage() {
   const qc = useQueryClient();
   const [form, setForm] = useState({ name: "", description: "", category: "gemstone", priceInPaise: "", imageUrl: "" });
+  const [formErrors, setFormErrors] = useState<{ name?: string; description?: string; priceInPaise?: string }>({});
   const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
 
   const { data: productsData, isLoading: productsLoading } = useQuery({
@@ -50,6 +51,7 @@ export default function AdminShopPage() {
       }),
     onSuccess: () => {
       setForm({ name: "", description: "", category: "gemstone", priceInPaise: "", imageUrl: "" });
+      setFormErrors({});
       qc.invalidateQueries({ queryKey: ["admin-shop-products"] });
     },
   });
@@ -76,7 +78,15 @@ export default function AdminShopPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-shop-inquiries"] }),
   });
 
-  const formValid = form.name.trim().length > 0 && form.description.trim().length > 0 && Number(form.priceInPaise) > 0;
+  const handleCreateProduct = () => {
+    const next: { name?: string; description?: string; priceInPaise?: string } = {};
+    if (!form.name.trim()) next.name = "This field is required.";
+    if (!form.description.trim()) next.description = "This field is required.";
+    if (!(Number(form.priceInPaise) > 0)) next.priceInPaise = "Enter a price greater than 0.";
+    setFormErrors(next);
+    if (Object.keys(next).length > 0) return;
+    createProduct.mutate();
+  };
 
   return (
     <div className="p-6">
@@ -88,7 +98,15 @@ export default function AdminShopPage() {
         <CardContent className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label className="mb-1.5 block text-xs">Name</Label>
-            <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+            <Input
+              value={form.name}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, name: e.target.value }));
+                if (formErrors.name) setFormErrors((er) => ({ ...er, name: undefined }));
+              }}
+              className={formErrors.name ? "border-danger" : undefined}
+            />
+            {formErrors.name && <p className="mt-1.5 text-xs text-danger">{formErrors.name}</p>}
           </div>
           <div>
             <Label className="mb-1.5 block text-xs">Category</Label>
@@ -104,18 +122,37 @@ export default function AdminShopPage() {
           </div>
           <div className="sm:col-span-2">
             <Label className="mb-1.5 block text-xs">Description</Label>
-            <Textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className="min-h-16" />
+            <Textarea
+              value={form.description}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, description: e.target.value }));
+                if (formErrors.description) setFormErrors((er) => ({ ...er, description: undefined }));
+              }}
+              className={formErrors.description ? "min-h-16 border-danger" : "min-h-16"}
+            />
+            {formErrors.description && <p className="mt-1.5 text-xs text-danger">{formErrors.description}</p>}
           </div>
           <div>
             <Label className="mb-1.5 block text-xs">Price (INR)</Label>
-            <Input type="number" min="0" step="0.01" value={form.priceInPaise} onChange={(e) => setForm((f) => ({ ...f, priceInPaise: e.target.value }))} />
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.priceInPaise}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, priceInPaise: e.target.value }));
+                if (formErrors.priceInPaise) setFormErrors((er) => ({ ...er, priceInPaise: undefined }));
+              }}
+              className={formErrors.priceInPaise ? "border-danger" : undefined}
+            />
+            {formErrors.priceInPaise && <p className="mt-1.5 text-xs text-danger">{formErrors.priceInPaise}</p>}
           </div>
           <div>
             <Label className="mb-1.5 block text-xs">Image URL (optional)</Label>
             <Input value={form.imageUrl} onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))} />
           </div>
           <div className="sm:col-span-2">
-            <Button disabled={!formValid || createProduct.isPending} onClick={() => createProduct.mutate()}>Add product</Button>
+            <Button disabled={createProduct.isPending} onClick={handleCreateProduct}>Add product</Button>
           </div>
         </CardContent>
       </Card>

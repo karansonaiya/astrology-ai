@@ -73,6 +73,7 @@ function ProfileForm({ initial, hasProfile }: { initial: Profile; hasProfile: bo
     primaryInterest: initial?.primaryInterest ?? "self_reflection",
   });
   const [birthCoords, setBirthCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [birthDateError, setBirthDateError] = useState<string | null>(null);
 
   const save = useMutation({
     mutationFn: () =>
@@ -92,6 +93,15 @@ function ProfileForm({ initial, hasProfile }: { initial: Profile; hasProfile: bo
     onError: () => toast({ title: t("errors.generic"), variant: "danger" }),
   });
 
+  const handleSave = () => {
+    if (!form.birthDate) {
+      setBirthDateError(t("errors.fieldRequired"));
+      return;
+    }
+    setBirthDateError(null);
+    save.mutate();
+  };
+
   const remove = useMutation({
     mutationFn: () => apiFetch("/api/birth-profile", { method: "DELETE" }),
     onSuccess: () => {
@@ -110,8 +120,16 @@ function ProfileForm({ initial, hasProfile }: { initial: Profile; hasProfile: bo
         <Field label={t("onboarding.step3Title")}>
           <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
         </Field>
-        <Field label={t("onboarding.step5Title")}>
-          <Input type="date" value={form.birthDate} onChange={(e) => setForm((f) => ({ ...f, birthDate: e.target.value }))} />
+        <Field label={t("onboarding.step5Title")} error={birthDateError ?? undefined}>
+          <Input
+            type="date"
+            value={form.birthDate}
+            onChange={(e) => {
+              setForm((f) => ({ ...f, birthDate: e.target.value }));
+              if (birthDateError) setBirthDateError(null);
+            }}
+            className={birthDateError ? "border-danger" : undefined}
+          />
         </Field>
         <Field label={t("onboarding.step6Title")}>
           <div className="flex items-center gap-2">
@@ -152,7 +170,7 @@ function ProfileForm({ initial, hasProfile }: { initial: Profile; hasProfile: bo
         <Button variant="danger" onClick={() => remove.mutate()} disabled={!hasProfile}>
           {t("settings.deleteBirthDetails")}
         </Button>
-        <Button onClick={() => save.mutate()} disabled={!form.birthDate || save.isPending}>
+        <Button onClick={handleSave} disabled={save.isPending}>
           {t("common.save")}
         </Button>
       </CardFooter>
@@ -160,11 +178,12 @@ function ProfileForm({ initial, hasProfile }: { initial: Profile; hasProfile: bo
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div>
       <Label className="mb-1.5 block">{label}</Label>
       {children}
+      {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}
     </div>
   );
 }

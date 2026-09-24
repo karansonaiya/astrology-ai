@@ -38,6 +38,7 @@ export default function PujaServicesPage() {
   const qc = useQueryClient();
 
   const [concern, setConcern] = useState("");
+  const [concernError, setConcernError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [outOfCreditsOpen, setOutOfCreditsOpen] = useState(false);
 
@@ -46,6 +47,7 @@ export default function PujaServicesPage() {
   const [preferredDate, setPreferredDate] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [bookingErrors, setBookingErrors] = useState<{ customPujaName?: string; contactPhone?: string }>({});
 
   const generate = useMutation({
     mutationFn: () => apiFetch<{ text: string }>("/api/puja-services", { method: "POST", body: JSON.stringify({ concern }) }),
@@ -55,6 +57,15 @@ export default function PujaServicesPage() {
       else toast({ title: t("errors.generic"), variant: "danger" });
     },
   });
+
+  const handleGuidanceSubmit = () => {
+    if (concern.trim().length < 5) {
+      setConcernError(t("pujaServices.concernTooShort"));
+      return;
+    }
+    setConcernError(null);
+    generate.mutate();
+  };
 
   const { data: requestsData, isLoading: requestsLoading } = useQuery({
     queryKey: ["puja-requests"],
@@ -84,7 +95,14 @@ export default function PujaServicesPage() {
     onError: () => toast({ title: t("errors.generic"), variant: "danger" }),
   });
 
-  const bookingValid = contactPhone.trim().length >= 4 && (pujaCode !== CUSTOM || customPujaName.trim().length > 0);
+  const handleBookingSubmit = () => {
+    const next: { customPujaName?: string; contactPhone?: string } = {};
+    if (pujaCode === CUSTOM && !customPujaName.trim()) next.customPujaName = t("errors.fieldRequired");
+    if (contactPhone.trim().length < 4) next.contactPhone = t("pujaServices.contactPhoneTooShort");
+    setBookingErrors(next);
+    if (Object.keys(next).length > 0) return;
+    requestBooking.mutate();
+  };
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
@@ -96,13 +114,19 @@ export default function PujaServicesPage() {
       <Card className="mt-5">
         <CardHeader><CardTitle className="text-base">{t("pujaServices.guidanceTitle")}</CardTitle></CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <Textarea
-            placeholder={t("pujaServices.concernPlaceholder")}
-            value={concern}
-            onChange={(e) => setConcern(e.target.value)}
-            className="min-h-24"
-          />
-          <Button disabled={concern.length < 5 || generate.isPending} onClick={() => generate.mutate()}>
+          <div>
+            <Textarea
+              placeholder={t("pujaServices.concernPlaceholder")}
+              value={concern}
+              onChange={(e) => {
+                setConcern(e.target.value);
+                if (concernError) setConcernError(null);
+              }}
+              className={concernError ? "min-h-24 border-danger" : "min-h-24"}
+            />
+            {concernError && <p className="mt-1.5 text-xs text-danger">{concernError}</p>}
+          </div>
+          <Button disabled={generate.isPending} onClick={handleGuidanceSubmit}>
             {generate.isPending ? t("pujaServices.generating") : t("pujaServices.getGuidance")}
           </Button>
           {result && (
@@ -133,7 +157,15 @@ export default function PujaServicesPage() {
           {pujaCode === CUSTOM && (
             <div>
               <Label className="mb-1.5 block text-xs">{t("pujaServices.customPujaNameLabel")}</Label>
-              <Input value={customPujaName} onChange={(e) => setCustomPujaName(e.target.value)} />
+              <Input
+                value={customPujaName}
+                onChange={(e) => {
+                  setCustomPujaName(e.target.value);
+                  if (bookingErrors.customPujaName) setBookingErrors((er) => ({ ...er, customPujaName: undefined }));
+                }}
+                className={bookingErrors.customPujaName ? "border-danger" : undefined}
+              />
+              {bookingErrors.customPujaName && <p className="mt-1.5 text-xs text-danger">{bookingErrors.customPujaName}</p>}
             </div>
           )}
           <div>
@@ -142,13 +174,23 @@ export default function PujaServicesPage() {
           </div>
           <div>
             <Label className="mb-1.5 block text-xs">{t("pujaServices.contactPhoneLabel")}</Label>
-            <Input type="tel" placeholder="+91 9XXXXXXXXX" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} />
+            <Input
+              type="tel"
+              placeholder="+91 9XXXXXXXXX"
+              value={contactPhone}
+              onChange={(e) => {
+                setContactPhone(e.target.value);
+                if (bookingErrors.contactPhone) setBookingErrors((er) => ({ ...er, contactPhone: undefined }));
+              }}
+              className={bookingErrors.contactPhone ? "border-danger" : undefined}
+            />
+            {bookingErrors.contactPhone && <p className="mt-1.5 text-xs text-danger">{bookingErrors.contactPhone}</p>}
           </div>
           <div>
             <Label className="mb-1.5 block text-xs">{t("common.optional")}: {t("pujaServices.notesLabel")}</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-16" />
           </div>
-          <Button disabled={!bookingValid || requestBooking.isPending} onClick={() => requestBooking.mutate()}>
+          <Button disabled={requestBooking.isPending} onClick={handleBookingSubmit}>
             {t("pujaServices.sendRequest")}
           </Button>
         </CardContent>

@@ -55,8 +55,7 @@ export default function BabyNamesPage() {
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [result, setResult] = useState<BabyNameResult | null>(null);
   const [outOfCreditsOpen, setOutOfCreditsOpen] = useState(false);
-
-  const canSubmit = form.birthDate && form.birthCity.trim() && (!form.birthTimeKnown || form.birthTime);
+  const [errors, setErrors] = useState<{ birthDate?: string; birthTime?: string; birthCity?: string }>({});
 
   const generate = useMutation({
     mutationFn: () =>
@@ -112,6 +111,16 @@ export default function BabyNamesPage() {
     router.push("/reports?upsell=baby-names");
   };
 
+  const handleSubmit = () => {
+    const next: { birthDate?: string; birthTime?: string; birthCity?: string } = {};
+    if (!form.birthDate) next.birthDate = t("errors.fieldRequired");
+    if (form.birthTimeKnown && !form.birthTime) next.birthTime = t("errors.fieldRequired");
+    if (!form.birthCity.trim()) next.birthCity = t("errors.fieldRequired");
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
+    generate.mutate();
+  };
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
       <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold">
@@ -128,9 +137,13 @@ export default function BabyNamesPage() {
                 id="bn-date"
                 type="date"
                 value={form.birthDate}
-                onChange={(e) => setForm((f) => ({ ...f, birthDate: e.target.value }))}
-                className="mt-1.5"
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, birthDate: e.target.value }));
+                  if (errors.birthDate) setErrors((er) => ({ ...er, birthDate: undefined }));
+                }}
+                className={errors.birthDate ? "mt-1.5 border-danger" : "mt-1.5"}
               />
+              {errors.birthDate && <p className="mt-1.5 text-xs text-danger">{errors.birthDate}</p>}
             </div>
             <div>
               <Label htmlFor="bn-time">{t("babyNames.birthTimeLabel")}</Label>
@@ -139,9 +152,13 @@ export default function BabyNamesPage() {
                 type="time"
                 value={form.birthTime}
                 disabled={!form.birthTimeKnown}
-                onChange={(e) => setForm((f) => ({ ...f, birthTime: e.target.value }))}
-                className="mt-1.5"
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, birthTime: e.target.value }));
+                  if (errors.birthTime) setErrors((er) => ({ ...er, birthTime: undefined }));
+                }}
+                className={errors.birthTime ? "mt-1.5 border-danger" : "mt-1.5"}
               />
+              {errors.birthTime && <p className="mt-1.5 text-xs text-danger">{errors.birthTime}</p>}
               <label className="mt-1.5 flex items-center gap-2 text-xs text-muted">
                 <input
                   type="checkbox"
@@ -159,6 +176,7 @@ export default function BabyNamesPage() {
                   onChange={(text) => {
                     setForm((f) => ({ ...f, birthCity: text }));
                     setCoords(null);
+                    if (errors.birthCity) setErrors((er) => ({ ...er, birthCity: undefined }));
                   }}
                   onSelect={(place) => {
                     setForm((f) => ({ ...f, birthCountry: place.country }));
@@ -166,6 +184,7 @@ export default function BabyNamesPage() {
                   }}
                 />
               </div>
+              {errors.birthCity && <p className="mt-1.5 text-xs text-danger">{errors.birthCity}</p>}
             </div>
             <div>
               <Label>{t("babyNames.genderLabel")}</Label>
@@ -185,7 +204,7 @@ export default function BabyNamesPage() {
                 ))}
               </div>
             </div>
-            <Button className="mt-2 w-fit" disabled={!canSubmit || generate.isPending} onClick={() => generate.mutate()}>
+            <Button className="mt-2 w-fit" disabled={generate.isPending} onClick={handleSubmit}>
               <Sparkles size={16} />
               {generate.isPending ? t("babyNames.generating") : t("babyNames.generate")}
             </Button>

@@ -37,6 +37,8 @@ export default function NumerologyPage() {
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [birthDateError, setBirthDateError] = useState<string | null>(null);
   const [reading, setReading] = useState<NumerologyReading | null>(null);
   const [outOfCreditsOpen, setOutOfCreditsOpen] = useState(false);
 
@@ -48,6 +50,24 @@ export default function NumerologyPage() {
       else toast({ title: t("errors.generic"), variant: "danger" });
     },
   });
+
+  const handleSubmit = () => {
+    let valid = true;
+    if (!name.trim()) {
+      setNameError(t("errors.fieldRequired"));
+      valid = false;
+    } else {
+      setNameError(null);
+    }
+    if (!birthDate) {
+      setBirthDateError(t("errors.fieldRequired"));
+      valid = false;
+    } else {
+      setBirthDateError(null);
+    }
+    if (!valid) return;
+    calculate.mutate();
+  };
 
   // Just for the "Get Detailed Report" button's price label — the actual
   // price is re-validated server-side at checkout regardless.
@@ -89,16 +109,35 @@ export default function NumerologyPage() {
           <CardContent className="grid gap-3 pt-5">
             <div>
               <Label htmlFor="num-name">{t("numerology.fullName")}</Label>
-              <Input id="num-name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5" />
+              <Input
+                id="num-name"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (nameError) setNameError(null);
+                }}
+                className={nameError ? "mt-1.5 border-danger" : "mt-1.5"}
+              />
+              {nameError && <p className="mt-1.5 text-xs text-danger">{nameError}</p>}
             </div>
             <div>
               <Label htmlFor="num-dob">{t("numerology.birthDate")}</Label>
-              <Input id="num-dob" type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className="mt-1.5" />
+              <Input
+                id="num-dob"
+                type="date"
+                value={birthDate}
+                onChange={(e) => {
+                  setBirthDate(e.target.value);
+                  if (birthDateError) setBirthDateError(null);
+                }}
+                className={birthDateError ? "mt-1.5 border-danger" : "mt-1.5"}
+              />
+              {birthDateError && <p className="mt-1.5 text-xs text-danger">{birthDateError}</p>}
             </div>
             <Button
               className="mt-2 w-fit"
-              disabled={!name.trim() || !birthDate || calculate.isPending}
-              onClick={() => calculate.mutate()}
+              disabled={calculate.isPending}
+              onClick={handleSubmit}
             >
               <Sparkles size={16} />
               {calculate.isPending ? t("numerology.calculating") : t("numerology.calculate")}

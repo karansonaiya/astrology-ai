@@ -179,6 +179,7 @@
     "step9Desc": "Birth details are sensitive. We only store them if you consent, you can edit or delete them anytime, and they're never sold.",
     "step9Consent": "I consent to Prerna AI storing my birth details to personalize insights.",
     "step9SkipStorage": "Continue without saving birth details",
+    "step9ConsentRequired": "Please confirm you're 18 or older to continue.",
     "step10Title": "You're all set",
     "step10Desc": "Your dashboard is ready. Let's take a look.",
     "goToDashboard": "Go to dashboard"
@@ -451,7 +452,8 @@
     "title": "Relationship Insight",
     "situationLabel": "What's on your mind?",
     "generateInsight": "Generate insight",
-    "supportNotice": "For relationship distress or safety concerns, please reach out to a trusted person or professional support."
+    "supportNotice": "For relationship distress or safety concerns, please reach out to a trusted person or professional support.",
+    "situationTooShort": "Please enter at least 5 characters describing your situation."
   },
   "tarot": {
     "title": "Tarot Card Reading",
@@ -482,6 +484,8 @@
       "shop": "Shop"
     },
     "mainDoorLabel": "Which direction does the main door face?",
+    "selectDirectionPlaceholder": "Select a direction",
+    "mainDoorRequired": "Please select the main door's real direction.",
     "otherElementsHint": "Optional — add directions for any other areas you'd like checked",
     "notApplicable": "Not applicable / skip",
     "concernLabel": "Any specific concern? (optional)",
@@ -494,7 +498,8 @@
     "subtitle": "Describe a concern and get general traditional remedy suggestions.",
     "concernLabel": "What's troubling you?",
     "generate": "Find Remedies",
-    "generating": "Finding remedies..."
+    "generating": "Finding remedies...",
+    "concernTooShort": "Please enter at least 5 characters describing your concern."
   },
   "pujaServices": {
     "title": "Puja Services",
@@ -514,7 +519,9 @@
     "sendRequest": "Send Request",
     "requestSentNotice": "Your request has been sent. We'll contact you soon.",
     "yourRequestsTitle": "Your Requests",
-    "noRequests": "No requests yet."
+    "noRequests": "No requests yet.",
+    "concernTooShort": "Please enter at least 5 characters describing your concern.",
+    "contactPhoneTooShort": "Please enter a valid contact phone number."
   },
   "shop": {
     "title": "Spiritual Shop",
@@ -792,7 +799,9 @@
   "help": {
     "title": "Help & Safety",
     "contactSupport": "Contact support",
-    "reportIssue": "Report an issue"
+    "reportIssue": "Report an issue",
+    "subjectTooShort": "Please enter at least 3 characters for the subject.",
+    "messageTooShort": "Please enter at least 5 characters describing your issue."
   },
   "legal": {
     "englishOnlyNotice": "This document is provided in English for legal precision. Contact support if you'd like help understanding it in Gujarati or Hindi.",
@@ -823,6 +832,7 @@
     "unauthorized": "Please log in to continue.",
     "notFound": "We couldn't find that.",
     "rateLimited": "You're sending requests too quickly. Please wait a moment.",
-    "aiUnavailable": "Prerna AI is temporarily busy — your credit wasn't charged. Please try again in a moment."
+    "aiUnavailable": "Prerna AI is temporarily busy — your credit wasn't charged. Please try again in a moment.",
+    "fieldRequired": "This field is required."
   }
 }

@@ -61,6 +61,8 @@ export default function CompatibilityPage() {
   const [personB, setPersonB] = useState<PersonForm>({ birthDate: "", birthTimeKnown: true, birthTime: "", birthCity: "" });
   const [saveConsent, setSaveConsent] = useState(false);
   const [outOfCreditsOpen, setOutOfCreditsOpen] = useState(false);
+  const [personAError, setPersonAError] = useState<string | null>(null);
+  const [personBError, setPersonBError] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({ queryKey: ["compatibility"], queryFn: () => apiFetch<{ requests: CompatRequest[] }>("/api/compatibility") });
   const { data: templatesData } = useQuery({
@@ -104,14 +106,48 @@ export default function CompatibilityPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["compatibility"] }),
   });
 
+  const handleSubmit = () => {
+    let valid = true;
+    if (!personA.birthDate) {
+      setPersonAError(t("errors.fieldRequired"));
+      valid = false;
+    } else {
+      setPersonAError(null);
+    }
+    if (!personB.birthDate) {
+      setPersonBError(t("errors.fieldRequired"));
+      valid = false;
+    } else {
+      setPersonBError(null);
+    }
+    if (!valid) return;
+    generate.mutate();
+  };
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 md:px-6">
       <h1 className="font-heading text-2xl font-semibold">{t("compatibility.title")}</h1>
       <p className="mt-1 text-sm text-muted">{t("compatibility.privacyNotice")}</p>
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
-        <PersonCard title={t("compatibility.personA")} value={personA} onChange={setPersonA} />
-        <PersonCard title={t("compatibility.personB")} value={personB} onChange={setPersonB} />
+        <PersonCard
+          title={t("compatibility.personA")}
+          value={personA}
+          onChange={(v) => {
+            setPersonA(v);
+            if (personAError) setPersonAError(null);
+          }}
+          birthDateError={personAError}
+        />
+        <PersonCard
+          title={t("compatibility.personB")}
+          value={personB}
+          onChange={(v) => {
+            setPersonB(v);
+            if (personBError) setPersonBError(null);
+          }}
+          birthDateError={personBError}
+        />
       </div>
 
       <label className="mt-4 flex items-center gap-2 text-xs text-muted">
@@ -121,8 +157,8 @@ export default function CompatibilityPage() {
 
       <Button
         className="mt-4"
-        disabled={!personA.birthDate || !personB.birthDate || generate.isPending}
-        onClick={() => generate.mutate()}
+        disabled={generate.isPending}
+        onClick={handleSubmit}
       >
         {t("compatibility.generateInsight")}
       </Button>
@@ -207,7 +243,17 @@ function GunaMilanCard({ gunaMilan, personALabel, personBLabel }: { gunaMilan: G
   );
 }
 
-function PersonCard({ title, value, onChange }: { title: string; value: PersonForm; onChange: (v: PersonForm) => void }) {
+function PersonCard({
+  title,
+  value,
+  onChange,
+  birthDateError,
+}: {
+  title: string;
+  value: PersonForm;
+  onChange: (v: PersonForm) => void;
+  birthDateError?: string | null;
+}) {
   const t = useT();
   return (
     <Card>
@@ -218,7 +264,13 @@ function PersonCard({ title, value, onChange }: { title: string; value: PersonFo
       <CardContent className="flex flex-col gap-3">
         <div>
           <Label className="mb-1.5 block text-xs">{t("onboarding.step5Title")}</Label>
-          <Input type="date" value={value.birthDate} onChange={(e) => onChange({ ...value, birthDate: e.target.value })} />
+          <Input
+            type="date"
+            value={value.birthDate}
+            onChange={(e) => onChange({ ...value, birthDate: e.target.value })}
+            className={birthDateError ? "border-danger" : undefined}
+          />
+          {birthDateError && <p className="mt-1.5 text-xs text-danger">{birthDateError}</p>}
         </div>
         <div>
           <Label className="mb-1.5 block text-xs">{t("onboarding.step6Title")}</Label>

@@ -46,8 +46,7 @@ export default function MuhuratFinderPage() {
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [outOfCreditsOpen, setOutOfCreditsOpen] = useState(false);
-
-  const canSubmit = form.date && form.city.trim();
+  const [errors, setErrors] = useState<{ date?: string; city?: string }>({});
 
   const generate = useMutation({
     mutationFn: () =>
@@ -99,6 +98,15 @@ export default function MuhuratFinderPage() {
     router.push("/reports?upsell=muhurat");
   };
 
+  const handleSubmit = () => {
+    const next: { date?: string; city?: string } = {};
+    if (!form.date) next.date = t("errors.fieldRequired");
+    if (!form.city.trim()) next.city = t("errors.fieldRequired");
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
+    generate.mutate();
+  };
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
       <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold">
@@ -134,9 +142,13 @@ export default function MuhuratFinderPage() {
                 type="date"
                 value={form.date}
                 min={todayStr()}
-                onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                className="mt-1.5"
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, date: e.target.value }));
+                  if (errors.date) setErrors((er) => ({ ...er, date: undefined }));
+                }}
+                className={errors.date ? "mt-1.5 border-danger" : "mt-1.5"}
               />
+              {errors.date && <p className="mt-1.5 text-xs text-danger">{errors.date}</p>}
             </div>
             <div>
               <Label>{t("muhurat.cityLabel")}</Label>
@@ -146,6 +158,7 @@ export default function MuhuratFinderPage() {
                   onChange={(text) => {
                     setForm((f) => ({ ...f, city: text }));
                     setCoords(null);
+                    if (errors.city) setErrors((er) => ({ ...er, city: undefined }));
                   }}
                   onSelect={(place) => {
                     setForm((f) => ({ ...f, country: place.country }));
@@ -153,8 +166,9 @@ export default function MuhuratFinderPage() {
                   }}
                 />
               </div>
+              {errors.city && <p className="mt-1.5 text-xs text-danger">{errors.city}</p>}
             </div>
-            <Button className="mt-2 w-fit" disabled={!canSubmit || generate.isPending} onClick={() => generate.mutate()}>
+            <Button className="mt-2 w-fit" disabled={generate.isPending} onClick={handleSubmit}>
               <Sparkles size={16} />
               {generate.isPending ? t("muhurat.generating") : t("muhurat.generate")}
             </Button>
