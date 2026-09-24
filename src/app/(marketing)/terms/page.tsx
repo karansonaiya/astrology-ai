@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
 import { LegalPage } from "@/components/layout/legal-page";
+
+export const metadata: Metadata = {
+  title: "Terms of Service | Prerna AI",
+  description: "The terms that apply to using Prerna AI, including eligibility, credits and payments, and acceptable use.",
+  alternates: { canonical: "/terms" },
+};
 
 export default function TermsPage() {
   return (

@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/toast";
 
 type Product = {
   id: string; name: string; description: string; category: string; priceInPaise: number; imageUrl: string | null; active: boolean;
@@ -24,6 +25,7 @@ type Inquiry = {
 
 export default function AdminShopPage() {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [form, setForm] = useState({ name: "", description: "", category: "gemstone", priceInPaise: "", imageUrl: "" });
   const [formErrors, setFormErrors] = useState<{ name?: string; description?: string; priceInPaise?: string }>({});
   const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
@@ -60,6 +62,7 @@ export default function AdminShopPage() {
     mutationFn: ({ id, active }: { id: string; active: boolean }) =>
       apiFetch(`/api/admin/shop/products/${id}`, { method: "PATCH", body: JSON.stringify({ active }) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-shop-products"] }),
+    onError: () => toast({ title: "Couldn't update that product — try again.", variant: "danger" }),
   });
 
   const deleteProduct = useMutation({
@@ -68,6 +71,7 @@ export default function AdminShopPage() {
       setPendingDelete(null);
       qc.invalidateQueries({ queryKey: ["admin-shop-products"] });
     },
+    onError: () => toast({ title: "Couldn't delete that product — try again.", variant: "danger" }),
   });
 
   const inquiryCountFor = (productId: string) => inquiriesData?.inquiries.filter((i) => i.productId === productId).length ?? 0;
@@ -76,6 +80,7 @@ export default function AdminShopPage() {
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       apiFetch(`/api/admin/shop/inquiries/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-shop-inquiries"] }),
+    onError: () => toast({ title: "Couldn't update that inquiry — try again.", variant: "danger" }),
   });
 
   const handleCreateProduct = () => {

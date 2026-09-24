@@ -5,17 +5,20 @@ import { apiFetch } from "@/lib/api-client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/toast";
 
 type Flag = { id: string; key: string; enabled: boolean; description: string | null };
 
 export default function AdminFlagsPage() {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const { data, isLoading } = useQuery({ queryKey: ["admin-flags"], queryFn: () => apiFetch<{ flags: Flag[] }>("/api/admin/feature-flags") });
 
   const toggle = useMutation({
     mutationFn: (flag: Flag) =>
       apiFetch("/api/admin/feature-flags", { method: "POST", body: JSON.stringify({ key: flag.key, enabled: !flag.enabled, description: flag.description ?? undefined }) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-flags"] }),
+    onError: () => toast({ title: "Couldn't update that flag — try again.", variant: "danger" }),
   });
 
   return (

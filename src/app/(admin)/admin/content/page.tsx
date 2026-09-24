@@ -82,6 +82,7 @@ export default function AdminContentPage() {
       setForm(EMPTY_FORM);
       toast({ title: "Draft created", variant: "success" });
     },
+    onError: () => toast({ title: "Couldn't save that draft — try again.", variant: "danger" }),
   });
 
   const publish = useMutation({
@@ -90,6 +91,7 @@ export default function AdminContentPage() {
       qc.invalidateQueries({ queryKey: ["admin-content"] });
       qc.invalidateQueries({ queryKey: ["admin-content-summary"] });
     },
+    onError: () => toast({ title: "Couldn't publish that — try again.", variant: "danger" }),
   });
 
   const publishAllDrafts = useMutation({
@@ -104,6 +106,10 @@ export default function AdminContentPage() {
       qc.invalidateQueries({ queryKey: ["admin-content"] });
       qc.invalidateQueries({ queryKey: ["admin-content-summary"] });
       toast({ title: `Published ${count} draft(s)`, variant: "success" });
+    },
+    onError: () => {
+      qc.invalidateQueries({ queryKey: ["admin-content"] });
+      toast({ title: "Stopped partway through — some drafts may still be unpublished, check below.", variant: "danger" });
     },
   });
 

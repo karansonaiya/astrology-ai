@@ -33,6 +33,7 @@ export default function AdminPricingPage() {
       qc.invalidateQueries({ queryKey: ["admin-report-templates"] });
       toast({ title: "Saved", variant: "success" });
     },
+    onError: () => toast({ title: "Couldn't save that price — try again.", variant: "danger" }),
   });
 
   const updatePlan = useMutation({
@@ -41,6 +42,7 @@ export default function AdminPricingPage() {
       qc.invalidateQueries({ queryKey: ["admin-plans"] });
       toast({ title: "Saved", variant: "success" });
     },
+    onError: () => toast({ title: "Couldn't save that plan — try again.", variant: "danger" }),
   });
 
   return (

@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
 
 type Request = {
   id: string;
@@ -23,12 +24,14 @@ const STATUSES = ["pending", "contacted", "scheduled", "completed", "cancelled"]
 
 export default function AdminPujaRequestsPage() {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const { data, isLoading } = useQuery({ queryKey: ["admin-puja-requests"], queryFn: () => apiFetch<{ requests: Request[] }>("/api/admin/puja-requests") });
 
   const updateStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       apiFetch(`/api/admin/puja-requests/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-puja-requests"] }),
+    onError: () => toast({ title: "Couldn't update that request — try again.", variant: "danger" }),
   });
 
   return (

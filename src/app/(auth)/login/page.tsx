@@ -117,6 +117,7 @@ const PASSWORD_ERROR_KEYS: Record<string, string> = {
   invalid_credentials: "auth.invalidCredentials",
   account_suspended: "auth.accountSuspended",
   account_deleted: "auth.accountDeleted",
+  rate_limited: "errors.rateLimited",
 };
 
 function PasswordFlow({ mode, consentOk, callbackUrl }: { mode: "login" | "signup"; consentOk: boolean; callbackUrl: string }) {

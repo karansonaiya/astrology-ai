@@ -25,6 +25,7 @@ export default function AdminUsersPage() {
   const [creditTarget, setCreditTarget] = useState<AdminUser | null>(null);
   const [amount, setAmount] = useState("5");
   const [reason, setReason] = useState("");
+  const [suspendTarget, setSuspendTarget] = useState<AdminUser | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-users", q],
@@ -34,7 +35,11 @@ export default function AdminUsersPage() {
   const patch = useMutation({
     mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) =>
       apiFetch(`/api/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      setSuspendTarget(null);
+    },
+    onError: () => toast({ title: "Couldn't update that user — try again.", variant: "danger" }),
   });
 
   const grantCredits = useMutation({
@@ -83,7 +88,11 @@ export default function AdminUsersPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => patch.mutate({ id: u.id, body: { status: u.status === "active" ? "suspended" : "active" } })}
+                      onClick={() =>
+                        u.status === "active"
+                          ? setSuspendTarget(u)
+                          : patch.mutate({ id: u.id, body: { status: "active" } })
+                      }
                     >
                       {u.status === "active" ? "Suspend" : "Reactivate"}
                     </Button>
@@ -126,6 +135,30 @@ export default function AdminUsersPage() {
           >
             {grantCredits.isPending ? "Adding…" : `Add ${amount || 0} credits`}
           </Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!suspendTarget} onOpenChange={(open) => !open && setSuspendTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Suspend {suspendTarget?.name ?? suspendTarget?.email ?? "this user"}?</DialogTitle>
+            <DialogDescription>
+              They&apos;ll immediately lose access to the app (login and every API call), even with a session
+              already open. You can reactivate them anytime from this list.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setSuspendTarget(null)} disabled={patch.isPending}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              disabled={patch.isPending}
+              onClick={() => suspendTarget && patch.mutate({ id: suspendTarget.id, body: { status: "suspended" } })}
+            >
+              {patch.isPending ? "Suspending..." : "Suspend"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
 import { LegalPage } from "@/components/layout/legal-page";
+
+export const metadata: Metadata = {
+  title: "Safety & Disclaimer | Prerna AI",
+  description: "Prerna AI's guidance is AI-generated for reflection, not a certain prediction or a substitute for professional advice.",
+  alternates: { canonical: "/safety" },
+};
 
 export default function SafetyPage() {
   return (

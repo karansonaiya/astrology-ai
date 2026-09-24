@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/toast";
 
 type Flag = {
   id: string; category: string; severity: string; reviewed: boolean; notes: string | null; createdAt: string;
@@ -15,11 +16,13 @@ type Flag = {
 
 export default function AdminFlaggedPage() {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const { data, isLoading } = useQuery({ queryKey: ["admin-flagged"], queryFn: () => apiFetch<{ flags: Flag[] }>("/api/admin/flagged") });
 
   const review = useMutation({
     mutationFn: (id: string) => apiFetch(`/api/admin/flagged/${id}`, { method: "PATCH", body: JSON.stringify({}) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-flagged"] }),
+    onError: () => toast({ title: "Couldn't mark that reviewed — try again.", variant: "danger" }),
   });
 
   return (

@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
 import { LegalPage } from "@/components/layout/legal-page";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy | Prerna AI",
+  description: "What data Prerna AI collects, why, and the controls you have over it — built around data minimization and privacy-by-default.",
+  alternates: { canonical: "/privacy" },
+};
 
 export default function PrivacyPage() {
   return (

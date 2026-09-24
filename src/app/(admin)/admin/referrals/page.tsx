@@ -33,6 +33,7 @@ function RuleForm({ initial }: { initial: Rule | null }) {
   const save = useMutation({
     mutationFn: () => apiFetch("/api/admin/referral-rule", { method: "PATCH", body: JSON.stringify(form) }),
     onSuccess: () => toast({ title: "Saved", variant: "success" }),
+    onError: () => toast({ title: "Couldn't save that rule — try again.", variant: "danger" }),
   });
 
   return (

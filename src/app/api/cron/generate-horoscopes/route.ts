@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateHoroscopesForDate, type GenerateHoroscopesResult } from "@/lib/horoscope-automation";
 import { ZODIAC_SIGNS, type ZodiacSign } from "@/lib/zodiac";
+import { isAuthorizedCronRequest } from "@/lib/cron/auth";
 
 /**
  * Unattended daily automation — see CLAUDE.md and the admin route for why
@@ -50,15 +51,6 @@ function isZodiacSign(v: string | null): v is ZodiacSign {
   return v != null && (ZODIAC_SIGNS as readonly string[]).includes(v);
 }
 
-function isAuthorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false; // fail closed if not configured
-  const header = req.headers.get("authorization");
-  if (header === `Bearer ${secret}`) return true;
-  const queryParam = new URL(req.url).searchParams.get("secret");
-  return queryParam === secret;
-}
-
 /** "Today" in India, not the server's own timezone — a cron firing near midnight UTC shouldn't shift which IST day a weekly/monthly run lands on. */
 function getIstToday() {
   const now = new Date();
@@ -82,7 +74,7 @@ export async function GET(req: NextRequest) {
 }
 
 async function handle(req: NextRequest) {
-  if (!isAuthorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAuthorizedCronRequest(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const url = new URL(req.url);
   const requestedLocale = url.searchParams.get("locale");

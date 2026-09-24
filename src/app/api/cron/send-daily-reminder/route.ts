@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendPushToAllSubscribed } from "@/lib/push/send";
+import { isAuthorizedCronRequest } from "@/lib/cron/auth";
 
 /**
  * Unattended daily reminder — "check today's horoscope" is the single
@@ -13,15 +14,6 @@ import { sendPushToAllSubscribed } from "@/lib/push/send";
  * Same auth pattern as generate-horoscopes/prefill-panchang: `Authorization:
  * Bearer <CRON_SECRET>` or `?secret=`.
  */
-function isAuthorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const header = req.headers.get("authorization");
-  if (header === `Bearer ${secret}`) return true;
-  const queryParam = new URL(req.url).searchParams.get("secret");
-  return queryParam === secret;
-}
-
 export async function POST(req: NextRequest) {
   return handle(req);
 }
@@ -30,7 +22,7 @@ export async function GET(req: NextRequest) {
 }
 
 async function handle(req: NextRequest) {
-  if (!isAuthorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAuthorizedCronRequest(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   // One fixed message for everyone subscribed, in English — a push
   // notification's title/body isn't run through generateAstrologyReply (no

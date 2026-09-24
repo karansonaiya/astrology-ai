@@ -1,5 +1,12 @@
+import type { Metadata } from "next";
 import { BlogIndexContent } from "./blog-index-content";
 import { AdSlot } from "@/components/ads/ad-slot";
+
+export const metadata: Metadata = {
+  title: "Astrology Blog — Zodiac Signs Explained | Prerna AI",
+  description: "Traits, compatibility, and lucky signs for every zodiac sign — Aries through Pisces.",
+  alternates: { canonical: "/blog" },
+};
 
 // Server component wrapper — BlogIndexContent is "use client" (needs the
 // i18n hooks), and AdSlot is an async server component (needs a real

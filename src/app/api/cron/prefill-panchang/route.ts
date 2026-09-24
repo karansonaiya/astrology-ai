@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { geocodeBirthPlace } from "@/lib/geo";
 import { getCachedPanchang, isPanchangCached, buildLocalMorningDateTime } from "@/lib/astrology/panchang";
+import { isAuthorizedCronRequest } from "@/lib/cron/auth";
 
 /**
  * Warms the panchang cache ahead of time for the /panchang page's default
@@ -32,14 +33,6 @@ const DEFAULT_COUNTRY = "India";
 const PREFILL_DAYS = 30;
 const PAUSE_BETWEEN_LIVE_FETCHES_MS = 65_000; // one day's panchang = 4 Prokerala requests, so pace per-day, not per-batch
 
-function isAuthorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const header = req.headers.get("authorization");
-  if (header === `Bearer ${secret}`) return true;
-  return new URL(req.url).searchParams.get("secret") === secret;
-}
-
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -59,7 +52,7 @@ export async function GET(req: NextRequest) {
 }
 
 async function handle(req: NextRequest) {
-  if (!isAuthorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAuthorizedCronRequest(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const geo = await geocodeBirthPlace(DEFAULT_CITY, DEFAULT_COUNTRY);
   if (!geo) return NextResponse.json({ error: "default_city_geocode_failed" }, { status: 500 });

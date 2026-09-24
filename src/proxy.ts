@@ -23,6 +23,17 @@ const { auth } = NextAuth(authConfig);
 // version. Dropping that export (no longer needed — Node.js is the
 // default) and renaming the file fixed it.
 
+// Found in a full audit: this list had drifted out of sync with the real
+// (app)/ route group — about half its pages (numerology, baby-names,
+// muhurat-finder, remedies, vastu-shastra, puja-services, shop,
+// palm-reading, face-reading, gemstone-suggestion, mangal-dosha,
+// kaal-sarp-sade-sati, tarot-reading) were missing. They were never actually
+// reachable while logged out — (app)/layout.tsx's own server-side session
+// check still redirects to /login regardless — but skipping this earlier,
+// faster proxy-level redirect meant those specific pages lost the
+// `callbackUrl` (landing on /dashboard after login instead of back where the
+// user was) and the no-store cache header below. Every (app)/ page belongs
+// here now, not just the ones a past edit happened to add.
 const PROTECTED_PREFIXES = [
   "/dashboard",
   "/chat",
@@ -38,6 +49,19 @@ const PROTECTED_PREFIXES = [
   "/settings",
   "/help",
   "/onboarding",
+  "/numerology",
+  "/baby-names",
+  "/muhurat-finder",
+  "/remedies",
+  "/vastu-shastra",
+  "/puja-services",
+  "/shop",
+  "/palm-reading",
+  "/face-reading",
+  "/gemstone-suggestion",
+  "/mangal-dosha",
+  "/kaal-sarp-sade-sati",
+  "/tarot-reading",
 ];
 
 const ADMIN_PREFIX = "/admin";

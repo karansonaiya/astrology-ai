@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/auth/password";
 import type { AppLocale } from "@/lib/i18n/config";
 import { authConfig } from "@/auth.config";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 // Carries a specific reason through to the client via NextAuth's
 // CredentialsSignin.code — Auth.js appends this as a `code` query/body param
@@ -32,10 +33,23 @@ const providers = [
       email: { label: "Email", type: "email" },
       password: { label: "Password", type: "password" },
     },
-    async authorize(raw) {
+    async authorize(raw, request) {
       const email = String(raw?.email ?? "").trim().toLowerCase();
       const password = String(raw?.password ?? "");
       if (!email || !password) throw new PasswordSignInError("invalid_request");
+
+      // Found in a full audit: every other unauthenticated auth route
+      // (signup, password-reset request/confirm, OTP request) rate-limits
+      // itself — this one, the actual password check, didn't. Scoped by
+      // both IP (stops credential stuffing across many accounts from one
+      // source) and email (stops a targeted brute force against one
+      // account even from rotating IPs/proxies).
+      const ip = getClientIp(request.headers);
+      const [ipOk, emailOk] = await Promise.all([
+        rateLimit("login-ip", ip, 20, 600),
+        rateLimit("login-email", email, 8, 300),
+      ]);
+      if (!ipOk.success || !emailOk.success) throw new PasswordSignInError("rate_limited");
 
       const user = await prisma.user.findUnique({ where: { email } });
       // Same generic code whether the account doesn't exist, was created via

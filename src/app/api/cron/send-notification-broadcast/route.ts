@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateNotificationCopy } from "@/lib/ai/notification-copy";
 import { sendPushToAllSubscribed } from "@/lib/push/send";
+import { isAuthorizedCronRequest } from "@/lib/cron/auth";
 
 // Real schedule is every 3 hours (Pabbly Connect) — this margin is under
 // that cadence but well above any real retry/duplicate-trigger window, so
@@ -54,15 +55,6 @@ const BROADCAST_SLOTS: { topic: string; url: string }[] = [
   },
 ];
 
-function isAuthorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const header = req.headers.get("authorization");
-  if (header === `Bearer ${secret}`) return true;
-  const queryParam = new URL(req.url).searchParams.get("secret");
-  return queryParam === secret;
-}
-
 export async function POST(req: NextRequest) {
   return handle(req);
 }
@@ -71,7 +63,7 @@ export async function GET(req: NextRequest) {
 }
 
 async function handle(req: NextRequest) {
-  if (!isAuthorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAuthorizedCronRequest(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const slotParam = new URL(req.url).searchParams.get("slot");
   // Fallback (manual/browser testing only): guess a slot from the current

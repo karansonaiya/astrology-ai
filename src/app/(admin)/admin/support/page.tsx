@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/toast";
 
 type Ticket = {
   id: string; subject: string; message: string; status: string;
@@ -17,18 +18,28 @@ type Ticket = {
 
 export default function AdminSupportPage() {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const { data, isLoading } = useQuery({ queryKey: ["admin-support"], queryFn: () => apiFetch<{ tickets: Ticket[] }>("/api/admin/support-tickets") });
   const [drafts, setDrafts] = useState<Record<string, string>>({});
 
   const reply = useMutation({
     mutationFn: ({ id, message }: { id: string; message: string }) =>
       apiFetch(`/api/admin/support-tickets/${id}`, { method: "PATCH", body: JSON.stringify({ reply: message, status: "in_progress" }) }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-support"] }),
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: ["admin-support"] });
+      // Found in a full audit: the draft used to be cleared immediately on
+      // click, before the mutation resolved — a failed reply silently
+      // erased what the admin typed with zero indication it didn't send.
+      // Only clearing it here, on confirmed success, fixes that.
+      setDrafts((d) => ({ ...d, [id]: "" }));
+    },
+    onError: () => toast({ title: "Couldn't send that reply — your draft is still here, try again.", variant: "danger" }),
   });
 
   const resolve = useMutation({
     mutationFn: (id: string) => apiFetch(`/api/admin/support-tickets/${id}`, { method: "PATCH", body: JSON.stringify({ status: "resolved" }) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-support"] }),
+    onError: () => toast({ title: "Couldn't mark that ticket resolved — try again.", variant: "danger" }),
   });
 
   return (
@@ -58,7 +69,7 @@ export default function AdminSupportPage() {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" disabled={!drafts[t.id]} onClick={() => { reply.mutate({ id: t.id, message: drafts[t.id] }); setDrafts((d) => ({ ...d, [t.id]: "" })); }}>
+                  <Button size="sm" disabled={!drafts[t.id] || reply.isPending} onClick={() => reply.mutate({ id: t.id, message: drafts[t.id] })}>
                     Reply
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => resolve.mutate(t.id)}>Mark resolved</Button>

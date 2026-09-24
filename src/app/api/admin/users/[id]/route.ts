@@ -10,11 +10,19 @@ const patchSchema = z.object({
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const admin = await requireAdmin(["admin"]);
-    const { id } = await params;
     const body = await req.json().catch(() => null);
     const parsed = patchSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "invalid_request" }, { status: 400 });
+
+    // Found in a full audit: the admin/users page's Suspend/Reactivate
+    // button is shown to (and its GET/credits endpoints already allow)
+    // support_agent, but this route required plain "admin" for any PATCH —
+    // a support_agent clicking Suspend got a silent 403. Role changes stay
+    // admin-only (a support_agent granting themselves/anyone "admin" would
+    // be a real privilege escalation); status-only changes (suspend/
+    // reactivate) don't touch role at all, so they're safe to allow.
+    const admin = await requireAdmin(parsed.data.role !== undefined ? ["admin"] : ["admin", "support_agent"]);
+    const { id } = await params;
 
     const user = await prisma.user.update({ where: { id }, data: parsed.data });
 
