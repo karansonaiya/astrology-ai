@@ -3,7 +3,7 @@ import { nanoid } from "nanoid";
 import { prisma } from "@/lib/prisma";
 import { requireUser, errorResponse } from "@/lib/auth/guard";
 import { createOrderSchema } from "@/lib/validations/payments";
-import { getPaymentProvider } from "@/lib/payments/provider";
+import { getPaymentProvider, PaymentGatewayUnavailableError } from "@/lib/payments/provider";
 import { CREDIT_PACKS, PALM_REPORT_CODES, NUMEROLOGY_REPORT_CODES, BABY_NAME_REPORT_CODES, MUHURAT_REPORT_CODES, FACE_REPORT_CODES, COMPATIBILITY_REPORT_CODES } from "@/lib/pricing/catalog";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -160,15 +160,20 @@ export async function POST(req: NextRequest) {
         returnUrl: `${appUrl}/payments/return?order_id=${order.id}`,
       }));
     } catch (err) {
-      // Found live: Cashfree's own sandbox gateway is genuinely intermittent
-      // (a real 502/503/504 reproduced directly against their API) —
-      // provider.createOrder already retries once, so a failure here means
-      // it's still down. Surfacing this as a distinct, clearly-worded 503
-      // (instead of falling through to errorResponse's generic 500 "API
-      // error 500") lets the client tell the user this is temporary and
-      // worth retrying, without guessing at our own bug.
-      console.error("Payment provider createOrder failed after retry:", err);
-      return NextResponse.json({ error: "payment_provider_unavailable" }, { status: 503 });
+      // Only a confirmed gateway-level outage (provider.createOrder's own
+      // retries already exhausted) gets the "temporarily unavailable, try
+      // again" treatment — that's the one failure mode actually confirmed
+      // live to be Cashfree's infrastructure, not ours. Any OTHER error
+      // (a genuine Cashfree API rejection, a real bug in what we sent) is
+      // a different problem retrying won't fix, so it falls through to the
+      // generic 500 below instead of being mislabeled as "temporary" —
+      // still logged in full either way.
+      if (err instanceof PaymentGatewayUnavailableError) {
+        console.error("Payment gateway unavailable (Cashfree infra), after retries:", err.message);
+        return NextResponse.json({ error: "payment_provider_unavailable" }, { status: 503 });
+      }
+      console.error("Payment provider createOrder failed (not a gateway-outage retry case):", err);
+      return NextResponse.json({ error: "payment_failed" }, { status: 502 });
     }
 
     await prisma.order.update({ where: { id: order.id }, data: { providerOrderId } });

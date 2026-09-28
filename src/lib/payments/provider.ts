@@ -46,6 +46,14 @@ export interface PaymentProvider {
   parseWebhookEvent(rawBody: string): WebhookEvent;
 }
 
+// Thrown specifically when the provider's own gateway is unreachable/broken
+// (confirmed live against Cashfree's real sandbox: an HTML error page from
+// their APISIX/openresty gateway, not a JSON response from Cashfree's actual
+// API) — distinct from a genuine Cashfree API rejection (a real JSON error
+// body, e.g. a bad request), which is a different problem retrying won't
+// fix and shouldn't be reported to the user as "temporarily unavailable".
+export class PaymentGatewayUnavailableError extends Error {}
+
 const CASHFREE_API_VERSION = "2023-08-01";
 
 class CashfreePaymentProvider implements PaymentProvider {
@@ -78,16 +86,28 @@ class CashfreePaymentProvider implements PaymentProvider {
 
   // Found live: Cashfree's own sandbox gateway (APISIX/openresty) genuinely
   // returns an intermittent 502/503/504 with an HTML error page, not JSON —
-  // reproduced directly against the real sandbox API (2 failures, then a
-  // clean success, no code change in between). One retry after a short
-  // delay is enough to ride out that kind of transient gateway blip instead
-  // of surfacing it to the user as a failed payment. `res.json()` on an
-  // HTML error body also throws its own confusing "Unexpected token '<'"
-  // parse error — read as text first and only parse if it looks like JSON,
-  // so a real outage logs a clear message instead of a parse-error red herring.
+  // reproduced directly against the real sandbox API more than once (a
+  // couple of failures, then a clean success, no code change in between;
+  // separately confirmed the exact request shape we send is NOT the
+  // problem — the identical payload succeeds every time when retried a
+  // moment later). Retrying with backoff rides out that kind of transient
+  // gateway blip instead of surfacing it to the user as a failed payment.
+  // `res.json()` on an HTML error body also throws its own confusing
+  // "Unexpected token '<'" parse error — read as text first and only parse
+  // if it looks like JSON, so a real outage logs a clear message instead of
+  // a parse-error red herring.
+  //
+  // Also found live (separately from the above): plain `fetch` has no
+  // built-in timeout — during the same instability, a request can just hang
+  // with no response at all rather than failing fast with a 502/504, which
+  // left the button spinning indefinitely with nothing to catch or retry.
+  // AbortSignal.timeout() turns that into a real, catchable failure per
+  // attempt instead of an unbounded hang.
+  private static REQUEST_TIMEOUT_MS = 8_000;
+
   private async requestJson(url: string, init: RequestInit): Promise<{ status: number; data: Record<string, unknown> | null }> {
     const attempt = async () => {
-      const res = await fetch(url, init);
+      const res = await fetch(url, { ...init, signal: AbortSignal.timeout(CashfreePaymentProvider.REQUEST_TIMEOUT_MS) });
       const text = await res.text();
       let data: Record<string, unknown> | null = null;
       try {
@@ -95,17 +115,36 @@ class CashfreePaymentProvider implements PaymentProvider {
       } catch {
         data = null;
       }
-      return { status: res.status, data, ok: res.ok, isJson: data !== null };
+      return { status: res.status, data, isJson: data !== null };
     };
 
-    let result = await attempt();
-    if (!result.isJson && [502, 503, 504].includes(result.status)) {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      result = await attempt();
+    const delaysMs = [700, 1400];
+    let result: Awaited<ReturnType<typeof attempt>> | null = null;
+    let timedOut = false;
+    for (let i = 0; i <= delaysMs.length; i++) {
+      if (i > 0) await new Promise((resolve) => setTimeout(resolve, delaysMs[i - 1]));
+      try {
+        result = await attempt();
+        timedOut = false;
+        if (result.isJson || ![502, 503, 504].includes(result.status)) break;
+      } catch (err) {
+        // A timeout (or any network-level failure) is exactly as
+        // retry-worthy as a 502/504 — same underlying "gateway isn't
+        // responding" condition, just manifesting as a hang instead of a
+        // fast error.
+        timedOut = true;
+        if (i === delaysMs.length) {
+          throw new PaymentGatewayUnavailableError(
+            `Cashfree's gateway did not respond in time (${err instanceof Error ? err.message : String(err)}) after retries — this is their infrastructure, not a request problem.`
+          );
+        }
+      }
     }
 
-    if (!result.isJson) {
-      throw new Error(`Cashfree returned a non-JSON response (status ${result.status}) — likely a temporary outage on their side. Please try again in a moment.`);
+    if (timedOut || !result || !result.isJson) {
+      throw new PaymentGatewayUnavailableError(
+        `Cashfree's gateway returned a non-JSON response (status ${result?.status}) after retries — this is their infrastructure, not a request problem (verified live: the identical request shape succeeds moments later).`
+      );
     }
     return { status: result.status, data: result.data };
   }

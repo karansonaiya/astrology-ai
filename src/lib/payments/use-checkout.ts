@@ -151,8 +151,11 @@ export function useCheckout() {
       }
       await confirm(order.orderId, opts);
     } catch (err) {
-      if (err instanceof ApiError && (err.body as { error?: string } | null)?.error === "payment_provider_unavailable") {
+      const errorCode = err instanceof ApiError ? (err.body as { error?: string } | null)?.error : undefined;
+      if (errorCode === "payment_provider_unavailable") {
         opts?.onError?.("The payment service is temporarily unavailable. Please try again in a moment.");
+      } else if (errorCode === "payment_failed") {
+        opts?.onError?.("Could not start the payment. Please try again, or contact support if this keeps happening.");
       } else if (err instanceof ApiError && err.status === 429) {
         opts?.onError?.("Too many attempts — please wait a moment before trying again.");
       } else {
