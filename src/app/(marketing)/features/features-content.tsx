@@ -3,6 +3,7 @@
 import { MessageCircle, Sun, Sparkles, GitCompareArrows, FileText, Languages } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { SectionBadge } from "@/components/marketing/section-badge";
 
 export function FeaturesContent() {
   const t = useT();
@@ -17,12 +18,17 @@ export function FeaturesContent() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-14 md:px-6">
-      <h1 className="font-heading text-3xl font-semibold">{t("landing.featuresTitle")}</h1>
-      <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="text-center">
+        <SectionBadge>{t("landing.featuresEyebrow")}</SectionBadge>
+        <h1 className="mx-auto mt-4 max-w-2xl font-heading text-3xl font-semibold md:text-4xl">{t("landing.featuresTitle")}</h1>
+      </div>
+      <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {features.map((f) => (
-          <Card key={f.title}>
+          <Card key={f.title} className="transition-shadow hover:shadow-md">
             <CardHeader>
-              <f.icon size={22} className="mb-2 text-gold" />
+              <span className="mb-2 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-tan/40 text-tan-foreground">
+                <f.icon size={20} />
+              </span>
               <CardTitle className="text-base">{f.title}</CardTitle>
               <CardDescription>{f.desc}</CardDescription>
             </CardHeader>

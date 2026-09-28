@@ -2,9 +2,21 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { useMutation } from "@tanstack/react-query";
-import { Sparkles, ShieldCheck, Languages, ReceiptText, MessageCircle, Sun, GitCompareArrows, FileText } from "lucide-react";
+import {
+  Sparkles,
+  ShieldCheck,
+  Languages,
+  ReceiptText,
+  MessageCircle,
+  Sun,
+  GitCompareArrows,
+  FileText,
+  Quote,
+  Star,
+} from "lucide-react";
 import { useT, useI18n } from "@/lib/i18n/provider";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -15,6 +27,9 @@ import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { CaptchaWidget } from "@/components/ui/captcha-widget";
 import { AiMarkdown } from "@/components/ui/ai-markdown";
 import { FAQS } from "@/lib/content/faqs";
+import { SectionBadge } from "@/components/marketing/section-badge";
+import { ZodiacWheel } from "@/components/marketing/zodiac-wheel";
+import { PERSONAS } from "@/lib/personas/catalog";
 
 const TRUST_ICONS = [ShieldCheck, Languages, ReceiptText, Sparkles];
 
@@ -112,6 +127,10 @@ export function LandingContent() {
     { icon: Languages, title: t("landing.featureLanguageTitle"), desc: t("landing.featureLanguageDesc") },
   ];
 
+  // Real AI astrologer personas (src/lib/personas/catalog.ts), not fabricated
+  // profiles — same portraits/names/taglines the actual persona picker uses.
+  const astrologerPreview = PERSONAS.slice(0, 4);
+
   // Shared with the dedicated /faq page (src/lib/content/faqs.ts) so the two
   // never drift — the homepage shows the first 4 as a teaser, with a "View
   // all FAQs" link below for the rest, rather than dumping all 8 here.
@@ -120,20 +139,11 @@ export function LandingContent() {
   return (
     <div>
       {/* Hero */}
-      <section className="mx-auto max-w-6xl px-4 pb-16 pt-14 md:px-6 md:pt-20">
-        <div className="grid items-center gap-10 lg:grid-cols-2">
+      <section className="cosmic-bg relative overflow-hidden border-b border-border px-4 pb-16 pt-14 md:px-6 md:pb-24 md:pt-20">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
           <div>
-            <div className="mb-5 flex flex-wrap gap-2">
-              {trustChips.map((chip, i) => {
-                const Icon = TRUST_ICONS[i];
-                return (
-                  <Badge key={chip} variant="default">
-                    <Icon size={12} /> {chip}
-                  </Badge>
-                );
-              })}
-            </div>
-            <h1 className="font-heading text-3xl font-semibold leading-tight text-foreground md:text-5xl">
+            <SectionBadge>{t("landing.heroEyebrow")}</SectionBadge>
+            <h1 className="mt-5 font-heading text-3xl font-semibold leading-[1.1] text-foreground md:text-5xl lg:text-6xl">
               {t("landing.heroHeading")}
             </h1>
             <p className="mt-5 max-w-lg text-base text-muted md:text-lg">{t("landing.heroSub")}</p>
@@ -145,14 +155,45 @@ export function LandingContent() {
                 <Link href="/horoscope">{t("common.exploreDailyHoroscope")}</Link>
               </Button>
             </div>
+            <div className="mt-8 flex flex-wrap gap-2">
+              {trustChips.map((chip, i) => {
+                const Icon = TRUST_ICONS[i];
+                return (
+                  <Badge key={chip} variant="gold">
+                    <Icon size={12} /> {chip}
+                  </Badge>
+                );
+              })}
+            </div>
           </div>
 
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
+            className="relative"
           >
-            <Card className="glass overflow-hidden">
+            {/* Floating feature pills, echoing the reference's collage
+                treatment — real feature names, not decorative filler. Hidden
+                below lg: at hero width, cramming these onto a narrow column
+                clips or overlaps the actual widget instead of adding polish. */}
+            <div className="pointer-events-none absolute -left-8 top-4 z-10 hidden -rotate-6 lg:block">
+              <Badge className="border border-border bg-surface px-3 py-1.5 text-foreground shadow-md">
+                <Sparkles size={12} className="text-gold" /> {t("landing.featureKundliTitle")}
+              </Badge>
+            </div>
+            <div className="pointer-events-none absolute -right-6 top-20 z-10 hidden rotate-3 lg:block">
+              <Badge className="border border-border bg-surface px-3 py-1.5 text-foreground shadow-md">
+                <Sun size={12} className="text-gold" /> {t("landing.featureHoroscopeTitle")}
+              </Badge>
+            </div>
+            <div className="pointer-events-none absolute -left-10 bottom-8 z-10 hidden rotate-3 lg:block">
+              <Badge className="border border-border bg-surface px-3 py-1.5 text-foreground shadow-md">
+                <GitCompareArrows size={12} className="text-gold" /> {t("landing.featureCompatibilityTitle")}
+              </Badge>
+            </div>
+
+            <Card className="glass relative overflow-hidden shadow-xl">
               <CardHeader className="flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-base">{t("landing.publicAskTitle")}</CardTitle>
                 <AiDisclosureBadge label={t("common.aiGuidanceBadge")} />
@@ -165,15 +206,30 @@ export function LandingContent() {
         </div>
       </section>
 
+      {/* About */}
+      <section className="py-16 md:py-20">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 md:px-6 lg:grid-cols-2 lg:gap-16">
+          <div>
+            <SectionBadge>{t("landing.aboutEyebrow")}</SectionBadge>
+            <h2 className="mt-4 font-heading text-2xl font-semibold md:text-3xl">{t("landing.aboutTitle")}</h2>
+            <p className="mt-4 leading-relaxed text-muted">{t("landing.aboutBody")}</p>
+          </div>
+          <div className="order-first flex justify-center lg:order-last">
+            <ZodiacWheel size={320} className="h-auto w-full max-w-[240px] md:max-w-[320px]" />
+          </div>
+        </div>
+      </section>
+
       {/* How it works */}
-      <section className="border-t border-border bg-surface/40 py-16">
+      <section className="border-t border-border bg-surface/40 py-16 md:py-20">
         <div className="mx-auto max-w-6xl px-4 md:px-6">
-          <h2 className="font-heading text-2xl font-semibold md:text-3xl">{t("landing.howItWorksTitle")}</h2>
-          <div className="mt-8 grid gap-6 md:grid-cols-3">
+          <SectionBadge>{t("landing.howItWorksEyebrow")}</SectionBadge>
+          <h2 className="mt-4 font-heading text-2xl font-semibold md:text-3xl">{t("landing.howItWorksTitle")}</h2>
+          <div className="mt-8 grid gap-5 md:mt-10 md:grid-cols-3">
             {steps.map((s, i) => (
-              <Card key={s.title}>
+              <Card key={s.title} className="border-none bg-surface shadow-sm">
                 <CardHeader>
-                  <span className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
+                  <span className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-gold/15 text-base font-semibold text-gold">
                     {i + 1}
                   </span>
                   <CardTitle className="text-base">{s.title}</CardTitle>
@@ -186,14 +242,17 @@ export function LandingContent() {
       </section>
 
       {/* Features */}
-      <section className="py-16">
+      <section className="py-16 md:py-20">
         <div className="mx-auto max-w-6xl px-4 md:px-6">
-          <h2 className="font-heading text-2xl font-semibold md:text-3xl">{t("landing.featuresTitle")}</h2>
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <SectionBadge>{t("landing.featuresEyebrow")}</SectionBadge>
+          <h2 className="mt-4 font-heading text-2xl font-semibold md:text-3xl">{t("landing.featuresTitle")}</h2>
+          <div className="mt-8 grid gap-5 sm:grid-cols-2 md:mt-10 lg:grid-cols-3">
             {features.map((f) => (
-              <Card key={f.title}>
+              <Card key={f.title} className="transition-shadow hover:shadow-md">
                 <CardHeader>
-                  <f.icon size={22} className="mb-2 text-gold" />
+                  <span className="mb-2 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-tan/40 text-tan-foreground">
+                    <f.icon size={20} />
+                  </span>
                   <CardTitle className="text-base">{f.title}</CardTitle>
                   <CardDescription>{f.desc}</CardDescription>
                 </CardHeader>
@@ -203,19 +262,58 @@ export function LandingContent() {
         </div>
       </section>
 
+      {/* AI Astrologers */}
+      <section className="border-t border-border bg-surface/40 py-16 md:py-20">
+        <div className="mx-auto max-w-6xl px-4 md:px-6">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <SectionBadge>{t("landing.astrologersEyebrow")}</SectionBadge>
+              <h2 className="mt-4 max-w-xl font-heading text-2xl font-semibold md:text-3xl">{t("landing.astrologersTitle")}</h2>
+              <p className="mt-3 max-w-xl text-muted">{t("landing.astrologersSub")}</p>
+            </div>
+            <Button asChild variant="outline" className="shrink-0">
+              <Link href="/login">{t("landing.astrologersCta")}</Link>
+            </Button>
+          </div>
+          <div className="mt-8 grid grid-cols-2 gap-4 sm:gap-5 md:mt-10 lg:grid-cols-4">
+            {astrologerPreview.map((persona) => (
+              <Card key={persona.code} className="overflow-hidden">
+                <div className="relative aspect-[3/4] w-full bg-surface-raised">
+                  <Image
+                    src={persona.avatarImage}
+                    alt={persona.name}
+                    fill
+                    sizes="(min-width: 1024px) 240px, 45vw"
+                    className="object-cover"
+                  />
+                </div>
+                <CardContent className="p-3">
+                  <p className="font-heading text-sm font-semibold">{persona.name}</p>
+                  <p className="mt-0.5 line-clamp-2 text-xs text-muted">{persona.tagline}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Language + privacy */}
-      <section className="border-t border-border bg-surface/40 py-16">
-        <div className="mx-auto grid max-w-6xl gap-8 px-4 md:grid-cols-2 md:px-6">
+      <section className="py-16 md:py-20">
+        <div className="mx-auto grid max-w-6xl gap-6 px-4 md:px-6 md:grid-cols-2">
           <Card>
             <CardHeader>
-              <Languages size={22} className="mb-2 text-primary" />
+              <span className="mb-2 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Languages size={20} />
+              </span>
               <CardTitle>{t("landing.languageSectionTitle")}</CardTitle>
               <CardDescription>{t("landing.languageSectionDesc")}</CardDescription>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader>
-              <ShieldCheck size={22} className="mb-2 text-success" />
+              <span className="mb-2 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-success/10 text-success">
+                <ShieldCheck size={20} />
+              </span>
               <CardTitle>{t("landing.privacySectionTitle")}</CardTitle>
               <CardDescription>{t("landing.privacySectionDesc")}</CardDescription>
             </CardHeader>
@@ -224,9 +322,10 @@ export function LandingContent() {
       </section>
 
       {/* Pricing teaser */}
-      <section className="py-16">
+      <section className="border-t border-border bg-surface/40 py-16 md:py-20">
         <div className="mx-auto max-w-6xl px-4 text-center md:px-6">
-          <h2 className="font-heading text-2xl font-semibold md:text-3xl">{t("landing.pricingSectionTitle")}</h2>
+          <SectionBadge>{t("landing.pricingEyebrow")}</SectionBadge>
+          <h2 className="mt-4 font-heading text-2xl font-semibold md:text-3xl">{t("landing.pricingSectionTitle")}</h2>
           <p className="mx-auto mt-3 max-w-xl text-muted">{t("landing.pricingSectionDesc")}</p>
           <Button asChild className="mt-6" variant="outline">
             <Link href="/pricing">{t("nav.pricing")}</Link>
@@ -235,16 +334,25 @@ export function LandingContent() {
       </section>
 
       {/* Testimonials (clearly-marked demo placeholders) */}
-      <section className="border-t border-border bg-surface/40 py-16">
+      <section className="py-16 md:py-20">
         <div className="mx-auto max-w-6xl px-4 md:px-6">
-          <h2 className="font-heading text-2xl font-semibold md:text-3xl">{t("landing.testimonialsTitle")}</h2>
+          <SectionBadge>{t("landing.testimonialsEyebrow")}</SectionBadge>
+          <h2 className="mt-4 font-heading text-2xl font-semibold md:text-3xl">{t("landing.testimonialsTitle")}</h2>
           <p className="mt-2 text-sm text-muted">{t("landing.testimonialsNote")}</p>
-          <div className="mt-8 grid gap-5 md:grid-cols-3">
+          <div className="mt-8 grid gap-5 md:mt-10 md:grid-cols-3">
             {[1, 2, 3].map((i) => (
               <Card key={i}>
                 <CardContent className="pt-5">
-                  <Badge className="mb-3">Demo placeholder</Badge>
-                  <p className="text-sm text-foreground/90">
+                  <div className="flex items-center justify-between">
+                    <Quote size={18} className="text-gold" />
+                    <div className="flex gap-0.5 text-gold">
+                      {Array.from({ length: 5 }).map((_, s) => (
+                        <Star key={s} size={12} fill="currentColor" strokeWidth={0} />
+                      ))}
+                    </div>
+                  </div>
+                  <Badge className="mt-3">Demo placeholder</Badge>
+                  <p className="mt-3 text-sm text-foreground/90">
                     &ldquo;Exploring the career reflection feature before an important decision.&rdquo;
                   </p>
                 </CardContent>
@@ -255,10 +363,11 @@ export function LandingContent() {
       </section>
 
       {/* FAQ */}
-      <section className="py-16">
+      <section className="border-t border-border bg-surface/40 py-16 md:py-20">
         <div className="mx-auto max-w-3xl px-4 md:px-6">
-          <h2 className="font-heading text-2xl font-semibold md:text-3xl">{t("landing.faqTitle")}</h2>
-          <div className="mt-6 flex flex-col gap-4">
+          <SectionBadge>{t("landing.faqEyebrow")}</SectionBadge>
+          <h2 className="mt-4 font-heading text-2xl font-semibold md:text-3xl">{t("landing.faqTitle")}</h2>
+          <div className="mt-8 flex flex-col gap-4">
             {faqs.map((f) => (
               <Card key={f.q.en}>
                 <CardHeader>
@@ -277,7 +386,7 @@ export function LandingContent() {
       </section>
 
       {/* Final CTA */}
-      <section className="border-t border-border py-16">
+      <section className="border-t border-border py-16 md:py-20">
         <div className="mx-auto max-w-3xl px-4 text-center md:px-6">
           <h2 className="font-heading text-2xl font-semibold md:text-3xl">{t("landing.finalCtaTitle")}</h2>
           <p className="mt-3 text-muted">{t("landing.finalCtaSub")}</p>

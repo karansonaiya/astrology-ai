@@ -13,36 +13,53 @@
   --font-body: var(--font-inter), var(--font-noto-gu), var(--font-noto-dev), system-ui, sans-serif;
   --font-heading: var(--font-inter), var(--font-noto-gu), var(--font-noto-dev), system-ui, sans-serif;
 
-  /* Dark "flame" (default) */
+  /* Dark "flame" (default) — evolved alongside light mode's terracotta/tan
+     shift below (see that comment for the reference this followed), toned
+     down from a pure neon flame-orange to a warmer, slightly muted
+     terracotta that reads as premium rather than alarm-colored on a dark
+     background. */
   --color-background: #1b140f;
   --color-surface: #221a13;
-  --color-surface-raised: #2b2117;
+  --color-surface-raised: #2e2416;
   --color-border: #3c2f20;
   --color-foreground: #fbf3ea;
   --color-muted: #c6b5a2;
-  --color-primary: #e8600f;
+  --color-primary: #d9793f;
   --color-primary-foreground: #fbf3ea;
   --color-gold: #f0b429;
   --color-gold-soft: #f6ce73;
   --color-success: #3cbf8a;
   --color-danger: #ef5350;
-  --color-ring: #e8600f;
+  --color-ring: #d9793f;
+  --color-tan: #4a3a26;
+  --color-tan-foreground: #f0e6d2;
 }
 
 .light {
+  /* Found in a full audit: this read as flat/generic "AI-generated" —
+     shifted from a pure saffron-orange toward the warmer terracotta/tan/
+     brown family a professional astrology-brand reference actually used
+     (deeper gold, coffee-brown primary, a new dedicated tan tone for
+     pill badges/panels), while keeping every existing token name so
+     nothing else in the app needs to change to pick this up. */
   --color-background: #fbf6ef;
   --color-surface: #ffffff;
-  --color-surface-raised: #fffdf9;
-  --color-border: #ebe0d0;
-  --color-foreground: #241a10;
-  --color-muted: #7c6a57;
-  --color-primary: #c2540c;
+  --color-surface-raised: #f5edd9;
+  --color-border: #e6d8bf;
+  --color-foreground: #2b1f12;
+  --color-muted: #8a7358;
+  --color-primary: #a8632e;
   --color-primary-foreground: #ffffff;
-  --color-gold: #a9760e;
+  --color-gold: #b8860b;
   --color-gold-soft: #8a5f0e;
   --color-success: #1f8f63;
   --color-danger: #c8443f;
-  --color-ring: #c2540c;
+  --color-ring: #a8632e;
+  /* Warm tan panel tone — pill badges (e.g. "Premium", eyebrow labels),
+     hero decorative panels, footer band. Distinct from surface-raised
+     (a near-white card background): this is a genuinely tan/khaki fill. */
+  --color-tan: #cbae7f;
+  --color-tan-foreground: #3d2f1d;
 }
 
 @theme inline {
@@ -59,6 +76,8 @@
   --color-success: var(--color-success);
   --color-danger: var(--color-danger);
   --color-ring: var(--color-ring);
+  --color-tan: var(--color-tan);
+  --color-tan-foreground: var(--color-tan-foreground);
   --font-sans: var(--font-body);
   --font-heading: var(--font-heading);
   /* AccordionContent's expand/collapse used to animate via @keyframes

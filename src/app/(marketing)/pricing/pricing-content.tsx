@@ -7,8 +7,10 @@ import { useT, useI18n } from "@/lib/i18n/provider";
 import { apiFetch } from "@/lib/api-client";
 import { formatInr } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SectionBadge } from "@/components/marketing/section-badge";
 
 type PricingResponse = {
   freeQuestionsCap: number;
@@ -27,8 +29,11 @@ export function PricingContent() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-14 md:px-6">
-      <h1 className="font-heading text-3xl font-semibold">{t("pricing.title")}</h1>
-      <p className="mt-2 max-w-2xl text-muted">{t("pricing.taxesNotice")}</p>
+      <div className="text-center">
+        <SectionBadge>{t("landing.pricingEyebrow")}</SectionBadge>
+        <h1 className="mt-4 font-heading text-3xl font-semibold md:text-4xl">{t("pricing.title")}</h1>
+        <p className="mx-auto mt-2 max-w-xl text-muted">{t("pricing.taxesNotice")}</p>
+      </div>
 
       {isLoading ? (
         <div className="mt-10 grid gap-5 md:grid-cols-3">
@@ -42,7 +47,7 @@ export function PricingContent() {
             <Card className="border-primary/40">
               <CardHeader>
                 <CardTitle>{t("pricing.freeQuestions")}</CardTitle>
-                <CardDescription>{formatInr(0, `${locale}-IN`)}</CardDescription>
+                <p className="mt-1 font-heading text-2xl font-semibold text-foreground">{formatInr(0, `${locale}-IN`)}</p>
               </CardHeader>
               <CardContent className="text-sm text-muted">
                 {data?.freeQuestionsCap ?? 3} {t("common.free").toLowerCase()} — {t("common.aiGeneratedGuidance")}
@@ -56,7 +61,7 @@ export function PricingContent() {
               <Card key={pack.code}>
                 <CardHeader>
                   <CardTitle>{pack.name}</CardTitle>
-                  <CardDescription>{formatInr(pack.priceInPaise, `${locale}-IN`)}</CardDescription>
+                  <p className="mt-1 font-heading text-2xl font-semibold text-foreground">{formatInr(pack.priceInPaise, `${locale}-IN`)}</p>
                 </CardHeader>
                 <CardContent className="text-sm text-muted">{pack.credits} AI questions</CardContent>
                 <CardFooter>
@@ -68,10 +73,11 @@ export function PricingContent() {
             {data?.plans.map((plan) => (
               <Card key={plan.code} className="border-gold/40">
                 <CardHeader>
+                  <Badge variant="gold" className="mb-1 w-fit">{t("pricing.perMonth")}</Badge>
                   <CardTitle>{plan.name}</CardTitle>
-                  <CardDescription>
-                    {formatInr(plan.priceInPaise, `${locale}-IN`)} {t("pricing.perMonth")}
-                  </CardDescription>
+                  <p className="mt-1 font-heading text-2xl font-semibold text-foreground">
+                    {formatInr(plan.priceInPaise, `${locale}-IN`)}
+                  </p>
                 </CardHeader>
                 <CardContent className="text-sm text-muted">{plan.description}</CardContent>
                 <CardFooter>
@@ -81,7 +87,7 @@ export function PricingContent() {
             ))}
           </div>
 
-          <h2 className="mt-14 font-heading text-2xl font-semibold">{t("nav.reports")}</h2>
+          <h2 className="mt-16 font-heading text-2xl font-semibold">{t("nav.reports")}</h2>
           <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {data?.templates.map((tpl) => (
               <Card key={tpl.code}>
@@ -99,7 +105,7 @@ export function PricingContent() {
         </>
       )}
 
-      <div className="mt-10 flex items-center gap-2 text-sm text-muted">
+      <div className="mt-10 flex items-center justify-center gap-2 text-sm text-muted">
         <Check size={14} className="text-success" />
         {t("pricing.noRefundsNotice")}
       </div>
