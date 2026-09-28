@@ -814,6 +814,7 @@
     "language": "Language"
   },
   "admin": {
+    "pendingItemsBadge": "New support tickets, inquiries, or requests need your attention",
     "dashboard": "Admin Dashboard",
     "users": "Users",
     "payments": "Payments",

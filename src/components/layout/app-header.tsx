@@ -28,6 +28,19 @@ export function AppHeader() {
   });
 
   const isAdmin = ["admin", "support_agent", "content_editor"].includes(session?.user?.role ?? "");
+  // Only admin/support_agent actually see the support/shop-inquiries/
+  // puja-requests pages this counts — content_editor can't act on any of
+  // them, so it never even fires this query for that role.
+  const canSeePendingCount = ["admin", "support_agent"].includes(session?.user?.role ?? "");
+  const { data: pending } = useQuery({
+    queryKey: ["admin-pending-count"],
+    queryFn: () => apiFetch<{ total: number }>("/api/admin/pending-count"),
+    enabled: canSeePendingCount,
+    // A real new inquiry/ticket should surface within a couple minutes of
+    // it coming in, without the admin needing to refresh the page by hand.
+    refetchInterval: 120_000,
+  });
+  const hasPending = !!pending && pending.total > 0;
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/80 px-4 py-3 backdrop-blur-md md:px-6">
@@ -37,8 +50,16 @@ export function AppHeader() {
 
       <div className="ml-auto flex items-center gap-2">
         {isAdmin && (
-          <Button asChild size="sm" variant="outline">
-            <Link href="/admin"><ShieldCheck size={14} /> {t("nav.admin")}</Link>
+          <Button asChild size="sm" variant="outline" className="relative">
+            <Link href="/admin">
+              <ShieldCheck size={14} /> {t("nav.admin")}
+              {hasPending && (
+                <span
+                  aria-label={t("admin.pendingItemsBadge")}
+                  className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-danger ring-2 ring-background"
+                />
+              )}
+            </Link>
           </Button>
         )}
         <Badge variant="primary" className="hidden sm:inline-flex">
