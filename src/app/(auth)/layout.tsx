@@ -3,7 +3,7 @@ import { LanguageSwitcher } from "@/components/layout/language-switcher";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="cosmic-bg flex min-h-screen flex-col">
       <header className="flex items-center justify-between px-4 py-4 md:px-6">
         <Logo />
         <LanguageSwitcher />

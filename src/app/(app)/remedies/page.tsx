@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/toast";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { AiMarkdown } from "@/components/ui/ai-markdown";
 import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
+import { PageHeader } from "@/components/app/page-header";
 
 export default function RemediesPage() {
   const t = useT();
@@ -41,10 +42,7 @@ export default function RemediesPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
-      <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold">
-        <Sparkles size={22} className="text-primary" /> {t("remedies.title")}
-      </h1>
-      <p className="mt-1 text-sm text-muted">{t("remedies.subtitle")}</p>
+      <PageHeader icon={Sparkles} title={t("remedies.title")} subtitle={t("remedies.subtitle")} />
 
       <Card className="mt-5">
         <CardContent className="flex flex-col gap-4 pt-5">

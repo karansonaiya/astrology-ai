@@ -18,6 +18,7 @@ import { CityAutocomplete } from "@/components/ui/city-autocomplete";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
 import { ShareButton } from "@/components/ui/share-button";
+import { PageHeader } from "@/components/app/page-header";
 import { ZODIAC_LABELS, type ZodiacSign } from "@/lib/zodiac";
 import { CORE_EXPLANATIONS, PLANET_LABELS, HOUSE_THEMES, buildPlanetInterpretation } from "@/lib/astrology/interpretations";
 import type { AppLocale } from "@/lib/i18n/config";
@@ -130,7 +131,7 @@ export default function KundliPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 md:px-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="font-heading text-2xl font-semibold">{t("kundli.title")}</h1>
+        <PageHeader icon={Sparkles} title={t("kundli.title")} />
         <div className="flex items-center gap-2">
           {calc?.isDemoData && <Badge variant="gold">{t("kundli.demoDataNotice")}</Badge>}
           <Button variant="outline" size="sm" onClick={() => setMode("form")}>

@@ -1,12 +1,14 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { CreditCard } from "lucide-react";
 import { useI18n, useT } from "@/lib/i18n/provider";
 import { apiFetch } from "@/lib/api-client";
 import { formatInr, formatDateTime } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/app/page-header";
 
 type Order = {
   id: string;
@@ -27,7 +29,7 @@ export default function PaymentsPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 md:px-6">
-      <h1 className="font-heading text-2xl font-semibold">{t("payments.title")}</h1>
+      <PageHeader icon={CreditCard} title={t("payments.title")} />
 
       <div className="mt-6 flex flex-col gap-3">
         {isLoading && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16" />)}

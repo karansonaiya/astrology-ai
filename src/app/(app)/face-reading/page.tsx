@@ -18,6 +18,7 @@ import { detectFaceFeatures, type FaceFeaturePoint } from "@/lib/face-detection/
 import { compressImageFile } from "@/lib/image/compress-image";
 import { FACE_REPORT_CODES } from "@/lib/pricing/catalog";
 import { FaceReferenceDiagram } from "@/components/face-reference-diagram";
+import { PageHeader } from "@/components/app/page-header";
 
 const MAX_IMAGE_BYTES = Math.floor((MAX_IMAGE_BASE64_LENGTH * 3) / 4);
 
@@ -104,10 +105,7 @@ export default function FaceReadingPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
-      <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold">
-        <ScanFace size={22} className="text-primary" /> {t("faceReading.title")}
-      </h1>
-      <p className="mt-1 text-sm text-muted">{t("faceReading.subtitle")}</p>
+      <PageHeader icon={ScanFace} title={t("faceReading.title")} subtitle={t("faceReading.subtitle")} />
 
       {!image ? (
         <Card className="mt-6">

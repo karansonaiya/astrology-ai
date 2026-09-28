@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trash2, FileText } from "lucide-react";
+import { Trash2, FileText, GitCompareArrows } from "lucide-react";
 import { useI18n, useT } from "@/lib/i18n/provider";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { formatInr } from "@/lib/utils";
@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/app/page-header";
 import { useToast } from "@/components/ui/toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
@@ -126,8 +127,7 @@ export default function CompatibilityPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 md:px-6">
-      <h1 className="font-heading text-2xl font-semibold">{t("compatibility.title")}</h1>
-      <p className="mt-1 text-sm text-muted">{t("compatibility.privacyNotice")}</p>
+      <PageHeader icon={GitCompareArrows} title={t("compatibility.title")} subtitle={t("compatibility.privacyNotice")} />
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
         <PersonCard

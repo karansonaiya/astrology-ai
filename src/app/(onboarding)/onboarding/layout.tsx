@@ -2,7 +2,7 @@ import { Logo } from "@/components/layout/logo";
 
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="cosmic-bg flex min-h-screen flex-col">
       <header className="flex items-center justify-center px-4 py-6">
         <Logo />
       </header>

@@ -61,9 +61,11 @@ export default function DashboardPage() {
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
         {quickActions.map((a) => (
           <Link key={a.href} href={a.href}>
-            <Card className="focus-ring h-full transition-colors hover:border-primary/50">
-              <CardContent className="flex flex-col items-center justify-center gap-2 py-6 text-center">
-                <a.icon size={22} className="text-gold" />
+            <Card className="focus-ring h-full transition-shadow hover:shadow-md">
+              <CardContent className="flex flex-col items-center justify-center gap-2.5 py-6 text-center">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-tan/40 text-tan-foreground">
+                  <a.icon size={20} />
+                </span>
                 <span className="text-sm font-medium">{a.label}</span>
               </CardContent>
             </Card>

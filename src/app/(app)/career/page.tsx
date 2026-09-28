@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { Briefcase } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -13,6 +14,7 @@ import { useToast } from "@/components/ui/toast";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { AiMarkdown } from "@/components/ui/ai-markdown";
 import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
+import { PageHeader } from "@/components/app/page-header";
 
 export default function CareerPage() {
   const t = useT();
@@ -49,7 +51,7 @@ export default function CareerPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
-      <h1 className="font-heading text-2xl font-semibold">{t("career.title")}</h1>
+      <PageHeader icon={Briefcase} title={t("career.title")} />
 
       <Card className="mt-5">
         <CardContent className="flex flex-col gap-4 pt-5">

@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/toast";
 import { CityAutocomplete } from "@/components/ui/city-autocomplete";
 import { cn } from "@/lib/utils";
 import { BABY_NAME_REPORT_CODES } from "@/lib/pricing/catalog";
+import { PageHeader } from "@/components/app/page-header";
 
 type ReportTemplate = { code: string; priceInPaise: number };
 type NameSuggestion = { name: string; meaning: string; gender: "boy" | "girl" | "unisex" };
@@ -123,10 +124,7 @@ export default function BabyNamesPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
-      <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold">
-        <Baby size={22} className="text-primary" /> {t("babyNames.title")}
-      </h1>
-      <p className="mt-1 text-sm text-muted">{t("babyNames.subtitle")}</p>
+      <PageHeader icon={Baby} title={t("babyNames.title")} subtitle={t("babyNames.subtitle")} />
 
       {!result && (
         <Card className="mt-6">

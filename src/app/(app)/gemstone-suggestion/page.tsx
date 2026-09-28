@@ -14,6 +14,7 @@ import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
 import { useToast } from "@/components/ui/toast";
 import { GEMSTONE_REPORT_CODES } from "@/lib/pricing/catalog";
+import { PageHeader } from "@/components/app/page-header";
 
 type ReportTemplate = { code: string; priceInPaise: number };
 type GemstoneRecommendation = {
@@ -61,10 +62,7 @@ export default function GemstoneSuggestionPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
-      <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold">
-        <Gem size={22} className="text-primary" /> {t("gemstone.title")}
-      </h1>
-      <p className="mt-1 text-sm text-muted">{t("gemstone.subtitle")}</p>
+      <PageHeader icon={Gem} title={t("gemstone.title")} subtitle={t("gemstone.subtitle")} />
 
       {noProfile && (
         <Card className="mt-6">

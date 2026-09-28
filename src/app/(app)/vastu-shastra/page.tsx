@@ -15,6 +15,7 @@ import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { AiMarkdown } from "@/components/ui/ai-markdown";
 import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
 import { VASTU_DIRECTIONS, VASTU_ELEMENTS, type VastuDirection, type VastuElement } from "@/lib/vastu/catalog";
+import { PageHeader } from "@/components/app/page-header";
 
 const NOT_SET = "not_set";
 
@@ -64,10 +65,7 @@ export default function VastuShastraPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
-      <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold">
-        <Home size={22} className="text-primary" /> {t("vastuShastra.title")}
-      </h1>
-      <p className="mt-1 text-sm text-muted">{t("vastuShastra.subtitle")}</p>
+      <PageHeader icon={Home} title={t("vastuShastra.title")} subtitle={t("vastuShastra.subtitle")} />
 
       <Card className="mt-5">
         <CardContent className="flex flex-col gap-4 pt-5">

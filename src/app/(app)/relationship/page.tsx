@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { Heart } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { useToast } from "@/components/ui/toast";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { AiMarkdown } from "@/components/ui/ai-markdown";
 import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
+import { PageHeader } from "@/components/app/page-header";
 
 export default function RelationshipPage() {
   const t = useT();
@@ -40,8 +42,7 @@ export default function RelationshipPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
-      <h1 className="font-heading text-2xl font-semibold">{t("relationship.title")}</h1>
-      <p className="mt-2 text-sm text-muted">{t("relationship.supportNotice")}</p>
+      <PageHeader icon={Heart} title={t("relationship.title")} subtitle={t("relationship.supportNotice")} />
 
       <Card className="mt-5">
         <CardContent className="flex flex-col gap-4 pt-5">

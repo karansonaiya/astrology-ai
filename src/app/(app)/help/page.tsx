@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { LifeBuoy } from "lucide-react";
 import { useI18n, useT } from "@/lib/i18n/provider";
 import { apiFetch } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/utils";
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
+import { PageHeader } from "@/components/app/page-header";
 
 type Ticket = {
   id: string;
@@ -70,7 +72,7 @@ export default function HelpPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
-      <h1 className="font-heading text-2xl font-semibold">{t("help.title")}</h1>
+      <PageHeader icon={LifeBuoy} title={t("help.title")} />
 
       <Card className="mt-6">
         <CardHeader>

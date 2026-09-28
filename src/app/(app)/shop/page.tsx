@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
+import { PageHeader } from "@/components/app/page-header";
 
 type Product = {
   id: string;
@@ -68,10 +69,7 @@ export default function ShopPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 md:px-6">
-      <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold">
-        <Store size={22} className="text-primary" /> {t("shop.title")}
-      </h1>
-      <p className="mt-1 text-sm text-muted">{t("shop.subtitle")}</p>
+      <PageHeader icon={Store} title={t("shop.title")} subtitle={t("shop.subtitle")} />
 
       {isLoading && (
         <div className="mt-6 grid gap-5 sm:grid-cols-2 md:grid-cols-3">

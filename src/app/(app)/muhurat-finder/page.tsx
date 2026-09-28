@@ -18,6 +18,7 @@ import { CityAutocomplete } from "@/components/ui/city-autocomplete";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { MUHURAT_REPORT_CODES } from "@/lib/pricing/catalog";
+import { PageHeader } from "@/components/app/page-header";
 
 type ReportTemplate = { code: string; priceInPaise: number };
 type EventType = "general" | "travel" | "business_start";
@@ -109,10 +110,7 @@ export default function MuhuratFinderPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
-      <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold">
-        <CalendarClock size={22} className="text-primary" /> {t("muhurat.title")}
-      </h1>
-      <p className="mt-1 text-sm text-muted">{t("muhurat.subtitle")}</p>
+      <PageHeader icon={CalendarClock} title={t("muhurat.title")} subtitle={t("muhurat.subtitle")} />
 
       {!result && (
         <Card className="mt-6">

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { signOut } from "next-auth/react";
+import { Settings as SettingsIcon } from "lucide-react";
 import { useI18n, useT } from "@/lib/i18n/provider";
 import { useTheme } from "@/lib/theme/provider";
 import { apiFetch } from "@/lib/api-client";
@@ -14,6 +15,7 @@ import { useToast } from "@/components/ui/toast";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { InstallButton } from "@/components/layout/install-button";
 import { usePushSubscription } from "@/lib/push/use-push-subscription";
+import { PageHeader } from "@/components/app/page-header";
 
 export default function SettingsPage() {
   const t = useT();
@@ -82,7 +84,7 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
-      <h1 className="font-heading text-2xl font-semibold">{t("settings.title")}</h1>
+      <PageHeader icon={SettingsIcon} title={t("settings.title")} />
 
       <Card className="mt-6">
         <CardHeader>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { User } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { apiFetch } from "@/lib/api-client";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/app/page-header";
 
 type Profile = {
   id: string;
@@ -34,7 +36,7 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
-      <h1 className="font-heading text-2xl font-semibold">{t("nav.profile")}</h1>
+      <PageHeader icon={User} title={t("nav.profile")} />
 
       <Card className="mt-4">
         <CardHeader>

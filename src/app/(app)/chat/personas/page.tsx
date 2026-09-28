@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
+import { Users } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { apiFetch } from "@/lib/api-client";
 import { initialsFromName } from "@/lib/utils";
@@ -12,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PERSONAS, type PersonaSpecialty } from "@/lib/personas/catalog";
+import { PageHeader } from "@/components/app/page-header";
 
 const SPECIALTY_FILTERS: { value: "all" | PersonaSpecialty; labelKey: string }[] = [
   { value: "all", labelKey: "personas.filterAll" },
@@ -53,8 +55,7 @@ export default function ChatPersonasPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 md:px-6">
-      <h1 className="font-heading text-2xl font-semibold">{t("personas.pageTitle")}</h1>
-      <p className="mt-1 text-sm text-muted">{t("personas.pageSubtitle")}</p>
+      <PageHeader icon={Users} title={t("personas.pageTitle")} subtitle={t("personas.pageSubtitle")} />
 
       <Tabs value={filter} onValueChange={(v) => setFilter(v as "all" | PersonaSpecialty)} className="mt-5">
         <TabsList>

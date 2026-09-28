@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/toast";
 import { AiDisclosureBadge } from "@/components/layout/disclaimer-badge";
 import { AiMarkdown } from "@/components/ui/ai-markdown";
 import { OutOfCreditsDialog } from "@/components/ui/out-of-credits-dialog";
+import { PageHeader } from "@/components/app/page-header";
 
 type TarotPosition = "past" | "present" | "future";
 type TarotOrientation = "upright" | "reversed";
@@ -51,10 +52,7 @@ export default function TarotReadingPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
-      <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold">
-        <Spade size={22} className="text-primary" /> {t("tarot.title")}
-      </h1>
-      <p className="mt-1 text-sm text-muted">{t("tarot.subtitle")}</p>
+      <PageHeader icon={Spade} title={t("tarot.title")} subtitle={t("tarot.subtitle")} />
 
       <Card className="mt-6">
         <CardContent className="flex flex-col gap-3 py-5">

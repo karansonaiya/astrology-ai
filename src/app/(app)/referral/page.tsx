@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Gift } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { apiFetch } from "@/lib/api-client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/app/page-header";
 
 type ReferralData = { referralCode: string; totalReferred: number; creditsEarned: number };
 
@@ -27,8 +28,7 @@ export default function ReferralPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
-      <h1 className="font-heading text-2xl font-semibold">{t("referral.title")}</h1>
-      <p className="mt-2 text-sm text-muted">{t("referral.howItWorks")}</p>
+      <PageHeader icon={Gift} title={t("referral.title")} subtitle={t("referral.howItWorks")} />
 
       <Card className="mt-6">
         <CardHeader>

@@ -18,6 +18,7 @@ import { detectHandMounts, type HandMount } from "@/lib/hand-detection/detect-mo
 import { compressImageFile } from "@/lib/image/compress-image";
 import { PALM_REPORT_CODES } from "@/lib/pricing/catalog";
 import { PalmReferenceDiagram } from "@/components/palm-reference-diagram";
+import { PageHeader } from "@/components/app/page-header";
 
 const MAX_IMAGE_BYTES = Math.floor((MAX_IMAGE_BASE64_LENGTH * 3) / 4);
 
@@ -110,10 +111,7 @@ export default function PalmReadingPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6">
-      <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold">
-        <Hand size={22} className="text-primary" /> {t("palmReading.title")}
-      </h1>
-      <p className="mt-1 text-sm text-muted">{t("palmReading.subtitle")}</p>
+      <PageHeader icon={Hand} title={t("palmReading.title")} subtitle={t("palmReading.subtitle")} />
 
       {!image ? (
         <Card className="mt-6">
