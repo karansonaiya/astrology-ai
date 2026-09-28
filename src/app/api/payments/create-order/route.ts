@@ -148,14 +148,28 @@ export async function POST(req: NextRequest) {
 
     const provider = getPaymentProvider();
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin;
-    const { providerOrderId, paymentSessionId } = await provider.createOrder({
-      amountInPaise: priced.amountInPaise,
-      currency: "INR",
-      receipt: order.id,
-      notes: { userId: user.id, type: parsed.data.type, code: parsed.data.code },
-      customer: { id: user.id, email: dbUser?.email, phone: dbUser?.phone },
-      returnUrl: `${appUrl}/payments/return?order_id=${order.id}`,
-    });
+    let providerOrderId: string;
+    let paymentSessionId: string | undefined;
+    try {
+      ({ providerOrderId, paymentSessionId } = await provider.createOrder({
+        amountInPaise: priced.amountInPaise,
+        currency: "INR",
+        receipt: order.id,
+        notes: { userId: user.id, type: parsed.data.type, code: parsed.data.code },
+        customer: { id: user.id, email: dbUser?.email, phone: dbUser?.phone },
+        returnUrl: `${appUrl}/payments/return?order_id=${order.id}`,
+      }));
+    } catch (err) {
+      // Found live: Cashfree's own sandbox gateway is genuinely intermittent
+      // (a real 502/503/504 reproduced directly against their API) —
+      // provider.createOrder already retries once, so a failure here means
+      // it's still down. Surfacing this as a distinct, clearly-worded 503
+      // (instead of falling through to errorResponse's generic 500 "API
+      // error 500") lets the client tell the user this is temporary and
+      // worth retrying, without guessing at our own bug.
+      console.error("Payment provider createOrder failed after retry:", err);
+      return NextResponse.json({ error: "payment_provider_unavailable" }, { status: 503 });
+    }
 
     await prisma.order.update({ where: { id: order.id }, data: { providerOrderId } });
 

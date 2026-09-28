@@ -438,7 +438,7 @@ export default function ReportsPage() {
                   </CardHeader>
                   <CardFooter className="justify-between">
                     <span className="font-semibold text-gold">{formatInr(tpl.priceInPaise, `${locale}-IN`)}</span>
-                    <Button size="sm" disabled={loading} onClick={() => startBuy(tpl)}>{t("reports.buyNow")}</Button>
+                    <Button size="sm" loading={loading} onClick={() => startBuy(tpl)}>{t("reports.buyNow")}</Button>
                   </CardFooter>
                 </Card>
               ))}
@@ -530,8 +530,8 @@ export default function ReportsPage() {
               {/* eslint-disable-next-line @next/next/no-img-element -- a locally-picked File's object URL, not a static/remote asset next/image can optimize */}
               <img src={palmPhoto.previewUrl} alt="" className="max-h-72 max-w-full rounded-xl" />
               <div className="flex flex-wrap justify-center gap-3">
-                <Button onClick={confirmPalmPurchase} disabled={loading}>
-                  {loading ? t("common.loading") : t("reports.continueToPayment")}
+                <Button onClick={confirmPalmPurchase} loading={loading}>
+                  {t("reports.continueToPayment")}
                 </Button>
                 <Button variant="outline" onClick={() => setPalmPhoto(null)}>
                   {t("palmReading.retake")}
@@ -577,10 +577,11 @@ export default function ReportsPage() {
             </div>
             <Button
               className="mt-2"
-              disabled={!numerologyName.trim() || !numerologyBirthDate || loading}
+              disabled={!numerologyName.trim() || !numerologyBirthDate}
+              loading={loading}
               onClick={confirmNumerologyPurchase}
             >
-              {loading ? t("common.loading") : t("reports.continueToPayment")}
+              {t("reports.continueToPayment")}
             </Button>
           </div>
         </DialogContent>
@@ -664,8 +665,8 @@ export default function ReportsPage() {
                 ))}
               </div>
             </div>
-            <Button className="mt-2" disabled={!babyNameCanSubmit || loading} onClick={confirmBabyNamePurchase}>
-              {loading ? t("common.loading") : t("reports.continueToPayment")}
+            <Button className="mt-2" disabled={!babyNameCanSubmit} loading={loading} onClick={confirmBabyNamePurchase}>
+              {t("reports.continueToPayment")}
             </Button>
           </div>
         </DialogContent>
@@ -730,8 +731,8 @@ export default function ReportsPage() {
                 />
               </div>
             </div>
-            <Button className="mt-2" disabled={!muhuratCanSubmit || loading} onClick={confirmMuhuratPurchase}>
-              {loading ? t("common.loading") : t("reports.continueToPayment")}
+            <Button className="mt-2" disabled={!muhuratCanSubmit} loading={loading} onClick={confirmMuhuratPurchase}>
+              {t("reports.continueToPayment")}
             </Button>
           </div>
         </DialogContent>
@@ -793,8 +794,8 @@ export default function ReportsPage() {
               {/* eslint-disable-next-line @next/next/no-img-element -- a locally-picked File's object URL, not a static/remote asset next/image can optimize */}
               <img src={facePhoto.previewUrl} alt="" className="max-h-72 max-w-full rounded-xl" />
               <div className="flex flex-wrap justify-center gap-3">
-                <Button onClick={confirmFacePurchase} disabled={loading}>
-                  {loading ? t("common.loading") : t("reports.continueToPayment")}
+                <Button onClick={confirmFacePurchase} loading={loading}>
+                  {t("reports.continueToPayment")}
                 </Button>
                 <Button variant="outline" onClick={() => setFacePhoto(null)}>
                   {t("faceReading.retake")}

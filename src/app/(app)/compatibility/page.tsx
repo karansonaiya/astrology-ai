@@ -181,7 +181,7 @@ export default function CompatibilityPage() {
               {r.result?.text && <AiMarkdown content={r.result.text} className="text-foreground/90" />}
             </CardContent>
             <CardFooter className="justify-end">
-              <Button size="sm" disabled={checkoutLoading} onClick={() => buyDetailedReport(r.id)}>
+              <Button size="sm" loading={checkoutLoading} onClick={() => buyDetailedReport(r.id)}>
                 <FileText size={14} />
                 {t("compatibility.getDetailedReport")}
                 {detailedReportPrice != null && <span className="ml-1">— {formatInr(detailedReportPrice, `${locale}-IN`)}</span>}

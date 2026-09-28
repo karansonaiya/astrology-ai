@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
@@ -30,12 +31,35 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  // Found live: every "Buy now"/checkout button across the app disabled
+  // itself correctly while its request was in flight, but gave zero visual
+  // feedback — clicking it looked like nothing happened, which is exactly
+  // what invites a second click/tap. Not supported with `asChild` (a Slot
+  // needs exactly one child element to merge props into; every asChild use
+  // in this app is a Link-wrapped nav button, never a loading action).
+  loading?: boolean;
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button";
-    return <Comp className={cn(buttonVariants({ variant, size }), className)} ref={ref} {...props} />;
+  ({ className, variant, size, asChild, loading, disabled, children, ...props }, ref) => {
+    if (asChild) {
+      return (
+        <Slot className={cn(buttonVariants({ variant, size }), className)} ref={ref} {...props}>
+          {children}
+        </Slot>
+      );
+    }
+    return (
+      <button
+        className={cn(buttonVariants({ variant, size }), className)}
+        ref={ref}
+        disabled={disabled || loading}
+        {...props}
+      >
+        {loading && <Loader2 size={14} className="animate-spin" />}
+        {children}
+      </button>
+    );
   }
 );
 Button.displayName = "Button";

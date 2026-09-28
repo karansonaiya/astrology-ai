@@ -76,8 +76,42 @@ class CashfreePaymentProvider implements PaymentProvider {
     };
   }
 
+  // Found live: Cashfree's own sandbox gateway (APISIX/openresty) genuinely
+  // returns an intermittent 502/503/504 with an HTML error page, not JSON —
+  // reproduced directly against the real sandbox API (2 failures, then a
+  // clean success, no code change in between). One retry after a short
+  // delay is enough to ride out that kind of transient gateway blip instead
+  // of surfacing it to the user as a failed payment. `res.json()` on an
+  // HTML error body also throws its own confusing "Unexpected token '<'"
+  // parse error — read as text first and only parse if it looks like JSON,
+  // so a real outage logs a clear message instead of a parse-error red herring.
+  private async requestJson(url: string, init: RequestInit): Promise<{ status: number; data: Record<string, unknown> | null }> {
+    const attempt = async () => {
+      const res = await fetch(url, init);
+      const text = await res.text();
+      let data: Record<string, unknown> | null = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        data = null;
+      }
+      return { status: res.status, data, ok: res.ok, isJson: data !== null };
+    };
+
+    let result = await attempt();
+    if (!result.isJson && [502, 503, 504].includes(result.status)) {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      result = await attempt();
+    }
+
+    if (!result.isJson) {
+      throw new Error(`Cashfree returned a non-JSON response (status ${result.status}) — likely a temporary outage on their side. Please try again in a moment.`);
+    }
+    return { status: result.status, data: result.data };
+  }
+
   async createOrder(input: CreateOrderInput): Promise<CreateOrderResult> {
-    const res = await fetch(`${this.baseUrl}/orders`, {
+    const { status, data } = await this.requestJson(`${this.baseUrl}/orders`, {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify({
@@ -100,22 +134,20 @@ class CashfreePaymentProvider implements PaymentProvider {
         order_note: input.notes ? JSON.stringify(input.notes) : undefined,
       }),
     });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(`Cashfree createOrder failed (${res.status}): ${data?.message ?? JSON.stringify(data)}`);
+    if (status < 200 || status >= 300) {
+      throw new Error(`Cashfree createOrder failed (${status}): ${data?.message ?? JSON.stringify(data)}`);
     }
-    return { providerOrderId: data.order_id, paymentSessionId: data.payment_session_id, raw: data };
+    return { providerOrderId: data!.order_id as string, paymentSessionId: data!.payment_session_id as string, raw: data };
   }
 
   async fetchOrderStatus(providerOrderId: string): Promise<{ paid: boolean; raw: unknown }> {
-    const res = await fetch(`${this.baseUrl}/orders/${encodeURIComponent(providerOrderId)}`, {
+    const { status, data } = await this.requestJson(`${this.baseUrl}/orders/${encodeURIComponent(providerOrderId)}`, {
       headers: this.headers(),
     });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(`Cashfree fetchOrderStatus failed (${res.status}): ${data?.message ?? JSON.stringify(data)}`);
+    if (status < 200 || status >= 300) {
+      throw new Error(`Cashfree fetchOrderStatus failed (${status}): ${data?.message ?? JSON.stringify(data)}`);
     }
-    return { paid: data.order_status === "PAID", raw: data };
+    return { paid: data!.order_status === "PAID", raw: data };
   }
 
   verifyWebhookSignature(rawBody: string, headers: Headers): boolean {

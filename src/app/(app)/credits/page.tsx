@@ -62,7 +62,7 @@ export default function CreditsPage() {
             </CardHeader>
             <CardFooter className="justify-between">
               <span className="font-semibold text-gold">{formatInr(pack.priceInPaise, `${locale}-IN`)}</span>
-              <Button size="sm" disabled={loading} onClick={() => buy("credit_pack", pack.code)}>{t("reports.buyNow")}</Button>
+              <Button size="sm" loading={loading} onClick={() => buy("credit_pack", pack.code)}>{t("reports.buyNow")}</Button>
             </CardFooter>
           </Card>
         ))}
@@ -74,7 +74,7 @@ export default function CreditsPage() {
             </CardHeader>
             <CardFooter className="justify-between">
               <span className="font-semibold text-gold">{formatInr(plan.priceInPaise, `${locale}-IN`)} {t("pricing.perMonth")}</span>
-              <Button size="sm" disabled={loading} onClick={() => buy("subscription", plan.code)}>{t("reports.buyNow")}</Button>
+              <Button size="sm" loading={loading} onClick={() => buy("subscription", plan.code)}>{t("reports.buyNow")}</Button>
             </CardFooter>
           </Card>
         ))}

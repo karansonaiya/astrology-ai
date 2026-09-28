@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, ApiError } from "@/lib/api-client";
 
 declare global {
   interface Window {
@@ -151,7 +151,13 @@ export function useCheckout() {
       }
       await confirm(order.orderId, opts);
     } catch (err) {
-      opts?.onError?.(err instanceof Error ? err.message : "Payment failed.");
+      if (err instanceof ApiError && (err.body as { error?: string } | null)?.error === "payment_provider_unavailable") {
+        opts?.onError?.("The payment service is temporarily unavailable. Please try again in a moment.");
+      } else if (err instanceof ApiError && err.status === 429) {
+        opts?.onError?.("Too many attempts — please wait a moment before trying again.");
+      } else {
+        opts?.onError?.(err instanceof Error ? err.message : "Payment failed.");
+      }
     } finally {
       setLoading(false);
     }
