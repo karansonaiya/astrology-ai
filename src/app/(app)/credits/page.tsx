@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Wallet } from "lucide-react";
 import { useI18n, useT } from "@/lib/i18n/provider";
@@ -23,16 +24,30 @@ export default function CreditsPage() {
   const { locale } = useI18n();
   const { toast } = useToast();
   const { checkout, loading } = useCheckout();
+  // Found live: `loading` is one shared boolean for the whole checkout hook,
+  // so both Buy Now buttons spun at once no matter which one was clicked.
+  // Tracking which specific code is being purchased lets only that button
+  // show the spinner; the other stays plainly disabled (still blocked from
+  // starting a second purchase while one is in flight, just not implying
+  // it's the one running).
+  const [buyingCode, setBuyingCode] = useState<string | null>(null);
 
   const { data: summary, isLoading: summaryLoading } = useQuery({ queryKey: ["credits-summary"], queryFn: () => apiFetch<CreditsSummary>("/api/credits/summary") });
   const { data: pricing, isLoading: pricingLoading } = useQuery({ queryKey: ["public-pricing"], queryFn: () => apiFetch<PricingResponse>("/api/public/pricing") });
 
   const buy = (type: "credit_pack" | "subscription", code: string) => {
+    setBuyingCode(code);
     checkout(
       { type, code },
       {
-        onSuccess: () => toast({ title: t("payments.paymentSuccessTitle"), variant: "success" }),
-        onError: (msg) => toast({ title: t("payments.paymentFailedTitle"), description: msg, variant: "danger" }),
+        onSuccess: () => {
+          setBuyingCode(null);
+          toast({ title: t("payments.paymentSuccessTitle"), variant: "success" });
+        },
+        onError: (msg) => {
+          setBuyingCode(null);
+          toast({ title: t("payments.paymentFailedTitle"), description: msg, variant: "danger" });
+        },
       }
     );
   };
@@ -62,7 +77,14 @@ export default function CreditsPage() {
             </CardHeader>
             <CardFooter className="justify-between">
               <span className="font-semibold text-gold">{formatInr(pack.priceInPaise, `${locale}-IN`)}</span>
-              <Button size="sm" loading={loading} onClick={() => buy("credit_pack", pack.code)}>{t("reports.buyNow")}</Button>
+              <Button
+                size="sm"
+                loading={loading && buyingCode === pack.code}
+                disabled={loading && buyingCode !== pack.code}
+                onClick={() => buy("credit_pack", pack.code)}
+              >
+                {t("reports.buyNow")}
+              </Button>
             </CardFooter>
           </Card>
         ))}
@@ -74,7 +96,14 @@ export default function CreditsPage() {
             </CardHeader>
             <CardFooter className="justify-between">
               <span className="font-semibold text-gold">{formatInr(plan.priceInPaise, `${locale}-IN`)} {t("pricing.perMonth")}</span>
-              <Button size="sm" loading={loading} onClick={() => buy("subscription", plan.code)}>{t("reports.buyNow")}</Button>
+              <Button
+                size="sm"
+                loading={loading && buyingCode === plan.code}
+                disabled={loading && buyingCode !== plan.code}
+                onClick={() => buy("subscription", plan.code)}
+              >
+                {t("reports.buyNow")}
+              </Button>
             </CardFooter>
           </Card>
         ))}

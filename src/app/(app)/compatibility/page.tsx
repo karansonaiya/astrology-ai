@@ -57,6 +57,11 @@ export default function CompatibilityPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { checkout, loading: checkoutLoading } = useCheckout();
+  // One request row's "Get detailed report" button per page — same fix as
+  // credits/page.tsx: `checkoutLoading` is one shared boolean, so tracking
+  // which request is actually being purchased keeps the spinner on only
+  // that row's button.
+  const [buyingRequestId, setBuyingRequestId] = useState<string | null>(null);
 
   const [personA, setPersonA] = useState<PersonForm>({ birthDate: "", birthTimeKnown: true, birthTime: "", birthCity: "" });
   const [personB, setPersonB] = useState<PersonForm>({ birthDate: "", birthTimeKnown: true, birthTime: "", birthCity: "" });
@@ -73,15 +78,20 @@ export default function CompatibilityPage() {
   const detailedReportPrice = templatesData?.templates.find((tp) => COMPATIBILITY_REPORT_CODES.has(tp.code))?.priceInPaise;
 
   const buyDetailedReport = (requestId: string) => {
+    setBuyingRequestId(requestId);
     checkout(
       { type: "report", code: "compatibility_report", compatibilityRequestId: requestId },
       {
         onSuccess: (result) => {
+          setBuyingRequestId(null);
           toast({ title: t("payments.paymentSuccessTitle"), variant: "success" });
           qc.invalidateQueries({ queryKey: ["credits-summary"] });
           if (result.reportPurchaseId) router.push(`/reports/${result.reportPurchaseId}`);
         },
-        onError: (msg) => toast({ title: t("payments.paymentFailedTitle"), description: msg, variant: "danger" }),
+        onError: (msg) => {
+          setBuyingRequestId(null);
+          toast({ title: t("payments.paymentFailedTitle"), description: msg, variant: "danger" });
+        },
       }
     );
   };
@@ -181,7 +191,12 @@ export default function CompatibilityPage() {
               {r.result?.text && <AiMarkdown content={r.result.text} className="text-foreground/90" />}
             </CardContent>
             <CardFooter className="justify-end">
-              <Button size="sm" loading={checkoutLoading} onClick={() => buyDetailedReport(r.id)}>
+              <Button
+                size="sm"
+                loading={checkoutLoading && buyingRequestId === r.id}
+                disabled={checkoutLoading && buyingRequestId !== r.id}
+                onClick={() => buyDetailedReport(r.id)}
+              >
                 <FileText size={14} />
                 {t("compatibility.getDetailedReport")}
                 {detailedReportPrice != null && <span className="ml-1">— {formatInr(detailedReportPrice, `${locale}-IN`)}</span>}

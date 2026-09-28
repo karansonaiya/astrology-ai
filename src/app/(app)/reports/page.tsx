@@ -197,6 +197,12 @@ export default function ReportsPage() {
     refetchInterval: (query) => (query.state.data?.purchases.some((p) => p.status === "pending") ? 2000 : false),
   });
 
+  // Multiple templates render their own "Buy now" button from the same
+  // shared `loading` boolean — tracking which code is actually being
+  // purchased keeps the spinner on only the clicked one (found live: all
+  // of them spun together no matter which was clicked).
+  const [buyingCode, setBuyingCode] = useState<string | null>(null);
+
   const buy = (
     code: string,
     photo?: { data: string; mimeType: string },
@@ -220,6 +226,7 @@ export default function ReportsPage() {
       longitude?: number;
     }
   ) => {
+    setBuyingCode(code);
     checkout(
       {
         type: "report",
@@ -238,13 +245,17 @@ export default function ReportsPage() {
         // instead, the same place the payment-return redirect page (for
         // Cashfree's full-page UPI/netbanking flow) now also goes.
         onSuccess: (result) => {
+          setBuyingCode(null);
           toast({ title: t("payments.paymentSuccessTitle"), variant: "success" });
           qc.invalidateQueries({ queryKey: ["my-reports"] });
           qc.invalidateQueries({ queryKey: ["credits-summary"] });
           if (result.reportPurchaseId) router.push(`/reports/${result.reportPurchaseId}`);
           else setTab("mine");
         },
-        onError: (msg) => toast({ title: t("payments.paymentFailedTitle"), description: msg, variant: "danger" }),
+        onError: (msg) => {
+          setBuyingCode(null);
+          toast({ title: t("payments.paymentFailedTitle"), description: msg, variant: "danger" });
+        },
       }
     );
   };
@@ -438,7 +449,14 @@ export default function ReportsPage() {
                   </CardHeader>
                   <CardFooter className="justify-between">
                     <span className="font-semibold text-gold">{formatInr(tpl.priceInPaise, `${locale}-IN`)}</span>
-                    <Button size="sm" loading={loading} onClick={() => startBuy(tpl)}>{t("reports.buyNow")}</Button>
+                    <Button
+                      size="sm"
+                      loading={loading && buyingCode === tpl.code}
+                      disabled={loading && buyingCode !== tpl.code}
+                      onClick={() => startBuy(tpl)}
+                    >
+                      {t("reports.buyNow")}
+                    </Button>
                   </CardFooter>
                 </Card>
               ))}
