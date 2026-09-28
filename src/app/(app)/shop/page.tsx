@@ -92,8 +92,13 @@ export default function ShopPage() {
         {data?.products.map((p) => (
           <Card key={p.id} className="flex flex-col">
             <CardHeader>
-              <div className="mb-2 flex h-32 items-center justify-center rounded-lg bg-surface-raised">
-                <Gem size={32} className="text-gold" />
+              <div className="mb-2 flex h-32 items-center justify-center overflow-hidden rounded-lg bg-surface-raised">
+                {p.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- may be a local data URI, not always an optimizable remote asset
+                  <img src={p.imageUrl} alt={p.name} className="h-full w-full object-cover" />
+                ) : (
+                  <Gem size={32} className="text-gold" />
+                )}
               </div>
               <CardTitle className="text-base">{p.name}</CardTitle>
               <Badge variant="gold" className="w-fit capitalize">{p.category}</Badge>

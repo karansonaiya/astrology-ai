@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ImagePlus, X } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { formatInr, formatDateTime } from "@/lib/utils";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -14,6 +15,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
+import { compressImageFile } from "@/lib/image/compress-image";
+
+const PRODUCT_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 type Product = {
   id: string; name: string; description: string; category: string; priceInPaise: number; imageUrl: string | null; active: boolean;
@@ -29,6 +33,26 @@ export default function AdminShopPage() {
   const [form, setForm] = useState({ name: "", description: "", category: "gemstone", priceInPaise: "", imageUrl: "" });
   const [formErrors, setFormErrors] = useState<{ name?: string; description?: string; priceInPaise?: string }>({});
   const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
+  const [compressingImage, setCompressingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoSelect = async (file: File | undefined) => {
+    if (!file) return;
+    if (!PRODUCT_IMAGE_MIME_TYPES.includes(file.type)) {
+      toast({ title: "Please pick a JPEG, PNG, or WebP photo.", variant: "danger" });
+      return;
+    }
+    setCompressingImage(true);
+    try {
+      // 800px is plenty for the card thumbnail this becomes — see
+      // compressImageFile's own comment on why this matters for a real
+      // phone camera photo (routinely 5-12MB at native resolution).
+      const { data, mimeType } = await compressImageFile(file, { maxDimension: 800, quality: 0.8 });
+      setForm((f) => ({ ...f, imageUrl: `data:${mimeType};base64,${data}` }));
+    } finally {
+      setCompressingImage(false);
+    }
+  };
 
   const { data: productsData, isLoading: productsLoading } = useQuery({
     queryKey: ["admin-shop-products"],
@@ -48,7 +72,7 @@ export default function AdminShopPage() {
           description: form.description.trim(),
           category: form.category,
           priceInPaise: Math.round(Number(form.priceInPaise) * 100),
-          imageUrl: form.imageUrl.trim() || undefined,
+          imageUrl: form.imageUrl || undefined,
         }),
       }),
     onSuccess: () => {
@@ -56,6 +80,7 @@ export default function AdminShopPage() {
       setFormErrors({});
       qc.invalidateQueries({ queryKey: ["admin-shop-products"] });
     },
+    onError: () => toast({ title: "Couldn't save that product — try again.", variant: "danger" }),
   });
 
   const toggleActive = useMutation({
@@ -153,11 +178,33 @@ export default function AdminShopPage() {
             {formErrors.priceInPaise && <p className="mt-1.5 text-xs text-danger">{formErrors.priceInPaise}</p>}
           </div>
           <div>
-            <Label className="mb-1.5 block text-xs">Image URL (optional)</Label>
-            <Input value={form.imageUrl} onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))} />
+            <Label className="mb-1.5 block text-xs">Photo (optional)</Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={PRODUCT_IMAGE_MIME_TYPES.join(",")}
+              className="hidden"
+              onChange={(e) => {
+                handlePhotoSelect(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+            {form.imageUrl ? (
+              <div className="flex items-center gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element -- local data URI preview, not an optimizable remote asset */}
+                <img src={form.imageUrl} alt="" className="h-16 w-16 rounded-lg border border-border object-cover" />
+                <Button type="button" size="sm" variant="outline" onClick={() => setForm((f) => ({ ...f, imageUrl: "" }))}>
+                  <X size={14} /> Remove
+                </Button>
+              </div>
+            ) : (
+              <Button type="button" variant="outline" disabled={compressingImage} onClick={() => fileInputRef.current?.click()}>
+                <ImagePlus size={16} /> {compressingImage ? "Processing..." : "Choose photo"}
+              </Button>
+            )}
           </div>
           <div className="sm:col-span-2">
-            <Button disabled={createProduct.isPending} onClick={handleCreateProduct}>Add product</Button>
+            <Button disabled={createProduct.isPending || compressingImage} onClick={handleCreateProduct}>Add product</Button>
           </div>
         </CardContent>
       </Card>
@@ -170,9 +217,17 @@ export default function AdminShopPage() {
           {productsData?.products.map((p) => (
             <Card key={p.id}>
               <CardContent className="flex items-center justify-between py-3">
-                <div>
-                  <p className="text-sm font-medium">{p.name} <span className="text-xs text-muted capitalize">({p.category})</span></p>
-                  <p className="text-xs text-muted">{formatInr(p.priceInPaise)}</p>
+                <div className="flex items-center gap-3">
+                  {p.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- may be a local data URI, not always an optimizable remote asset
+                    <img src={p.imageUrl} alt="" className="h-10 w-10 shrink-0 rounded-lg border border-border object-cover" />
+                  ) : (
+                    <div className="h-10 w-10 shrink-0 rounded-lg border border-border bg-surface-raised" />
+                  )}
+                  <div>
+                    <p className="text-sm font-medium">{p.name} <span className="text-xs text-muted capitalize">({p.category})</span></p>
+                    <p className="text-xs text-muted">{formatInr(p.priceInPaise)}</p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={p.active ? "success" : "default"}>{p.active ? "active" : "hidden"}</Badge>
