@@ -233,7 +233,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-6xl">
+    <div className="flex h-[calc(100vh-4rem)]">
       <aside className="hidden w-64 shrink-0 flex-col border-r border-border p-3 md:flex">
         {/* Routes to the persona picker (src/app/(app)/chat/personas/page.tsx)
             instead of immediately creating a blank chat — that page's own
