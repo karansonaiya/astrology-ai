@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Home, MessageCircle, Users, User, Sun, Sparkles, GitCompareArrows, Briefcase, Heart,
@@ -10,6 +11,12 @@ import {
 import { useT } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
+import { PERSONAS } from "@/lib/personas/catalog";
+
+// Real AI persona portrait, not a fake "real astrologer" stock photo — this
+// app has no live human astrologers (see the AI Astrologers showcase on the
+// marketing homepage, same reasoning).
+const CTA_PERSONA = PERSONAS[0];
 
 export function AppSidebar() {
   const t = useT();
@@ -77,12 +84,14 @@ export function AppSidebar() {
     .sort((a, b) => b.length - a.length)[0];
 
   return (
-    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border p-5 md:flex">
-      <Logo className="mb-6" />
+    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-(--sidebar-bg) p-5 md:flex">
+      <Logo className="mb-6" textClassName="text-(--sidebar-foreground)" />
       <nav className="scrollbar-thin flex flex-1 flex-col gap-5 overflow-y-auto">
         {groups.map((group, gi) => (
           <div key={gi}>
-            {group.title && <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wide text-muted">{group.title}</p>}
+            {group.title && (
+              <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wide text-(--sidebar-muted)">{group.title}</p>
+            )}
             <div className="flex flex-col gap-0.5">
               {group.items.map((item) => {
                 const active = item.href === activeHref;
@@ -92,7 +101,9 @@ export function AppSidebar() {
                     href={item.href}
                     className={cn(
                       "focus-ring flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                      active ? "bg-primary/15 text-primary" : "text-muted hover:bg-surface hover:text-foreground"
+                      active
+                        ? "bg-(--sidebar-active-bg) text-(--sidebar-foreground)"
+                        : "text-(--sidebar-muted) hover:bg-(--sidebar-surface) hover:text-(--sidebar-foreground)"
                     )}
                     aria-current={active ? "page" : undefined}
                   >
@@ -105,6 +116,24 @@ export function AppSidebar() {
           </div>
         ))}
       </nav>
+
+      <Link
+        href="/chat/personas"
+        className="focus-ring mt-4 flex flex-col items-center gap-2 rounded-xl bg-(--sidebar-surface) p-4 text-center"
+      >
+        <Image
+          src={CTA_PERSONA.avatarImage}
+          alt=""
+          width={48}
+          height={48}
+          className="h-12 w-12 rounded-full object-cover"
+        />
+        <p className="text-sm font-semibold text-(--sidebar-foreground)">{t("sidebar.talkToAstrologerTitle")}</p>
+        <p className="text-xs text-(--sidebar-muted)">{t("sidebar.talkToAstrologerDesc")}</p>
+        <span className="mt-1 w-full rounded-lg bg-gold px-3 py-2 text-xs font-semibold text-(--color-background)">
+          {t("sidebar.talkToAstrologerCta")}
+        </span>
+      </Link>
     </aside>
   );
 }

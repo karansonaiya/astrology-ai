@@ -13,53 +13,77 @@
   --font-body: var(--font-inter), var(--font-noto-gu), var(--font-noto-dev), system-ui, sans-serif;
   --font-heading: var(--font-inter), var(--font-noto-gu), var(--font-noto-dev), system-ui, sans-serif;
 
-  /* Dark "flame" (default) — evolved alongside light mode's terracotta/tan
-     shift below (see that comment for the reference this followed), toned
-     down from a pure neon flame-orange to a warmer, slightly muted
-     terracotta that reads as premium rather than alarm-colored on a dark
-     background. */
-  --color-background: #1b140f;
-  --color-surface: #221a13;
-  --color-surface-raised: #2e2416;
-  --color-border: #3c2f20;
-  --color-foreground: #fbf3ea;
-  --color-muted: #c6b5a2;
-  --color-primary: #d9793f;
-  --color-primary-foreground: #fbf3ea;
-  --color-gold: #f0b429;
-  --color-gold-soft: #f6ce73;
+  /* Dark "cosmic indigo" (default) — second evolution this project (see git
+     history for the earlier warm-terracotta pass): founder picked a specific
+     reference (a dark indigo sidebar + white content, vivid purple/orange
+     accents) over that one. Kept every existing token NAME so nothing else
+     in the app needs touching to pick this up — only values changed. */
+  --color-background: #15111f;
+  --color-surface: #1c1830;
+  --color-surface-raised: #241f3d;
+  --color-border: #342c54;
+  --color-foreground: #f1eefb;
+  --color-muted: #a79fd1;
+  --color-primary: #8b6ef5;
+  --color-primary-foreground: #ffffff;
+  --color-gold: #f2994a;
+  --color-gold-soft: #f6b56e;
   --color-success: #3cbf8a;
   --color-danger: #ef5350;
-  --color-ring: #d9793f;
-  --color-tan: #4a3a26;
-  --color-tan-foreground: #f0e6d2;
+  --color-ring: #8b6ef5;
+  --color-tan: #2f2a52;
+  --color-tan-foreground: #cfc8f0;
+
+  /* Icon-badge accent set — found live: a reference the founder picked
+     specifically varies each dashboard quick-action tile's icon-badge
+     color (orange, purple, blue, pink…) rather than repeating one accent
+     everywhere; cycled across tiles in dashboard/page.tsx. Not theme-
+     toggle-dependent (same family in both modes, just needs to read as a
+     tinted badge on either background). */
+  --color-accent-blue: #4f8ef7;
+  --color-accent-pink: #ef6aa6;
+  --color-accent-teal: #2bb3a3;
+  --color-accent-yellow: #e8c547;
+
+  /* Sidebar — deliberately NOT part of the light/dark toggle (declared only
+     here in :root, never overridden under .light): the reference's dark
+     indigo sidebar is a fixed brand surface, like a logo color, regardless
+     of whichever theme the main content area is in. */
+  --sidebar-bg: #1a1533;
+  --sidebar-surface: #221c42;
+  --sidebar-active-bg: #342c6e;
+  --sidebar-foreground: #eeeaff;
+  --sidebar-muted: #9c94c9;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
 }
 
 .light {
-  /* Found in a full audit: this read as flat/generic "AI-generated" —
-     shifted from a pure saffron-orange toward the warmer terracotta/tan/
-     brown family a professional astrology-brand reference actually used
-     (deeper gold, coffee-brown primary, a new dedicated tan tone for
-     pill badges/panels), while keeping every existing token name so
-     nothing else in the app needs to change to pick this up. */
-  --color-background: #fbf6ef;
+  /* Light mode: white content area + the same vivid indigo/orange accent
+     family as dark mode, per the founder's reference (dark sidebar, white
+     dashboard, purple + orange highlights). */
+  --color-background: #f5f4fb;
   --color-surface: #ffffff;
-  --color-surface-raised: #f5edd9;
-  --color-border: #e6d8bf;
-  --color-foreground: #2b1f12;
-  --color-muted: #8a7358;
-  --color-primary: #a8632e;
+  --color-surface-raised: #ede9fb;
+  --color-border: #e1ddf2;
+  --color-foreground: #1d1a33;
+  --color-muted: #6b6490;
+  --color-primary: #6c4ce0;
   --color-primary-foreground: #ffffff;
-  --color-gold: #b8860b;
-  --color-gold-soft: #8a5f0e;
+  --color-gold: #e8871e;
+  --color-gold-soft: #c76e10;
   --color-success: #1f8f63;
   --color-danger: #c8443f;
-  --color-ring: #a8632e;
-  /* Warm tan panel tone — pill badges (e.g. "Premium", eyebrow labels),
-     hero decorative panels, footer band. Distinct from surface-raised
-     (a near-white card background): this is a genuinely tan/khaki fill. */
-  --color-tan: #cbae7f;
-  --color-tan-foreground: #3d2f1d;
+  --color-ring: #6c4ce0;
+  /* Light-purple panel tone — pill badges (e.g. "Premium", eyebrow labels),
+     hero decorative panels, footer band. Distinct from surface-raised (a
+     near-white card background): this is a genuinely tinted fill. */
+  --color-tan: #e4defb;
+  --color-tan-foreground: #4b3b8f;
+
+  --color-accent-blue: #3f7de0;
+  --color-accent-pink: #e0558f;
+  --color-accent-teal: #1f9a8c;
+  --color-accent-yellow: #d6a716;
 }
 
 @theme inline {
@@ -78,6 +102,10 @@
   --color-ring: var(--color-ring);
   --color-tan: var(--color-tan);
   --color-tan-foreground: var(--color-tan-foreground);
+  --color-accent-blue: var(--color-accent-blue);
+  --color-accent-pink: var(--color-accent-pink);
+  --color-accent-teal: var(--color-accent-teal);
+  --color-accent-yellow: var(--color-accent-yellow);
   --font-sans: var(--font-body);
   --font-heading: var(--font-heading);
   /* AccordionContent's expand/collapse used to animate via @keyframes

@@ -1,5 +1,6 @@
 {
   "common": {
+    "quickNavPlaceholder": "कुंडली, रिपोर्ट्स, ज्योतिषियों पर जाएं…",
     "appName": "Prerna AI",
     "tagline": "आपकी अपनी भाषा में निजी, AI-संचालित ज्योतिष अंतर्दृष्टि।",
     "install": "ऐप इंस्टॉल करें",
@@ -94,6 +95,11 @@
     "help": "सहायता और सुरक्षा",
     "admin": "एडमिन",
     "more": "और"
+  },
+  "sidebar": {
+    "talkToAstrologerTitle": "AI ज्योतिषी से बात करें",
+    "talkToAstrologerDesc": "अपने प्रश्न के अनुरूप व्यक्तित्व से तुरंत मार्गदर्शन पाएं।",
+    "talkToAstrologerCta": "चैट शुरू करें"
   },
   "landing": {
     "heroEyebrow": "व्यक्तिगत ज्योतिष, AI मार्गदर्शन और रिपोर्ट्स",

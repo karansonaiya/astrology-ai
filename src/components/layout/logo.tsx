@@ -18,11 +18,11 @@ import Image from "next/image";
  * of one consistent mark everywhere rather than juggling two different
  * marks for "large" vs. "tiny" contexts.
  */
-export function Logo({ className }: { className?: string }) {
+export function Logo({ className, textClassName }: { className?: string; textClassName?: string }) {
   return (
     <Link href="/" className={`focus-ring flex items-center gap-2 rounded-lg ${className ?? ""}`}>
       <Image src="/icons/icon-512.png" alt="" width={32} height={32} className="h-8 w-8" priority />
-      <span className="font-heading text-base font-semibold tracking-tight text-foreground">Prerna AI</span>
+      <span className={`font-heading text-base font-semibold tracking-tight ${textClassName ?? "text-foreground"}`}>Prerna AI</span>
     </Link>
   );
 }

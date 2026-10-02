@@ -1,9 +1,11 @@
 "use client";
 
+import { useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
-import { ShieldCheck, Wallet, Settings } from "lucide-react";
+import { ShieldCheck, Wallet, Settings, Search } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -14,8 +16,72 @@ import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { LogoutButton } from "./logout-button";
 import { initialsFromName } from "@/lib/utils";
+import { NAV_ITEMS } from "@/lib/nav-items";
 
 type CreditsSummary = { balance: number; freeQuestionsRemaining: number; freeQuestionsCap: number };
+
+/**
+ * A real quick-jump search over this app's own feature pages — not a
+ * fabricated "search horoscopes/reports/astrologers" box (this app has no
+ * such full-text search backend to wire up, and a decorative box that does
+ * nothing would be worse than no box). Typing filters NAV_ITEMS by its
+ * translated label; Enter or a click navigates straight there.
+ */
+function QuickNavSearch() {
+  const t = useT();
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const matches =
+    query.trim().length > 0
+      ? NAV_ITEMS.filter((item) => t(item.labelKey).toLowerCase().includes(query.trim().toLowerCase())).slice(0, 6)
+      : [];
+
+  const go = (href: string) => {
+    router.push(href);
+    setQuery("");
+    setOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} className="relative hidden flex-1 max-w-sm lg:block">
+      <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+      <input
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && matches[0]) go(matches[0].href);
+          if (e.key === "Escape") setOpen(false);
+        }}
+        placeholder={t("common.quickNavPlaceholder")}
+        className="focus-ring h-10 w-full rounded-xl border border-border bg-surface pl-9 pr-3 text-sm text-foreground placeholder:text-muted"
+      />
+      {open && matches.length > 0 && (
+        <div className="absolute left-0 right-0 top-full z-40 mt-1.5 overflow-hidden rounded-xl border border-border bg-surface shadow-lg">
+          {matches.map((item) => (
+            <button
+              key={item.href}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => go(item.href)}
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-foreground hover:bg-surface-raised"
+            >
+              <item.icon size={15} className="text-muted" />
+              {t(item.labelKey)}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function AppHeader() {
   const t = useT();
@@ -47,6 +113,8 @@ export function AppHeader() {
       <div className="flex items-center gap-2 text-sm text-muted md:hidden">
         <span className="font-heading font-semibold text-foreground">Prerna AI</span>
       </div>
+
+      <QuickNavSearch />
 
       <div className="ml-auto flex items-center gap-2">
         {isAdmin && (

@@ -10,6 +10,19 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ZodiacWheel } from "@/components/marketing/zodiac-wheel";
+
+// Cycled across the quick-action tiles below, matching the founder's chosen
+// reference (every tile a different icon-badge color, not one repeated
+// accent) — same tokens used everywhere else in the app, just varied here.
+const ICON_BADGE_COLORS = [
+  "bg-primary/15 text-primary",
+  "bg-gold/15 text-gold",
+  "bg-accent-blue/15 text-accent-blue",
+  "bg-accent-pink/15 text-accent-pink",
+  "bg-accent-teal/15 text-accent-teal",
+  "bg-accent-yellow/15 text-accent-yellow",
+];
 
 type CreditsSummary = { balance: number; freeQuestionsRemaining: number };
 type BirthProfileSummary = { profile: unknown; completeness: number };
@@ -48,22 +61,30 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 md:px-6">
-      <h1 className="font-heading text-2xl font-semibold">
-        {session?.user?.name ? t("dashboard.welcomeBack", { name: session.user.name }) : t("dashboard.welcomeGeneric")}
-      </h1>
-      {credits && (
-        <p className="mt-1 text-sm text-muted">
-          {t("dashboard.creditsRemaining", { count: credits.balance })} · {t("dashboard.freeQuestionsRemaining", { count: credits.freeQuestionsRemaining })}
-        </p>
-      )}
+      <div className="relative overflow-hidden rounded-2xl bg-(--sidebar-bg) px-6 py-8 md:px-10 md:py-10">
+        <div className="pointer-events-none absolute -right-10 -top-10 opacity-40 md:-right-4 md:-top-4 md:opacity-60">
+          <ZodiacWheel size={260} />
+        </div>
+        <div className="relative max-w-md">
+          <h1 className="font-heading text-2xl font-semibold text-(--sidebar-foreground) md:text-3xl">
+            {session?.user?.name ? t("dashboard.welcomeBack", { name: session.user.name }) : t("dashboard.welcomeGeneric")}
+          </h1>
+          {credits && (
+            <p className="mt-2 text-sm text-(--sidebar-muted)">
+              {t("dashboard.creditsRemaining", { count: credits.balance })} ·{" "}
+              {t("dashboard.freeQuestionsRemaining", { count: credits.freeQuestionsRemaining })}
+            </p>
+          )}
+        </div>
+      </div>
 
       <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted">{t("dashboard.quickActions")}</h2>
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-        {quickActions.map((a) => (
+        {quickActions.map((a, i) => (
           <Link key={a.href} href={a.href}>
             <Card className="focus-ring h-full transition-shadow hover:shadow-md">
               <CardContent className="flex flex-col items-center justify-center gap-2.5 py-6 text-center">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-tan/40 text-tan-foreground">
+                <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${ICON_BADGE_COLORS[i % ICON_BADGE_COLORS.length]}`}>
                   <a.icon size={20} />
                 </span>
                 <span className="text-sm font-medium">{a.label}</span>

@@ -1,5 +1,6 @@
 {
   "common": {
+    "quickNavPlaceholder": "Jump to Kundli, Reports, Astrologers…",
     "appName": "Prerna AI",
     "tagline": "Private AI-powered astrology insights in your language.",
     "install": "Install App",
@@ -94,6 +95,11 @@
     "help": "Help & Safety",
     "admin": "Admin",
     "more": "More"
+  },
+  "sidebar": {
+    "talkToAstrologerTitle": "Talk to an AI Astrologer",
+    "talkToAstrologerDesc": "Get instant guidance from a persona suited to your question.",
+    "talkToAstrologerCta": "Start chat"
   },
   "landing": {
     "heroEyebrow": "Personalized Astrology, AI Guidance & Reports",
